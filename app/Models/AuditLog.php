@@ -15,4 +15,9 @@ class AuditLog extends Model
         'before' => 'array',
         'after' => 'array',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

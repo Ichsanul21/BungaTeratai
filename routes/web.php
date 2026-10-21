@@ -1,14 +1,18 @@
 <?php
 
 use App\Http\Controllers\ApprovalsController;
+use App\Http\Controllers\AuditTrailController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentController;
-use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\FleetController;
+use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\HrController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OperationsController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReportsController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\VoyageController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -21,9 +25,7 @@ Route::get('/', function () {
 });
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('/dashboard', function () {
-        return Inertia::render('Dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
     Route::get('/notifikasi', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifikasi/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
@@ -98,17 +100,20 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/sdm/abk/{crew}/sertifikat', [HrController::class, 'storeCertificate'])->name('hr.crew.certificate');
     Route::post('/sdm/karyawan', [HrController::class, 'storeEmployee'])->name('hr.employee');
 
-    Route::get('/laporan', function () {
-        return Inertia::render('Reports/Index');
-    })->name('reports.index');
+    Route::get('/laporan', [ReportsController::class, 'index'])
+        ->name('reports.index');
 
-    Route::get('/audit', function () {
-        return Inertia::render('AuditTrail/Index');
-    })->middleware('can:menu.audit')->name('audit.index');
+    Route::get('/audit', [AuditTrailController::class, 'index'])
+        ->middleware('can:menu.audit')->name('audit.index');
 
-    Route::get('/pengaturan', function () {
-        return Inertia::render('Settings/Index');
-    })->middleware('can:menu.settings')->name('settings.index');
+    Route::get('/pengaturan', [SettingsController::class, 'index'])
+        ->middleware('can:menu.settings')->name('settings.index');
+    Route::post('/pengaturan/users', [SettingsController::class, 'storeUser'])->name('settings.users');
+    Route::put('/pengaturan/profil', [SettingsController::class, 'updateCompany'])->name('settings.profil');
+    Route::put('/pengaturan/reminder', [SettingsController::class, 'updateReminderRules'])->name('settings.reminder');
+    Route::post('/pengaturan/customers', [SettingsController::class, 'storeCustomer'])->name('settings.customers');
+    Route::post('/pengaturan/suppliers', [SettingsController::class, 'storeSupplier'])->name('settings.suppliers');
+    Route::post('/pengaturan/katalog', [SettingsController::class, 'storeCatalog'])->name('settings.katalog');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
