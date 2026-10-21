@@ -622,10 +622,11 @@ class PortWindTest extends TestCase
         $this->get('/sdm')->assertOk();
         $this->get('/sdm?tab=karyawan')->assertOk();
 
-        // Transfer stok kantor → kapal
+        // Transfer stok kantor → kapal (reset saldo dulu agar deterministik)
         $item = \App\Models\InventoryItem::first();
         $vessel = \App\Models\Vessel::first();
         \App\Models\InventoryBalance::where('item_id', $item->id)->where('location_type', 'kantor')->delete();
+        \App\Models\InventoryBalance::where('item_id', $item->id)->where('location_type', 'vessel')->where('vessel_id', $vessel->id)->delete();
         \App\Models\InventoryBalance::create(['item_id' => $item->id, 'location_type' => 'kantor', 'qty' => 5]);
 
         $this->post('/inventory/movements', [
@@ -639,5 +640,117 @@ class PortWindTest extends TestCase
 
         $this->assertEquals(3, (float) \App\Models\InventoryBalance::where('item_id', $item->id)->where('location_type', 'kantor')->sum('qty'));
         $this->assertEquals(2, (float) \App\Models\InventoryBalance::where('item_id', $item->id)->where('location_type', 'vessel')->where('vessel_id', $vessel->id)->sum('qty'));
+    }
+
+    public function test_dashboard_renders_with_kpis(): void
+    {
+        $this->loginUser('admin@bungateratai.id');
+        $this->get('/dashboard')->assertOk();
+        $this->get('/dashboard?months=3&type=tugboat')->assertOk();
+    }
+
+    public function test_reports_all_tabs_render(): void
+    {
+        $this->loginUser('admin@bungateratai.id');
+        foreach (['armada', 'dokumen', 'perjalanan', 'operasional'] as $tab) {
+            $this->get("/laporan?tab={$tab}")->assertOk();
+        }
+    }
+
+    public function test_audit_trail_page_and_filters(): void
+    {
+        $this->loginUser('admin@bungateratai.id');
+        $this->get('/audit')->assertOk();
+        $this->get('/audit?action=created')->assertOk();
+        $this->get('/audit?entity=vessel')->assertOk();
+
+        // Auditor boleh lihat audit; ship_ops tidak
+        $this->loginUser('auditor@bungateratai.id');
+        $this->get('/audit')->assertOk();
+        $this->loginUser('ops@bungateratai.id');
+        $this->get('/audit')->assertForbidden();
+    }
+
+    public function test_settings_pages_and_rules(): void
+    {
+        $this->loginUser('admin@bungateratai.id');
+        foreach (['users', 'profil', 'reminder', 'workflow', 'kategori', 'master'] as $tab) {
+            $this->get("/pengaturan?tab={$tab}")->assertOk();
+        }
+
+        // Edit aturan reminder
+        $this->put('/pengaturan/reminder', ['reminder_days' => '45,21,7,0'])
+            ->assertSessionHas('success');
+        $this->assertSame('45,21,7,0', \App\Models\Setting::where('key', 'reminder_days')->value('value'));
+
+        // Input tidak valid ditolak
+        $this->put('/pengaturan/reminder', ['reminder_days' => 'abc'])
+            ->assertSessionHasErrors('reminder_days');
+
+        // Tambah user
+        $this->post('/pengaturan/users', [
+            'name' => 'Operator Baru',
+            'email' => 'operator.baru@bungateratai.id',
+            'password' => 'password123',
+            'role' => 'ship_ops',
+        ])->assertSessionHas('success');
+        $this->assertDatabaseHas('users', ['email' => 'operator.baru@bungateratai.id']);
+
+        // Bukan super_admin tidak boleh kelola user/reminder
+        $this->loginUser('finance@bungateratai.id');
+        $this->post('/pengaturan/users', [
+            'name' => 'X', 'email' => 'x@x.id', 'password' => 'password123', 'role' => 'ship_ops',
+        ])->assertForbidden();
+        $this->put('/pengaturan/reminder', ['reminder_days' => '1,2'])
+            ->assertForbidden();
+
+        // Master data customer
+        $this->loginUser('admin@bungateratai.id');
+        $this->post('/pengaturan/customers', ['name' => 'PT Uji Master'])->assertSessionHas('success');
+        $this->post('/pengaturan/suppliers', ['name' => 'Supplier Uji', 'category' => 'bengkel'])->assertSessionHas('success');
+        $this->post('/pengaturan/katalog', ['name' => 'Jasa Uji', 'kind' => 'pendapatan', 'default_price' => 1000000])->assertSessionHas('success');
+    }
+
+    public function test_seed_meets_spec_targets(): void
+    {
+        // Spek §7: 12 kapal · 8 siap · 3 tindak lanjut · 1 ditinjau
+        $this->assertSame(12, \App\Models\Vessel::count());
+
+        $svc = app(\App\Services\DocumentCompletenessService::class);
+        $ready = 0;
+        $followUp = 0;
+        $pendingDocs = \App\Models\Document::where('verification_status', 'under_review')
+            ->where('owner_type', 'vessel')->pluck('owner_id');
+
+        foreach (\App\Models\Vessel::all() as $vessel) {
+            $calc = $svc->forVessel($vessel);
+            $isPending = $pendingDocs->contains($vessel->id);
+            if ($calc['percent'] >= 90 && ! $isPending) {
+                $ready++;
+            } elseif ($calc['percent'] < 90) {
+                $followUp++;
+            }
+        }
+        $this->assertSame(8, $ready);
+        $this->assertSame(3, $followUp);
+
+        // 4 perjalanan menunggu pemeriksaan internal (spek §7)
+        $this->assertSame(4, \App\Models\Voyage::whereIn('voyage_status', [
+            'document_preparation', 'internal_review', 'awaiting_external_approval',
+        ])->count());
+
+        // 5 dokumen mendekati kedaluwarsa (spek §7)
+        $this->assertSame(5, \App\Models\Document::where('has_expiry', true)
+            ->whereBetween('expiry_date', [now()->toDateString(), now()->addDays(30)->toDateString()])
+            ->count());
+
+        // Grafik pendapatan: minimal 6 bulan berisi data
+        $monthsWithInvoices = \App\Models\Invoice::toBase()
+            ->selectRaw("DISTINCT strftime('%Y-%m', issue_date) as ym")
+            ->pluck('ym')
+            ->filter()
+            ->unique()
+            ->count();
+        $this->assertGreaterThanOrEqual(6, $monthsWithInvoices);
     }
 }

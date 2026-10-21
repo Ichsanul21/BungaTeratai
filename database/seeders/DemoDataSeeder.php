@@ -877,9 +877,6 @@ class DemoDataSeeder extends Seeder
             } else {
                 $steps = array_slice($order, 0, array_search($target, $order, true) + 1);
                 foreach ($steps as $s) {
-                    if ($s === $target) {
-                        break;
-                    }
                     $workflow->transition($voyage, $s);
                 }
             }
