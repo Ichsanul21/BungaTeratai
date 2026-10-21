@@ -1,0 +1,86 @@
+# ============================================================
+#  PORTWIND INTELLIGENCE — .gitignore
+#  Stack : Laravel 13 · Inertia (React + TypeScript) · Vite
+#          Tailwind CSS · SQLite · Recharts · Leaflet
+# ============================================================
+
+# --- Dokumen proyek (spesifikasi internal — jangan di-commit) ---
+/docs/
+
+# --- Environment & secrets ---
+.env
+.env.*
+!.env.example
+auth.json
+
+# --- Composer / PHP ---
+/vendor/
+composer.phar
+.phpunit.result.cache
+.phpunit.cache/
+.php-cs-fixer.cache
+.phpstan.cache
+clover.xml
+coverage.xml
+coverage.html
+
+# --- Node / npm / yarn / pnpm ---
+node_modules/
+/public/build/
+/public/hot
+/public/storage
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# --- SQLite (database di-seed ulang, tidak di-commit) ---
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+
+# --- Upload dokumen privat & file sementara ---
+/storage/app/documents/
+/storage/app/uploads/
+/storage/app/tmp/
+/storage/*.key
+/storage/logs/*.log
+
+# --- Laravel runtime (fallback; folder sudah punya .gitignore bawaan) ---
+/bootstrap/cache/*.php
+/public/storage
+
+# --- Auth & environment alternatif ---
+Homestead.json
+Homestead.yaml
+
+# --- Testing & coverage ---
+/.phpunit.cache/
+phpunit.xml.bak
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.phpactor.json
+/storage/pail
+
+# --- IDE / Editor ---
+.idea/
+.vscode/
+.fleet/
+.zed/
+.nova/
+*.swp
+*.swo
+*~
+
+# --- Logs & misc ---
+*.log
+*.pid
+*.pid.lock
+.cache/
+.tmp/

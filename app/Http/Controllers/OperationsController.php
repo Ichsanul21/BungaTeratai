@@ -1,0 +1,335 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\InventoryBalance;
+use App\Models\InventoryMovement;
+use App\Models\Service;
+use App\Models\ServiceItem;
+use App\Models\Vessel;
+use App\Models\VesselCondition;
+use App\Models\Voyage;
+use App\Models\VoyageEvent;
+use App\Services\AuditService;
+use App\Services\FuelAnalysisService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class OperationsController extends Controller
+{
+    public function index(Request $request): Response
+    {
+        $tab = $request->string('tab')->toString() ?: 'posisi';
+        $user = auth()->user();
+        $canManage = $user?->can('operations.manage') ?? false;
+
+        $props = match ($tab) {
+            'kondisi' => $this->kondisiProps(),
+            'servis' => $this->servisProps(),
+            'bbm' => $this->bbmProps(),
+            'checklist' => $this->checklistProps(),
+            'logs' => $this->logsProps(),
+            default => $this->posisiProps(),
+        };
+
+        return Inertia::render('Operations/Index', [
+            'tab' => $tab,
+            'canManage' => $canManage,
+            ...$props,
+        ]);
+    }
+
+    private function posisiProps(): array
+    {
+        $vessels = Vessel::orderBy('vessel_name')->get([
+            'id', 'vessel_name', 'vessel_type', 'last_lat', 'last_lng', 'last_position_at', 'operational_status', 'base_location',
+        ]);
+
+        return [
+            'vessels' => $vessels,
+            'recentPositions' => \App\Models\VesselPosition::with('vessel')
+                ->orderByDesc('recorded_at')->limit(50)->get()
+                ->map(fn ($p) => [
+                    'id' => $p->id,
+                    'vessel_name' => $p->vessel?->vessel_name,
+                    'lat' => $p->lat,
+                    'lng' => $p->lng,
+                    'speed_knots' => $p->speed_knots,
+                    'recorded_at' => $p->recorded_at,
+                    'source' => $p->source,
+                ]),
+        ];
+    }
+
+    private function kondisiProps(): array
+    {
+        return [
+            'conditions' => VesselCondition::with(['vessel', 'user'])
+                ->orderByDesc('checked_at')->limit(40)->get()
+                ->map(fn ($c) => [
+                    'id' => $c->id,
+                    'vessel_name' => $c->vessel?->vessel_name,
+                    'checked_at' => $c->checked_at,
+                    'score' => $c->score,
+                    'notes' => $c->notes,
+                    'checklist' => $c->checklist,
+                    'checked_by_name' => $c->user?->name,
+                ]),
+            'vessels' => Vessel::orderBy('vessel_name')->get(['id', 'vessel_name']),
+        ];
+    }
+
+    private function servisProps(): array
+    {
+        return [
+            'services' => Service::with(['vessel', 'serviceItems.item'])
+                ->orderByDesc('start_date')->limit(50)->get()
+                ->map(fn ($s) => [
+                    'id' => $s->id,
+                    'vessel_name' => $s->vessel?->vessel_name,
+                    'type' => $s->type,
+                    'title' => $s->title,
+                    'start_date' => $s->start_date,
+                    'end_date' => $s->end_date,
+                    'workshop' => $s->workshop,
+                    'cost' => $s->cost,
+                    'status' => $s->status,
+                    'items' => $s->serviceItems->map(fn ($i) => [
+                        'item_name' => $i->item?->name, 'qty' => $i->qty,
+                    ]),
+                ]),
+            'vessels' => Vessel::orderBy('vessel_name')->get(['id', 'vessel_name']),
+            'items' => \App\Models\InventoryItem::orderBy('name')
+                ->get(['id', 'sku', 'name', 'unit'])
+                ->map(fn ($i) => [
+                    'id' => $i->id, 'sku' => $i->sku, 'name' => $i->name, 'unit' => $i->unit,
+                    'stok_kantor' => InventoryBalance::where('item_id', $i->id)
+                        ->where('location_type', 'kantor')->sum('qty'),
+                ]),
+        ];
+    }
+
+    private function bbmProps(): array
+    {
+        $logs = \App\Models\FuelLog::with('vessel')
+            ->orderByDesc('trip_date')->orderByDesc('id')->limit(100)->get()
+            ->map(fn ($f) => [
+                'id' => $f->id,
+                'vessel_name' => $f->vessel?->vessel_name,
+                'trip_date' => $f->trip_date,
+                'route' => $f->route,
+                'cargo_type' => $f->cargo_type,
+                'duration_hours' => $f->duration_hours,
+                'distance_nm' => $f->distance_nm,
+                'liters' => $f->liters,
+                'cost' => $f->cost,
+                'lph' => $f->duration_hours > 0 ? round($f->liters / $f->duration_hours, 2) : 0,
+                'baseline_lph' => $f->baseline_lph_snapshot,
+                'analysis_status' => $f->analysis_status,
+                'analysis_diff_pct' => $f->analysis_diff_pct,
+                'explanation_note' => $f->explanation_note,
+            ]);
+
+        $monthLogs = \App\Models\FuelLog::whereMonth('trip_date', now()->month)
+            ->whereYear('trip_date', now()->year);
+
+        return [
+            'logs' => $logs,
+            'vessels' => Vessel::whereNotNull('fuel_baseline_lph')
+                ->orderBy('vessel_name')
+                ->get(['id', 'vessel_name', 'fuel_baseline_lph', 'vessel_type']),
+            'kpis' => [
+                'liter_bulan' => (float) (clone $monthLogs)->sum('liters'),
+                'biaya_bulan' => (float) (clone $monthLogs)->sum('cost'),
+                'anomali' => \App\Models\FuelLog::where('analysis_status', 'tidak_normal')->count(),
+                'trip_bulan' => (clone $monthLogs)->count(),
+            ],
+        ];
+    }
+
+    private function checklistProps(): array
+    {
+        $voyages = Voyage::with(['vessel', 'checklists'])
+            ->whereIn('voyage_status', ['document_preparation', 'internal_review', 'awaiting_external_approval', 'planned'])
+            ->orderByDesc('planned_departure')->limit(30)->get()
+            ->map(fn ($v) => [
+                'id' => $v->id,
+                'voyage_code' => $v->voyage_code,
+                'vessel_name' => $v->vessel?->vessel_name,
+                'voyage_status' => $v->voyage_status,
+                'planned_departure' => $v->planned_departure,
+                'wajib_total' => $v->checklists->where('applicability', 'wajib')->count(),
+                'wajib_terpenuhi' => $v->checklists->where('applicability', 'wajib')
+                    ->where('completion_status', 'terpenuhi')->count(),
+                'kondisional' => $v->checklists->where('applicability', 'kondisional')->count(),
+            ]);
+
+        return ['checklistVoyages' => $voyages];
+    }
+
+    private function logsProps(): array
+    {
+        return [
+            'voyageEvents' => VoyageEvent::with(['voyage.vessel', 'user'])
+                ->whereIn('event_type', ['departed', 'arrived', 'cancelled', 'delayed', 'passenger_change', 'closed'])
+                ->orderByDesc('occurred_at')->limit(60)->get()
+                ->map(fn ($e) => [
+                    'id' => $e->id,
+                    'voyage_code' => $e->voyage?->voyage_code,
+                    'vessel_name' => $e->voyage?->vessel?->vessel_name,
+                    'event_type' => $e->event_type,
+                    'description' => $e->description,
+                    'occurred_at' => $e->occurred_at,
+                    'user_name' => $e->user?->name,
+                ]),
+        ];
+    }
+
+    public function storeCondition(Request $request)
+    {
+        Gate::authorize('operations.manage');
+
+        $data = $request->validate([
+            'vessel_id' => ['required', 'exists:vessels,id'],
+            'checked_at' => ['required', 'date'],
+            'score' => ['required', 'integer', 'between:0,100'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'mesin' => ['required', 'in:baik,cukup,perlu_perbaikan'],
+            'navigasi' => ['required', 'in:baik,cukup,perlu_perbaikan'],
+            'keselamatan' => ['required', 'in:baik,cukup,perlu_perbaikan'],
+            'dek' => ['required', 'in:baik,cukup,perlu_perbaikan'],
+            'kamar' => ['required', 'in:baik,cukup,perlu_perbaikan'],
+        ]);
+
+        VesselCondition::create([
+            'vessel_id' => $data['vessel_id'],
+            'checked_at' => $data['checked_at'],
+            'score' => $data['score'],
+            'notes' => $data['notes'] ?? null,
+            'checklist' => [
+                'mesin' => $data['mesin'],
+                'navigasi' => $data['navigasi'],
+                'keselamatan' => $data['keselamatan'],
+                'dek' => $data['dek'],
+                'kamar' => $data['kamar'],
+            ],
+            'checked_by' => auth()->id(),
+        ]);
+
+        AuditService::log('condition_checked', 'vessel', $data['vessel_id'], null, $data, 'Pemeriksaan kondisi kapal');
+
+        return back()->with('success', 'Hasil pemeriksaan kondisi tersimpan.');
+    }
+
+    public function storeService(Request $request)
+    {
+        Gate::authorize('operations.manage');
+
+        $data = $request->validate([
+            'vessel_id' => ['required', 'exists:vessels,id'],
+            'type' => ['required', 'in:rutin,urgent,drydock,pemeriksaan'],
+            'title' => ['required', 'string', 'max:180'],
+            'start_date' => ['required', 'date'],
+            'end_date' => ['nullable', 'date'],
+            'workshop' => ['nullable', 'string', 'max:120'],
+            'cost' => ['nullable', 'numeric', 'min:0'],
+            'status' => ['required', 'in:rencana,proses,selesai'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'items' => ['nullable', 'array'],
+            'items.*.item_id' => ['required', 'exists:inventory_items,id'],
+            'items.*.qty' => ['required', 'numeric', 'min:0.01'],
+        ]);
+
+        $service = DB::transaction(function () use ($data) {
+            $service = Service::create(collect($data)->except('items')->all());
+
+            foreach ($data['items'] ?? [] as $item) {
+                ServiceItem::create([
+                    'service_id' => $service->id,
+                    'item_id' => $item['item_id'],
+                    'qty' => $item['qty'],
+                ]);
+
+                // Saat servis selesai → kurangi stok kantor & catat mutasi
+                if ($data['status'] === 'selesai') {
+                    $balance = InventoryBalance::where('item_id', $item['item_id'])
+                        ->where('location_type', 'kantor')
+                        ->lockForUpdate()
+                        ->first();
+                    if ($balance) {
+                        $balance->decrement('qty', $item['qty']);
+                    }
+                    InventoryMovement::create([
+                        'item_id' => $item['item_id'],
+                        'type' => 'keluar',
+                        'qty' => $item['qty'],
+                        'from_location' => 'kantor',
+                        'ref_type' => 'service',
+                        'ref_id' => $service->id,
+                        'movement_date' => now()->toDateString(),
+                        'user_id' => auth()->id(),
+                        'notes' => "Pemakaian untuk servis: {$service->title}",
+                    ]);
+                }
+            }
+
+            return $service;
+        });
+
+        AuditService::log('service_created', 'vessel', $data['vessel_id'], null, $data, "Servis baru: {$service->title}");
+
+        return back()->with('success', 'Catatan servis tersimpan'.($data['status'] === 'selesai' ? ' & stok sparepart dipotong.' : '.'));
+    }
+
+    public function storeFuel(Request $request)
+    {
+        Gate::authorize('operations.manage');
+
+        $data = $request->validate([
+            'vessel_id' => ['required', 'exists:vessels,id'],
+            'trip_date' => ['required', 'date'],
+            'route' => ['required', 'string', 'max:180'],
+            'cargo_type' => ['nullable', 'string', 'max:60'],
+            'duration_hours' => ['required', 'numeric', 'min:0.1'],
+            'distance_nm' => ['nullable', 'numeric', 'min:0'],
+            'liters' => ['required', 'numeric', 'min:0.1'],
+            'cost' => ['nullable', 'numeric', 'min:0'],
+            'explanation' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $analysis = app(FuelAnalysisService::class);
+        $vessel = Vessel::findOrFail($data['vessel_id']);
+
+        $preview = $analysis->analyze(
+            (float) $data['liters'],
+            (float) $data['duration_hours'],
+            $vessel->fuel_baseline_lph,
+        );
+
+        if ($preview['status'] === 'tidak_normal' && empty($data['explanation'])) {
+            return back()
+                ->withInput()
+                ->with('error', 'Konsumsi TIDAK NORMAL ('.$preview['diff_pct'].'%) — catatan penjelasan wajib diisi.');
+        }
+
+        $analysis->record(
+            $vessel,
+            $data['trip_date'],
+            $data['route'],
+            $data['cargo_type'] ?? null,
+            (float) $data['duration_hours'],
+            isset($data['distance_nm']) && $data['distance_nm'] !== null ? (float) $data['distance_nm'] : null,
+            (float) $data['liters'],
+            (float) ($data['cost'] ?? 0),
+            $data['explanation'] ?? null,
+            null,
+        );
+
+        AuditService::log('fuel_logged', 'vessel', $vessel->id, null, $data, 'Log trip BBM', null, null, null);
+
+        return back()->with('success', 'Trip BBM tercatat — analisis: '.mb_strtoupper($preview['status']).' ('.$preview['diff_pct'].'%).');
+    }
+}
