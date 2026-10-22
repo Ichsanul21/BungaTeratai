@@ -358,6 +358,15 @@ class VoyageController extends Controller
                 ]),
                 'total' => (float) $voyage->bills()->sum('total'),
             ],
+            'charterInvoices' => $voyage->invoices()->orderBy('id')->get()->map(fn ($i) => [
+                'id' => $i->id,
+                'number' => $i->number,
+                'invoice_kind' => $i->invoice_kind,
+                'status' => $i->status,
+                'total' => $i->total,
+                'paid_amount' => $i->paid_amount,
+                'fp_number' => $i->fp_number,
+            ]),
             'actions' => [
                 'can_update' => $user?->can('update', $voyage),
                 'can_approve' => $user?->can('approve', $voyage)

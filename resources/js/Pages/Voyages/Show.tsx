@@ -70,6 +70,7 @@ export default function VoyagesShow({
     documents,
     linkableDocuments,
     agency,
+    charterInvoices,
     events,
     approvals,
     expenses,
@@ -82,6 +83,7 @@ export default function VoyagesShow({
     documents: Array<Record<string, any>>;
     linkableDocuments?: Array<Record<string, any>>;
     agency?: Array<Record<string, any>>;
+    charterInvoices?: Array<Record<string, any>>;
     events: Array<Record<string, any>>;
     approvals: Array<Record<string, any>>;
     expenses: { bills: Array<Record<string, any>>; total: number };
@@ -565,7 +567,19 @@ export default function VoyagesShow({
 
                     {/* Ringkasan SPAL */}
                     {voyage.spal_number && (
-                        <Card title={`SPAL ${voyage.spal_number}`}>
+                        <Card
+                            title={`SPAL ${voyage.spal_number}`}
+                            actions={
+                                <a
+                                    href={`/cetak/spal/${voyage.id}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-hover"
+                                >
+                                    <Printer size={13} /> Cetak SPAL (PDF)
+                                </a>
+                            }
+                        >
                             <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm md:grid-cols-3">
                                 {[
                                     ['Tanggal SPAL', voyage.spal_date],
@@ -584,6 +598,42 @@ export default function VoyagesShow({
                                     </div>
                                 ))}
                             </dl>
+                            {(charterInvoices ?? []).length > 0 && (
+                                <div className="mt-4 border-t border-hairline pt-3">
+                                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+                                        Invoice Charter (DP / Pelunasan)
+                                    </p>
+                                    <ul className="space-y-1.5">
+                                        {(charterInvoices ?? []).map((inv: any) => (
+                                            <li key={inv.id} className="flex items-center justify-between gap-2 rounded-lg border border-hairline px-3 py-2 text-sm">
+                                                <span className="font-medium text-ink">
+                                                    {inv.number}
+                                                    <span className="ms-2 text-xs font-normal text-muted">
+                                                        {inv.fp_number ? `FP: ${inv.fp_number}` : 'FP: —'}
+                                                    </span>
+                                                </span>
+                                                <span className="flex items-center gap-2">
+                                                    <Badge tone={inv.status === 'paid' ? 'success' : inv.status === 'partial' ? 'warning' : 'danger'}>
+                                                        {inv.status}
+                                                    </Badge>
+                                                    <span className="tabular-nums text-ink">{formatRupiah(inv.total)}</span>
+                                                    <a href={`/cetak/invoice-charter/${inv.id}?kind=${inv.invoice_kind === 'pelunasan' ? 'pelunasan' : 'dp'}`} target="_blank" rel="noreferrer" className="text-xs font-medium text-primary hover:underline">
+                                                        Cetak
+                                                    </a>
+                                                </span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                            <div className="mt-4 border-t border-hairline pt-3 text-sm">
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Terbitkan Invoice Baru</p>
+                                <div className="flex flex-wrap gap-2">
+                                    <a href={`/keuangan?tab=invoice`} className="rounded-lg border border-hairline px-3 py-1.5 text-xs font-medium text-ink hover:border-primary/40">
+                                        Ke menu Keuangan → Invoice
+                                    </a>
+                                </div>
+                            </div>
                         </Card>
                     )}
 
@@ -604,6 +654,7 @@ export default function VoyagesShow({
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-2 text-xs font-medium">
+                                            <a href={`/cetak/keagenan/${ag.id}`} target="_blank" rel="noreferrer" className="text-primary hover:underline">Cetak</a>
                                             <span className="text-muted">{formatDate(ag.letter_date)}</span>
                                             {actions.can_update && (
                                                 <button

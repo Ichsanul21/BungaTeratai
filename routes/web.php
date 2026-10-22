@@ -7,6 +7,7 @@ use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\FleetController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\HrController;
+use App\Http\Controllers\IssueController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OperationsController;
@@ -163,6 +164,18 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/laporan', [ReportsController::class, 'index'])
         ->name('reports.index');
+
+    // Fase C — Penerbitan & Export Dokumen
+    Route::get('/cetak/spal/{voyage}', [IssueController::class, 'spal'])->name('issue.spal');
+    Route::get('/cetak/keagenan/{agency}', [IssueController::class, 'agency'])->name('issue.agency');
+    Route::get('/cetak/po/{po}', [IssueController::class, 'po'])->name('issue.po');
+    Route::get('/cetak/invoice-charter/{invoice}', [IssueController::class, 'charterInvoice'])->name('issue.invoice.charter');
+    Route::get('/cetak/invoice/{invoice}', [IssueController::class, 'financeInvoice'])->name('issue.invoice');
+    Route::post('/dokumen/surat-umum', [IssueController::class, 'storeGenericLetter'])->name('issue.letter');
+    Route::get('/laporan/export/master-tracker', [IssueController::class, 'exportMasterTracker'])->name('export.tracker');
+    Route::get('/laporan/export/monthly', [IssueController::class, 'exportMonthly'])->name('export.monthly');
+    Route::get('/laporan/export/rekap-nota', [IssueController::class, 'exportRekapNota'])->name('export.rekap');
+    Route::get('/laporan/export/outstanding', [IssueController::class, 'exportOutstanding'])->name('export.outstanding');
 
     Route::get('/audit', [AuditTrailController::class, 'index'])
         ->middleware('can:menu.audit')->name('audit.index');

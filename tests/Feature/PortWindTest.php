@@ -221,8 +221,8 @@ class PortWindTest extends TestCase
         Storage::fake('local');
         $this->loginUser('ops@bungateratai.id');
 
-        $tug = \App\Models\Vessel::where('vessel_name', 'TB Samudra 01')->first();
-        $barge = \App\Models\Vessel::where('vessel_name', 'BG Samudra 08')->first();
+        $tug = \App\Models\Vessel::where('vessel_name', 'TB Syukur 01')->first();
+        $barge = \App\Models\Vessel::where('vessel_name', 'BG Syukur 03')->first();
 
         $this->post('/perjalanan', [
             'vessel_id' => $tug->id,
@@ -390,7 +390,7 @@ class PortWindTest extends TestCase
     public function test_operations_fuel_analysis_rules(): void
     {
         $this->loginUser('ops@bungateratai.id');
-        $vessel = \App\Models\Vessel::where('vessel_name', 'TB Samudra 01')->first();
+        $vessel = \App\Models\Vessel::where('vessel_name', 'TB Syukur 01')->first();
         // baseline 95 L/jam
 
         // Normal: 95 L / 1 jam

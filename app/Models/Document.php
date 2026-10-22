@@ -16,6 +16,10 @@ class Document extends Model
         'has_expiry' => 'boolean',
         'is_archived' => 'boolean',
         'expiry_date' => 'date:Y-m-d',
+        'has_endorsement' => 'boolean',
+        'endorsement_last_date' => 'date:Y-m-d',
+        'endorsement_next_date' => 'date:Y-m-d',
+        'voided_at' => 'datetime',
     ];
 
     public function category()

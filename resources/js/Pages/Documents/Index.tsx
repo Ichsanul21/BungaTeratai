@@ -1,5 +1,6 @@
 import Badge, { type BadgeTone } from '@/Components/ui/Badge';
 import DataTable from '@/Components/ui/DataTable';
+import Modal from '@/Components/Modal';
 import PageHeader from '@/Components/ui/PageHeader';
 import TabNav from '@/Components/ui/TabNav';
 import StatCard from '@/Components/ui/StatCard';
@@ -7,7 +8,7 @@ import { VERIFICATION_STATUS_LABELS } from '@/Constants/navigation';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { classNames, daysUntil, formatNumber } from '@/lib/format';
 import { type PageProps } from '@/types';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import {
     AlertTriangle,
     CalendarClock,
@@ -108,6 +109,12 @@ export default function DocumentsIndex({
     canCreate?: boolean;
 }>) {
     const [search, setSearch] = useState(filters.search ?? '');
+    const [letterOpen, setLetterOpen] = useState(false);
+    const letterForm = useForm({
+        to: '', subject: '', body: '',
+        date: new Date().toISOString().slice(0, 10),
+        signer: '', signer_title: '',
+    });
     const group = filters.group ?? '';
 
     const apply = (e: FormEvent) => {
@@ -132,12 +139,21 @@ export default function DocumentsIndex({
                 description="Seluruh dokumen perusahaan, kapal, awak, dan perjalanan. Dua status terpisah: verifikasi & masa berlaku."
                 actions={
                     canCreate && (
-                        <Link
-                            href="/dokumen/create"
-                            className="inline-flex items-center gap-2 rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover"
-                        >
-                            <Plus size={16} /> Unggah Dokumen
-                        </Link>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setLetterOpen(true)}
+                                className="inline-flex items-center gap-2 rounded-lg border border-hairline bg-white px-3.5 py-2 text-sm font-semibold text-ink transition hover:border-primary/40"
+                            >
+                                Terbitkan Surat Umum
+                            </button>
+                            <Link
+                                href="/dokumen/create"
+                                className="inline-flex items-center gap-2 rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover"
+                            >
+                                <Plus size={16} /> Unggah Dokumen
+                            </Link>
+                        </div>
                     )
                 }
             />
@@ -417,6 +433,48 @@ export default function DocumentsIndex({
                     </div>
                 </div>
             )}
+            {/* Modal: Terbit Surat Umum */}
+            <Modal show={letterOpen} onClose={() => setLetterOpen(false)} maxWidth="lg">
+                <form
+                    className="p-6"
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        letterForm.post('/dokumen/surat-umum', { preserveScroll: true, onSuccess: () => { setLetterOpen(false); letterForm.reset(); } });
+                    }}
+                >
+                    <h2 className="text-lg font-semibold text-ink">Terbitkan Surat Umum</h2>
+                    <p className="text-xs text-muted">Nomor surat dibuat otomatis ({'{seq}/BT/{bulan romawi}/{tahun}'}) — PDF kop PT Bunga Teratai diarsipkan otomatis.</p>
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                        <div className="col-span-2">
+                            <label className="text-xs font-medium text-muted">Kepada Yth. *</label>
+                            <input value={letterForm.data.to} onChange={(e) => letterForm.setData('to', e.target.value)} placeholder="mis. PT Sinar Laut Maritim" className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                        </div>
+                        <div className="col-span-2">
+                            <label className="text-xs font-medium text-muted">Perihal / Subjek *</label>
+                            <input value={letterForm.data.subject} onChange={(e) => letterForm.setData('subject', e.target.value)} placeholder="mis. Surat Perintah Bongkar Muat" className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-muted">Tanggal</label>
+                            <input type="date" value={letterForm.data.date} onChange={(e) => letterForm.setData('date', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-muted">Penandatangan</label>
+                            <input value={letterForm.data.signer} onChange={(e) => letterForm.setData('signer', e.target.value)} placeholder="H. Syarif" className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                        </div>
+                        <div className="col-span-2">
+                            <label className="text-xs font-medium text-muted">Isi Surat *</label>
+                            <textarea rows={6} value={letterForm.data.body} onChange={(e) => letterForm.setData('body', e.target.value)} placeholder="Dengan hormat, bersama ini kami menyampaikan ..." className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                            {letterForm.errors.body && <p className="mt-1 text-xs text-primary">{letterForm.errors.body}</p>}
+                        </div>
+                    </div>
+                    <div className="mt-5 flex justify-end gap-3">
+                        <button type="button" onClick={() => setLetterOpen(false)} className="rounded-lg border border-hairline bg-white px-4 py-2 text-sm font-medium text-ink">Batal</button>
+                        <button type="submit" disabled={letterForm.processing} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50">
+                            {letterForm.processing ? 'Menerbitkan…' : 'Terbitkan & Cetak PDF'}
+                        </button>
+                    </div>
+                </form>
+            </Modal>
         </AuthenticatedLayout>
     );
 }

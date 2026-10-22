@@ -36,6 +36,7 @@ export default function ReportsIndex({
         { key: 'dokumen', label: 'Laporan Dokumen', icon: FileStack },
         { key: 'perjalanan', label: 'Laporan Perjalanan', icon: ClipboardList },
         { key: 'operasional', label: 'Laporan Operasional', icon: Fuel },
+        { key: 'ekspor', label: 'Ekspor Excel', icon: Printer },
     ];
 
     const apply = (e: FormEvent) => {
@@ -213,6 +214,60 @@ export default function ReportsIndex({
             <p className="mt-4 text-xs text-muted">
                 Laporan dihasilkan dari data sistem — indikator kesiapan bersifat internal, bukan penilaian otoritas.
             </p>
+            {tab === 'ekspor' && (
+                <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                    <Card title="Master Tracker TB & BG" description="Sheet TugBoat + Barge — kolom persis file klien (expired, endorsement, status).">
+                        <a href="/laporan/export/master-tracker" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover">
+                            <Printer size={16} /> Download Master Tracker (.xlsx)
+                        </a>
+                    </Card>
+                    <Card title="Monthly Document Expiry & Endorsement Report" description="Laporan bulanan kedaluwarsa + endorsement per kapal.">
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                const period = (new FormData(e.currentTarget as HTMLFormElement).get('period') as string) || '';
+                                window.open(`/laporan/export/monthly?period=${period}`, '_blank');
+                            }}
+                            className="flex items-end gap-2"
+                        >
+                            <div>
+                                <label className="text-xs font-medium text-muted">Periode</label>
+                                <input type="month" name="period" defaultValue={new Date().toISOString().slice(0, 7)} className="mt-1 block rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                            </div>
+                            <button type="submit" className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover">
+                                <Printer size={16} /> Download (.xlsx)
+                            </button>
+                        </form>
+                    </Card>
+                    <Card title="Rekap Nota" description="Rekap bill per toko — format Excel REKAP NOTA.">
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                const fd = new FormData(e.currentTarget as HTMLFormElement);
+                                window.open(`/laporan/export/rekap-nota?from=${fd.get('from')}&to=${fd.get('to')}`, '_blank');
+                            }}
+                            className="flex items-end gap-2"
+                        >
+                            <div>
+                                <label className="text-xs font-medium text-muted">Dari</label>
+                                <input type="date" name="from" defaultValue={new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10)} className="mt-1 block rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-muted">Sampai</label>
+                                <input type="date" name="to" defaultValue={new Date().toISOString().slice(0, 10)} className="mt-1 block rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                            </div>
+                            <button type="submit" className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover">
+                                <Printer size={16} /> Download (.xlsx)
+                            </button>
+                        </form>
+                    </Card>
+                    <Card title="Outstanding — Rencana Pembayaran" description="Kolom: No, Toko, Nomor Cek/BG, Jumlah, Rencana Pembayaran.">
+                        <a href="/laporan/export/outstanding" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover">
+                            <Printer size={16} /> Download OUTSTANDING (.xlsx)
+                        </a>
+                    </Card>
+                </div>
+            )}
         </AuthenticatedLayout>
     );
 }

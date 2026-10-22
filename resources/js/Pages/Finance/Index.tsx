@@ -300,6 +300,24 @@ export default function FinanceIndex({
                                     <td className="px-3 py-2 text-right">
                                         {canManage && (
                                             <div className="flex justify-end gap-2 text-xs font-medium">
+                                                <a
+                                                    href={`/cetak/invoice/${i.id}`}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="text-primary hover:underline"
+                                                >
+                                                    Cetak
+                                                </a>
+                                                {i.voyage_id && (
+                                                    <a
+                                                        href={`/cetak/invoice-charter/${i.id}?kind=dp`}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="text-primary hover:underline"
+                                                    >
+                                                        Cetak Charter
+                                                    </a>
+                                                )}
                                                 {i.status !== 'paid' && (
                                                     <button
                                                         type="button"
@@ -503,11 +521,21 @@ export default function FinanceIndex({
                     title="Jadwal Pembayaran Mendatang"
                     description="Otomatis dari bill + entri manual."
                     actions={
-                        canManage && (
-                            <PrimaryButton onClick={() => setModal('addSchedule')}>
-                                <Plus size={14} className="inline me-1" /> Entri Manual
-                            </PrimaryButton>
-                        )
+                        <>
+                            <a
+                                href="/laporan/export/outstanding"
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-hairline bg-white px-3 py-1.5 text-xs font-medium text-ink hover:border-primary/40"
+                            >
+                                Export Excel Outstanding
+                            </a>
+                            {canManage && (
+                                <PrimaryButton onClick={() => setModal('addSchedule')}>
+                                    <Plus size={14} className="inline me-1" /> Entri Manual
+                                </PrimaryButton>
+                            )}
+                        </>
                     }
                 >
                     <ul className="divide-y divide-hairline">
@@ -583,6 +611,9 @@ export default function FinanceIndex({
                                         <span className="font-semibold tabular-nums text-ink">{formatRupiah(po.subtotal)}</span>
                                         {canManage && (
                                             <div className="flex gap-2 text-xs font-medium">
+                                                <a href={`/cetak/po/${po.id}`} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                                                    Cetak
+                                                </a>
                                                 {po.status === 'diterima' && (
                                                     <button
                                                         type="button"
