@@ -2,7 +2,7 @@
 
 ## Apa ini
 
-**PortWind Intelligence** — prototype ERP manajemen dokumen & operasi pelayaran (PT Bunga Teratai, Samarinda). Status: **Fase 0–E SELESAI** (aplikasi penuh, CRUD lengkap, generator PDF/Excel BahanBT, seed data klien armada Syukur + SPAL 104, **63 test / 311 assertions hijau**).
+**Bunga Teratai System** — prototype ERP manajemen dokumen & operasi pelayaran (PT Bunga Teratai, Samarinda). Status: **Fase 0–E SELESAI** (aplikasi penuh, CRUD lengkap, generator PDF/Excel BahanBT, seed data klien armada Syukur + SPAL 104, **63 test / 311 assertions hijau**).
 
 Stack: **Laravel 13 + Inertia (React 19 + TypeScript) + SQLite + Tailwind + Recharts + Leaflet + lucide-react**. Desktop-first, UI **Bahasa Indonesia**, timezone **Asia/Makassar (WITA)**, primer `#C41212`, sidebar `#172B3A`.
 
@@ -35,7 +35,7 @@ Aturan spek yang gampang dilanggar (hafalkan):
 php artisan serve                    # server dev (port 8000)
 npm run dev                          # Vite dev
 npm run build                        # VERIFIKASI wajib sebelum selesai task
-php artisan test                     # 63 test PortWindTest + Breeze — wajib lulus semua
+php artisan test                     # 63 test BungaTerataiTest + Breeze — wajib lulus semua
 php artisan migrate:fresh --seed     # reset + seed data klien (±16 detik, wajib sukses)
 ```
 
@@ -64,7 +64,7 @@ php artisan migrate:fresh --seed     # reset + seed data klien (±16 detik, waji
 - `app/Policies/` — Vessel, Document, Voyage + Gate: `menu.*`, `operations.manage`, `finance.manage`, `verify-documents`
 - `resources/js/Pages/` — 13 menu sidebar; tab = query param `?tab=` (server-driven)
 - `database/seeders/DemoDataSeeder.php` — satu pintu seed: 12 kapal (8 siap/3 tindak lanjut/1 ditinjau), 15 voyage, 251 dokumen (5 expiring, 2 expired), 42 invoice, 25 bill (16 assist), payroll 6 bulan posted, 20 ABK, 15 karyawan, 20 item inventory, 116+ jurnal
-- **Test: `tests/Feature/PortWindTest.php` (63 test / 311 assertions)** — smoke 13 menu + semua tab, RBAC 7 role, journey A–J, angka target spek
+- **Test: `tests/Feature/BungaTerataiTest.php` (63 test / 311 assertions — BungaTerataiTest)** — smoke 13 menu + semua tab, RBAC 7 role, journey A–J, angka target spek
 
 ## Fase A–E (SELESAI — riwayat; semua sudah terimplementasi & ter-push)
 

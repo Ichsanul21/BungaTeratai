@@ -49,5 +49,5 @@
         </div>
     </div>
 
-    <div class="footer-note">Purchase Order diterbitkan elektronik oleh PortWind Intelligence — {{ now()->translatedFormat('d F Y H:i') }} WITA.</div>
+    <div class="footer-note">Purchase Order diterbitkan elektronik oleh Bunga Teratai System — {{ now()->translatedFormat('d F Y H:i') }} WITA.</div>
 @endsection

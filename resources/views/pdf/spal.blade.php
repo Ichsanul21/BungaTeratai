@@ -75,7 +75,7 @@
         <div class="sign-col"><div class="sign-space"></div>PENYEWA RUANG KAPAL / SHIPPER</div>
     </div>
 
-    <div class="footer-note">Dokumen diterbitkan secara elektronik oleh PortWind Intelligence — {{ now()->translatedFormat('d F Y H:i') }} WITA.</div>
+    <div class="footer-note">Dokumen diterbitkan secara elektronik oleh Bunga Teratai System — {{ now()->translatedFormat('d F Y H:i') }} WITA.</div>
 @endsection
 
 

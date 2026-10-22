@@ -35,5 +35,5 @@
         </div>
     </div>
 
-    <div class="footer-note">Dicetak melalui PortWind Intelligence — {{ now()->translatedFormat('d F Y H:i') }} WITA.</div>
+    <div class="footer-note">Dicetak melalui Bunga Teratai System — {{ now()->translatedFormat('d F Y H:i') }} WITA.</div>
 @endsection

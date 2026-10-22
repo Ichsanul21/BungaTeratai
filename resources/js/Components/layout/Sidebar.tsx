@@ -37,10 +37,10 @@ export default function Sidebar({
                         </span>
                         <span className="leading-tight">
                             <span className="block text-sm font-semibold text-white">
-                                PortWind
+                                Bunga Teratai
                             </span>
                             <span className="block text-[11px] text-white/50">
-                                Intelligence
+                                System
                             </span>
                         </span>
                     </Link>

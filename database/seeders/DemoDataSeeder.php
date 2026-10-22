@@ -14,7 +14,7 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 
 /**
- * Satu pintu data demo PortWind Intelligence.
+ * Satu pintu data demo Bunga Teratai System.
  * SEMUA data = DEMO DATA (fiktif), kecuali spesifikasi publik KM Prince Soya.
  */
 class DemoDataSeeder extends Seeder
@@ -66,7 +66,7 @@ class DemoDataSeeder extends Seeder
         }
 
         $users = [
-            ['name' => 'Admin PortWind', 'email' => 'admin@bungateratai.id', 'role' => 'super_admin'],
+            ['name' => 'Admin Sistem', 'email' => 'admin@bungateratai.id', 'role' => 'super_admin'],
             ['name' => 'Direktur Utama', 'email' => 'management@bungateratai.id', 'role' => 'management'],
             ['name' => 'Kepala Operasional', 'email' => 'ops@bungateratai.id', 'role' => 'ship_ops'],
             ['name' => 'Staf Dokumen', 'email' => 'dokumen@bungateratai.id', 'role' => 'doc_controller'],

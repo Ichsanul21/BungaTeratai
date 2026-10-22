@@ -8,7 +8,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
-class PortWindTest extends TestCase
+class BungaTerataiTest extends TestCase
 {
     use RefreshDatabase;
 

@@ -43,7 +43,7 @@ export default function Login({
                     P
                 </div>
                 <h1 className="text-lg font-semibold text-ink">
-                    PortWind Intelligence
+                    Bunga Teratai System
                 </h1>
                 <p className="mt-0.5 text-xs text-muted">
                     Maritime Document &amp; Operations Management

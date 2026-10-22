@@ -59,6 +59,6 @@
 
     @yield('content')
 
-    <div class="watermark">PORTWIND INTELLIGENCE — DOKUMEN SISTEM</div>
+    <div class="watermark">BUNGA TERATAI SYSTEM — DOKUMEN SISTEM</div>
 </body>
 </html>
