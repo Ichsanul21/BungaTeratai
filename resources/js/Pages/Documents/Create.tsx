@@ -24,10 +24,12 @@ export default function DocumentsCreate({
     categories,
     requirements,
     vessels,
+    voyagesList,
 }: PageProps<{
     categories: Array<{ id: number; code: string; name: string; group_code: string }>;
     requirements: Requirement[];
     vessels: Array<{ id: number; vessel_name: string; vessel_type: string; navigation_type: string }>;
+    voyagesList?: Array<{ id: number; voyage_code: string; vessel_id: number; voyage_status: string }>;
 }>) {
     const fileRef = useRef<HTMLInputElement>(null);
     const [fileName, setFileName] = useState('');
@@ -46,6 +48,11 @@ export default function DocumentsCreate({
         archive_location: '',
         notes: '',
         file: null as File | null,
+        voyage_id: '' as string | number,
+        auto_archive_number: true,
+        has_endorsement: false,
+        endorsement_last_date: '',
+        endorsement_next_date: '',
     });
 
     const selectedVessel = vessels.find((v) => String(v.id) === String(data.owner_id));
@@ -162,6 +169,76 @@ export default function DocumentsCreate({
                                 <InputError message={errors.owner_id} className="mt-1" />
                             </div>
                         )}
+                    </div>
+                </section>
+
+                <section className="rounded-xl border border-hairline bg-white p-5 shadow-sm">
+                    <h2 className="mb-1 text-sm font-semibold text-ink">Tautan & Arsip</h2>
+                    <p className="mb-4 text-xs text-muted">
+                        Pilih perjalanan bila dokumen ini berkaitan dengan satu voyage — sistem otomatis
+                        menetapkan pemilik kapal dari perjalanan tersebut.
+                    </p>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div>
+                            <InputLabel value="Tertaut Perjalanan (opsional)" />
+                            <select
+                                value={data.voyage_id}
+                                onChange={(e) => setData('voyage_id', e.target.value)}
+                                className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
+                            >
+                                <option value="">— tidak tertaut —</option>
+                                {(voyagesList ?? []).map((v) => (
+                                    <option key={v.id} value={v.id}>
+                                        {v.voyage_code}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex flex-col justify-end gap-2 pb-1">
+                            <label className="flex items-center gap-2 text-sm">
+                                <input
+                                    type="checkbox"
+                                    checked={data.auto_archive_number}
+                                    onChange={(e) => setData('auto_archive_number', e.target.checked)}
+                                    className="rounded border-gray-300 text-primary focus:ring-primary"
+                                />
+                                Buatkan nomor arsip internal otomatis
+                                <span className="text-xs text-muted">(ARS/…/tahun/urut)</span>
+                            </label>
+                        </div>
+                        <div className="md:col-span-2 rounded-xl border border-hairline bg-warn/5 p-3">
+                            <label className="flex items-center gap-2 text-sm">
+                                <input
+                                    type="checkbox"
+                                    checked={data.has_endorsement}
+                                    onChange={(e) => setData('has_endorsement', e.target.checked)}
+                                    className="rounded border-gray-300 text-primary focus:ring-primary"
+                                />
+                                Dokumen ini punya siklus <strong>endorsement</strong> (Surat Laut & Sertifikat Klasifikasi)
+                            </label>
+                            {data.has_endorsement && (
+                                <div className="mt-2 grid max-w-md grid-cols-2 gap-3">
+                                    <div>
+                                        <InputLabel value="Endorsement Terakhir" />
+                                        <input
+                                            type="date"
+                                            value={data.endorsement_last_date}
+                                            onChange={(e) => setData('endorsement_last_date', e.target.value)}
+                                            className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                        />
+                                    </div>
+                                    <div>
+                                        <InputLabel value="Endorsement Berikutnya *" />
+                                        <input
+                                            type="date"
+                                            value={data.endorsement_next_date}
+                                            onChange={(e) => setData('endorsement_next_date', e.target.value)}
+                                            className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </section>
 

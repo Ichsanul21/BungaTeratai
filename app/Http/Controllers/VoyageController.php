@@ -115,6 +115,19 @@ class VoyageController extends Controller
             'weight_ton' => ['nullable', 'numeric', 'min:0'],
             'capacity' => ['nullable', 'integer', 'min:0'],
             'tickets_sold' => ['nullable', 'integer', 'min:0'],
+            // Charter SPAL (B3)
+            'spal_number' => ['nullable', 'string', 'max:80'],
+            'spal_date' => ['nullable', 'date'],
+            'payment_terms' => ['nullable', 'in:dp_50_50,dp_100,custom'],
+            'payment_terms_note' => ['nullable', 'string', 'max:240'],
+            'freight_rate' => ['nullable', 'numeric', 'min:0'],
+            'freight_unit' => ['nullable', 'in:MT,lumpsum'],
+            'laytime_days' => ['nullable', 'integer', 'min:1'],
+            'demurrage_per_day' => ['nullable', 'numeric', 'min:0'],
+            'jetty_loading' => ['nullable', 'string', 'max:160'],
+            'jetty_discharge' => ['nullable', 'string', 'max:160'],
+            'shipper' => ['nullable', 'string', 'max:160'],
+            'consignee' => ['nullable', 'string', 'max:160'],
         ]);
 
         $voyage = DB::transaction(function () use ($data) {
@@ -123,6 +136,20 @@ class VoyageController extends Controller
             $externalStatus = $isPassenger
                 ? ExternalApprovalStatus::TidakDiperlukan->value
                 : ExternalApprovalStatus::Menunggu->value;
+
+            // Nomor SPAL otomatis utk charter (bila tidak diisi manual)
+            $spalNumber = $data['spal_number'] ?? null;
+            if (! $isPassenger && ! $spalNumber) {
+                $penyewaCode = ($data['customer_id'] ?? null)
+                    ? strtoupper(substr((string) Customer::find($data['customer_id'])?->name, 0, 3))
+                    : 'STD';
+                $kapalCode = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $vessel->vessel_name), -2));
+                $numbered = app(\App\Services\NumberingService::class)->next('SPAL', [
+                    '{kode_penyewa}' => $penyewaCode,
+                    '{kode_kapal}' => $kapalCode,
+                ]);
+                $spalNumber = $numbered['number'];
+            }
 
             $voyage = Voyage::create([
                 'voyage_code' => $this->nextCode(),
@@ -141,6 +168,20 @@ class VoyageController extends Controller
                 'notes' => $data['notes'] ?? null,
                 'capacity' => $data['capacity'] ?? null,
                 'tickets_sold' => $data['tickets_sold'] ?? null,
+                // Charter fields
+                'spal_number' => $spalNumber,
+                'spal_date' => $data['spal_date'] ?? ($isPassenger ? null : now()->toDateString()),
+                'payment_terms' => $data['payment_terms'] ?? ($isPassenger ? null : 'dp_50_50'),
+                'payment_terms_note' => $data['payment_terms_note'] ?? null,
+                'freight_rate' => $data['freight_rate'] ?? null,
+                'freight_unit' => $data['freight_unit'] ?? 'MT',
+                'laytime_days' => $data['laytime_days'] ?? null,
+                'demurrage_per_day' => $data['demurrage_per_day'] ?? null,
+                'jetty_loading' => $data['jetty_loading'] ?? null,
+                'jetty_discharge' => $data['jetty_discharge'] ?? null,
+                'shipper' => $data['shipper'] ?? null,
+                'consignee' => $data['consignee'] ?? null,
+                'charter_stage' => $isPassenger ? null : 'si',
             ]);
 
             if (! $isPassenger && ($data['tugboat_id'] ?? null) && ($data['barge_id'] ?? null)) {
@@ -203,6 +244,18 @@ class VoyageController extends Controller
                 'actual_departure' => $voyage->actual_departure?->toDateTimeString(),
                 'actual_arrival' => $voyage->actual_arrival?->toDateTimeString(),
                 'voyage_status' => $voyage->voyage_status,
+                'spal_number' => $voyage->spal_number,
+                'spal_date' => $voyage->spal_date?->toDateString(),
+                'payment_terms' => $voyage->payment_terms ?? '',
+                'payment_terms_note' => $voyage->payment_terms_note ?? '',
+                'freight_rate' => (string) ($voyage->freight_rate ?? ''),
+                'freight_unit' => $voyage->freight_unit ?? 'MT',
+                'laytime_days' => (string) ($voyage->laytime_days ?? ''),
+                'demurrage_per_day' => (string) ($voyage->demurrage_per_day ?? ''),
+                'jetty_loading' => $voyage->jetty_loading ?? '',
+                'jetty_discharge' => $voyage->jetty_discharge ?? '',
+                'shipper' => $voyage->shipper ?? '',
+                'consignee' => $voyage->consignee ?? '',
                 'activity_type' => $voyage->activity_type,
                 'person_in_charge' => $voyage->person_in_charge,
                 'customer_name' => $voyage->customer?->name,
@@ -215,8 +268,35 @@ class VoyageController extends Controller
                 'boarded' => $voyage->boarded,
                 'landed' => $voyage->landed,
                 'cancelled' => $voyage->cancelled,
+                'spal_number' => $voyage->spal_number,
+                'spal_date' => $voyage->spal_date?->toDateString(),
+                'payment_terms' => $voyage->payment_terms,
+                'payment_terms_note' => $voyage->payment_terms_note,
+                'freight_rate' => $voyage->freight_rate,
+                'freight_unit' => $voyage->freight_unit,
+                'laytime_days' => $voyage->laytime_days,
+                'demurrage_per_day' => $voyage->demurrage_per_day,
+                'jetty_loading' => $voyage->jetty_loading,
+                'jetty_discharge' => $voyage->jetty_discharge,
+                'shipper' => $voyage->shipper,
+                'consignee' => $voyage->consignee,
+                'dsr_mt' => $voyage->dsr_mt,
+                'dsr_date' => $voyage->dsr_date?->toDateString(),
+                'charter_stage' => $voyage->charter_stage,
                 'allowed_transitions' => VoyageWorkflowService::TRANSITIONS[$voyage->voyage_status] ?? [],
             ],
+            'agency' => $voyage->agencyAppointments()->orderByDesc('id')->get()->map(fn ($ag) => [
+                'id' => $ag->id,
+                'letter_no' => $ag->letter_no,
+                'letter_date' => $ag->letter_date?->toDateString(),
+                'port_type' => $ag->port_type,
+                'port_name' => $ag->port_name,
+                'agent_name' => $ag->agent_name,
+                'agent_address' => $ag->agent_address,
+                'captain_name' => $ag->captain_name,
+                'captain_phone' => $ag->captain_phone,
+                'grt' => $ag->grt,
+            ]),
             'relationships' => $voyage->relationships->map(fn ($r) => [
                 'tugboat_name' => $r->tugboat?->vessel_name,
                 'barge_name' => $r->barge?->vessel_name,
@@ -232,7 +312,23 @@ class VoyageController extends Controller
                 'notes' => $c->notes,
             ]),
             'completeness' => $completeness,
-            'documents' => $voyage->documents()->with('category')->get()->map(fn ($d) => [
+                        'linkableDocuments' => \App\Models\Document::where('is_archived', false)
+                ->where('verification_status', '!=', 'rejected')
+                ->where(function ($q) use ($voyage) {
+                    $q->where(function ($qq) use ($voyage) {
+                        $qq->where('owner_type', 'vessel')->where('owner_id', $voyage->vessel_id);
+                    })->orWhere('owner_type', 'company');
+                })
+                ->whereDoesntHave('voyages', fn ($vq) => $vq->where('voyages.id', $voyage->id))
+                ->orderByDesc('updated_at')->limit(100)
+                ->get()
+                ->map(fn ($d) => [
+                    'id' => $d->id,
+                    'document_name' => $d->document_name,
+                    'requirement_code' => $d->requirement_code,
+                    'owner_name' => $d->ownerName(),
+                    'group_code' => $d->category?->group_code,
+                ]),'documents' => $voyage->documents()->with('category')->get()->map(fn ($d) => [
                 'id' => $d->id,
                 'document_name' => $d->document_name,
                 'requirement_code' => $d->requirement_code,
@@ -436,5 +532,230 @@ class VoyageController extends Controller
             'external_approval_status' => $v->external_approval_status,
             'person_in_charge' => $v->person_in_charge,
         ];
+    }
+
+    // ===== Edit / Hapus (Fase A) =====
+
+    public function edit(Voyage $voyage)
+    {
+        $this->authorize('update', $voyage);
+
+        return Inertia::render('Voyages/Edit', [
+            'voyage' => [
+                'id' => $voyage->id,
+                'vessel_id' => (string) $voyage->vessel_id,
+                'activity_type' => $voyage->activity_type,
+                'tugboat_id' => (string) ($voyage->relationships()->first()?->tugboat_id ?? ''),
+                'barge_id' => (string) ($voyage->relationships()->first()?->barge_id ?? ''),
+                'route_type' => $voyage->route_type,
+                'origin' => $voyage->origin,
+                'destination' => $voyage->destination,
+                'planned_departure' => $voyage->planned_departure?->format('Y-m-d\TH:i'),
+                'estimated_arrival' => $voyage->estimated_arrival?->format('Y-m-d\TH:i'),
+                'customer_id' => (string) ($voyage->customer_id ?? ''),
+                'contract_no' => $voyage->contract_no,
+                'person_in_charge' => $voyage->person_in_charge,
+                'notes' => $voyage->notes,
+                'commodity_type' => $voyage->cargo()->first()?->commodity_type ?? '',
+                'weight_ton' => (string) ($voyage->cargo()->first()?->weight_ton ?? ''),
+                'capacity' => (string) ($voyage->capacity ?? ''),
+                'tickets_sold' => (string) ($voyage->tickets_sold ?? ''),
+                'voyage_status' => $voyage->voyage_status,
+            ],
+            'vessels' => Vessel::orderBy('vessel_name')->get(['id', 'vessel_name', 'vessel_type', 'navigation_type']),
+            'customers' => Customer::orderBy('name')->get(['id', 'name']),
+            'isEdit' => true,
+        ]);
+    }
+
+    public function update(Request $request, Voyage $voyage)
+    {
+        $this->authorize('update', $voyage);
+
+        if (in_array($voyage->voyage_status, ['departed', 'in_transit', 'arrived', 'voyage_closure', 'completed', 'cancelled'], true)) {
+            return back()->with('error', 'Perjalanan yang sudah berlayar/selesai tidak dapat diedit — gunakan catatan perjalanan.');
+        }
+
+        $data = $request->validate([
+            'vessel_id' => ['required', 'exists:vessels,id'],
+            'activity_type' => ['required', 'string', 'max:60'],
+            'tugboat_id' => ['nullable', 'exists:vessels,id'],
+            'barge_id' => ['nullable', 'exists:vessels,id'],
+            'route_type' => ['required', 'in:laut,sungai,kombinasi'],
+            'origin' => ['required', 'string', 'max:120'],
+            'destination' => ['required', 'string', 'max:120'],
+            'planned_departure' => ['required', 'date'],
+            'estimated_arrival' => ['nullable', 'date'],
+            'customer_id' => ['nullable', 'exists:customers,id'],
+            'contract_no' => ['nullable', 'string', 'max:80'],
+            'person_in_charge' => ['required', 'string', 'max:120'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+            'commodity_type' => ['nullable', 'string', 'max:60'],
+            'weight_ton' => ['nullable', 'numeric', 'min:0'],
+            'capacity' => ['nullable', 'integer', 'min:0'],
+            'tickets_sold' => ['nullable', 'integer', 'min:0'],
+            // Charter SPAL (B3)
+            'spal_number' => ['nullable', 'string', 'max:80'],
+            'spal_date' => ['nullable', 'date'],
+            'payment_terms' => ['nullable', 'in:dp_50_50,dp_100,custom'],
+            'payment_terms_note' => ['nullable', 'string', 'max:240'],
+            'freight_rate' => ['nullable', 'numeric', 'min:0'],
+            'freight_unit' => ['nullable', 'in:MT,lumpsum'],
+            'laytime_days' => ['nullable', 'integer', 'min:1'],
+            'demurrage_per_day' => ['nullable', 'numeric', 'min:0'],
+            'jetty_loading' => ['nullable', 'string', 'max:160'],
+            'jetty_discharge' => ['nullable', 'string', 'max:160'],
+            'shipper' => ['nullable', 'string', 'max:160'],
+            'consignee' => ['nullable', 'string', 'max:160'],
+        ]);
+
+        $before = $voyage->only(['vessel_id', 'origin', 'destination', 'planned_departure', 'person_in_charge', 'contract_no']);
+
+        DB::transaction(function () use ($voyage, $data) {
+            $isPassenger = Vessel::find($data['vessel_id'])?->vessel_type === 'kapal_penumpang';
+
+            $voyage->update([
+                'vessel_id' => $data['vessel_id'],
+                'route_type' => $data['route_type'],
+                'origin' => $data['origin'],
+                'destination' => $data['destination'],
+                'planned_departure' => $data['planned_departure'],
+                'estimated_arrival' => $data['estimated_arrival'] ?? null,
+                'activity_type' => $data['activity_type'],
+                'person_in_charge' => $data['person_in_charge'],
+                'customer_id' => $data['customer_id'] ?? null,
+                'contract_no' => $data['contract_no'] ?? null,
+                'notes' => $data['notes'] ?? null,
+                'capacity' => $data['capacity'] ?? null,
+                'tickets_sold' => $data['tickets_sold'] ?? null,
+                'spal_number' => $data['spal_number'] ?? null,
+                'spal_date' => $data['spal_date'] ?? null,
+                'payment_terms' => $data['payment_terms'] ?? null,
+                'payment_terms_note' => $data['payment_terms_note'] ?? null,
+                'freight_rate' => $data['freight_rate'] ?? null,
+                'freight_unit' => $data['freight_unit'] ?? null,
+                'laytime_days' => $data['laytime_days'] ?? null,
+                'demurrage_per_day' => $data['demurrage_per_day'] ?? null,
+                'jetty_loading' => $data['jetty_loading'] ?? null,
+                'jetty_discharge' => $data['jetty_discharge'] ?? null,
+                'shipper' => $data['shipper'] ?? null,
+                'consignee' => $data['consignee'] ?? null,
+            ]);
+
+            // Relasi tug ↔ tongkang
+            $voyage->relationships()->delete();
+            if (! $isPassenger && ($data['tugboat_id'] ?? null) && ($data['barge_id'] ?? null)) {
+                \App\Models\VesselRelationship::create([
+                    'voyage_id' => $voyage->id,
+                    'tugboat_id' => $data['tugboat_id'],
+                    'barge_id' => $data['barge_id'],
+                ]);
+            }
+
+            // Muatan
+            $voyage->cargo()->delete();
+            if (! $isPassenger && ($data['commodity_type'] ?? null)) {
+                \App\Models\VoyageCargo::create([
+                    'voyage_id' => $voyage->id,
+                    'commodity_type' => $data['commodity_type'],
+                    'weight_ton' => $data['weight_ton'] ?? null,
+                    'origin' => $data['origin'],
+                    'destination' => $data['destination'],
+                ]);
+            }
+        });
+
+        AuditService::log('updated', 'voyage', $voyage->id, $before, $data, "Perjalanan diedit: {$voyage->voyage_code}");
+
+        return redirect()->route('voyages.show', $voyage)->with('success', 'Perjalanan diperbarui.');
+    }
+
+    // ===== Charter SPAL — Keagenan & Detail (B3) =====
+
+    public function storeAgency(Request $request, Voyage $voyage)
+    {
+        $this->authorize('update', $voyage);
+
+        $data = $request->validate([
+            'port_type' => ['required', 'in:muat,bongkar,lainnya'],
+            'port_name' => ['nullable', 'string', 'max:160'],
+            'agent_name' => ['required', 'string', 'max:160'],
+            'agent_address' => ['nullable', 'string', 'max:240'],
+            'captain_name' => ['nullable', 'string', 'max:120'],
+            'captain_phone' => ['nullable', 'string', 'max:40'],
+            'letter_date' => ['nullable', 'date'],
+        ]);
+
+        $agency = $voyage->agencyAppointments()->create([
+            ...$data,
+            'grt' => $voyage->vessel?->gt,
+            'created_by' => auth()->id(),
+        ]);
+
+        // Nomor surat: {seq}/{kode_penyewa}/AG/{roman}/{tahun} dari NumberingService
+        $penyewa = $voyage->customer
+            ? strtoupper(substr($voyage->customer->name, 0, 3))
+            : 'BT';
+        $numbered = app(\App\Services\NumberingService::class)->next('KEAGENAN', [
+            '{kode_penyewa}' => $penyewa,
+        ]);
+        $agency->update(['letter_no' => $numbered['number']]);
+
+        // Dokumen terbitan = arsip terpadu
+        $doc = \App\Models\Document::create([
+            'document_name' => "Penunjukan Keagenan ({$data['port_type']}) — {$voyage->voyage_code}",
+            'category_id' => \App\Models\DocumentCategory::where('group_code', 'E')->value('id'),
+            'document_number' => $numbered['number'],
+            'owner_type' => 'vessel',
+            'owner_id' => $voyage->vessel_id,
+            'source_type' => 'terbitan',
+            'template_id' => \App\Models\DocumentTemplate::where('code', 'KEAGENAN')->value('id'),
+            'period' => now()->format('Y-m'),
+            'issue_date' => now()->toDateString(),
+            'has_expiry' => false,
+            'verification_status' => 'verified',
+            'uploaded_by' => auth()->id(),
+        ]);
+        $doc->voyages()->attach($voyage->id);
+
+        AuditService::log('agency_created', 'voyage', $voyage->id, null, $data, "Surat keagenan {$data['port_type']} diterbitkan: {$numbered['number']}");
+
+        return back()->with('success', "Surat keagenan {$data['port_type']} diterbitkan — nomor {$numbered['number']}.");
+    }
+
+    public function deleteAgency(Voyage $voyage, \App\Models\AgencyAppointment $agency)
+    {
+        $this->authorize('update', $voyage);
+        abort_unless($agency->voyage_id === $voyage->id, 404);
+
+        AuditService::log('agency_deleted', 'voyage', $voyage->id, $agency->toArray(), null, 'Surat keagenan dihapus');
+        $agency->delete();
+
+        return back()->with('success', 'Surat keagenan dihapus.');
+    }
+
+    /** Update detail charter (DSR & tahap) — DSR wajib sebelum pelunasan. */
+    public function updateCharter(Request $request, Voyage $voyage)
+    {
+        $this->authorize('update', $voyage);
+
+        $data = $request->validate([
+            'dsr_mt' => ['nullable', 'numeric', 'min:0'],
+            'dsr_date' => ['nullable', 'date'],
+            'charter_stage' => ['required', 'in:si,spal,dp,keagenan_muat,dsr,pelunasan,keagenan_bongkar,closing'],
+        ]);
+
+        if ($data['charter_stage'] === 'pelunasan' && empty($data['dsr_mt']) && ! $voyage->dsr_mt) {
+            return back()->with('error', 'Tahap pelunasan membutuhkan DSR (total muatan MT dari nakhoda) — isi DSR terlebih dahulu.');
+        }
+
+        $before = $voyage->only(['dsr_mt', 'dsr_date', 'charter_stage']);
+        $voyage->update($data);
+
+        $this->recordEvent($voyage, \App\Enums\VoyageEventType::StatusChanged, 'Tahap charter diperbarui: '.$data['charter_stage']);
+
+        AuditService::log('charter_updated', 'voyage', $voyage->id, $before, $data, 'Detail charter SPAL diperbarui');
+
+        return back()->with('success', 'Detail charter diperbarui (tahap: '.$data['charter_stage'].').');
     }
 }

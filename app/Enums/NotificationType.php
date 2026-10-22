@@ -13,4 +13,7 @@ enum NotificationType: string
     case VoyageDelayed = 'perjalanan_terlambat';
     case ArrivalReportMissing = 'laporan_kedatangan_belum_diisi';
     case ClosureIncomplete = 'penutupan_perjalanan_belum_selesai';
+    case EndorsementDue = 'endorsement_jatuh_tempo';
+    case EndorsementExpired = 'endorsement_kedaluwarsa';
 }
+

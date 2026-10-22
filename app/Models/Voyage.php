@@ -13,6 +13,11 @@ class Voyage extends Model
 
     protected $casts = [
         'actual_arrival' => 'datetime',
+        'spal_date' => 'date:Y-m-d',
+        'dsr_date' => 'date:Y-m-d',
+        'freight_rate' => 'float',
+        'demurrage_per_day' => 'float',
+        'dsr_mt' => 'float',
         'actual_departure' => 'datetime',
         'estimated_arrival' => 'datetime',
         'planned_departure' => 'datetime',
@@ -86,5 +91,10 @@ class Voyage extends Model
     public function approvals()
     {
         return $this->morphMany(Approval::class, 'approvable');
+    }
+
+    public function agencyAppointments()
+    {
+        return $this->hasMany(AgencyAppointment::class);
     }
 }

@@ -26,8 +26,18 @@ class DocumentController extends Controller
     {
         $this->authorize('viewAny', Document::class);
 
+        $tab = $request->string('tab')->toString() ?: 'arsip';
+
         $query = Document::with(['category'])
             ->orderByDesc('updated_at');
+
+        // Sub-tab arsip terpadu: arsip(semua aktif) | terbitan | unggahan | expiring
+        match ($tab) {
+            'terbitan' => $query->where('source_type', 'terbitan')->whereNull('voided_at'),
+            'unggahan' => $query->where('source_type', 'unggahan'),
+            'expiring' => $query->where('is_archived', false),
+            default => $query->whereNull('voided_at'),
+        };
 
         if ($search = $request->string('search')->toString()) {
             $query->where(fn ($q) => $q
@@ -79,7 +89,8 @@ class DocumentController extends Controller
 
         return Inertia::render('Documents/Index', [
             'documents' => $documents,
-            'filters' => $request->only(['search', 'group', 'owner_type', 'vessel_id', 'verification', 'validity']),
+            'tab' => $tab,
+            'filters' => $request->only(['tab', 'search', 'group', 'owner_type', 'vessel_id', 'verification', 'validity']),
             'categories' => DocumentCategory::orderBy('sort')->get(['code', 'name', 'group_code']),
             'vessels' => Vessel::orderBy('vessel_name')->get(['id', 'vessel_name', 'vessel_type']),
             'groupCounts' => DocumentCategory::selectRaw('group_code, count(*) as total')
@@ -100,6 +111,7 @@ class DocumentController extends Controller
             'requirements' => DocumentRequirement::orderBy('sort')
                 ->get(['code', 'name', 'group_code', 'applies_to', 'applicability', 'is_conditional']),
             'vessels' => Vessel::orderBy('vessel_name')->get(['id', 'vessel_name', 'vessel_type', 'navigation_type']),
+            'voyagesList' => \App\Models\Voyage::with('vessel')->latest()->limit(80)->get(['id', 'voyage_code', 'vessel_id', 'voyage_status']),
         ]);
     }
 
@@ -126,6 +138,12 @@ class DocumentController extends Controller
             'archive_location' => ['nullable', 'string', 'max:180'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'file' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
+            // Arsip terpadu (B1)
+            'voyage_id' => ['nullable', 'exists:voyages,id'],
+            'auto_archive_number' => ['nullable', 'boolean'],
+            'has_endorsement' => ['nullable', 'boolean'],
+            'endorsement_last_date' => ['nullable', 'date'],
+            'endorsement_next_date' => ['nullable', 'date'],
         ]);
 
         if ($data['has_expiry'] && empty($data['expiry_date'])) {
@@ -134,16 +152,52 @@ class DocumentController extends Controller
         if (! $data['has_expiry']) {
             $data['expiry_date'] = null; // tanpa tanggal fiktif
         }
+        if (($data['has_endorsement'] ?? false) && empty($data['endorsement_next_date'])) {
+            return back()->withErrors(['endorsement_next_date' => 'Jadwal endorsement berikutnya wajib diisi untuk dokumen ber-endorsement.']);
+        }
+
+        // Inheritance: dari voyage → dokumen otomatis milik kapal voyage
+        $ownerType = $data['owner_type'];
+        $ownerId = $data['owner_id'] ?? null;
+        if (! empty($data['voyage_id'])) {
+            $voyage = \App\Models\Voyage::with('vessel')->find($data['voyage_id']);
+            if ($voyage && $voyage->vessel_id) {
+                $ownerType = 'vessel';
+                $ownerId = $voyage->vessel_id;
+            }
+        }
+
+        // Nomor arsip internal (unggahan scan) — opsional, counter per kode requirement
+        $archiveNumber = null;
+        if ($request->boolean('auto_archive_number')) {
+            $kode = strtoupper($data['requirement_code'] ?? ($data['owner_type'] === 'vessel' ? 'DOC' : 'UMM'));
+            $year = now()->year;
+            $seq = Document::where('archive_number', 'like', "ARS/{$kode}/{$year}/%")->count() + 1;
+            $archiveNumber = sprintf('ARS/%s/%d/%03d', $kode, $year, $seq);
+        }
 
         $file = $request->file('file');
         $path = $file->store('documents', 'local');
 
         $document = Document::create([
-            ...collect($data)->except('file')->all(),
+            ...collect($data)->except(['file', 'voyage_id', 'auto_archive_number', 'owner_id', 'owner_type'])->all(),
+            'owner_type' => $ownerType,
+            'owner_id' => $ownerId,
+            'source_type' => 'unggahan',
+            'period' => substr(($data['issue_date'] ?? now()->toDateString()), 0, 7),
+            'archive_number' => $archiveNumber,
+            'has_endorsement' => $data['has_endorsement'] ?? false,
+            'endorsement_last_date' => $data['endorsement_last_date'] ?? null,
+            'endorsement_next_date' => $data['endorsement_next_date'] ?? null,
             'verification_status' => VerificationStatus::Uploaded->value,
             'uploaded_by' => auth()->id(),
             'file_path' => $path,
         ]);
+
+        // Tautkan ke voyage bila dipilih
+        if (! empty($data['voyage_id'])) {
+            $document->voyages()->attach((int) $data['voyage_id']);
+        }
 
         $version = DocumentVersion::create([
             'document_id' => $document->id,
@@ -199,7 +253,41 @@ class DocumentController extends Controller
                     ->validity($document->expiry_date?->toDateString(), $document->has_expiry),
                 'days_left' => app(ReminderService::class)
                     ->daysUntil($document->expiry_date?->toDateString()),
+                // Arsip terpadu (B1/B2)
+                'source_type' => $document->source_type,
+                'archive_number' => $document->archive_number,
+                'period' => $document->period,
+                'voided_at' => $document->voided_at?->toDateTimeString(),
+                'void_reason' => $document->void_reason,
+                'has_endorsement' => (bool) $document->has_endorsement,
+                'endorsement_last_date' => $document->endorsement_last_date?->toDateString(),
+                'endorsement_next_date' => $document->endorsement_next_date?->toDateString(),
+                'endorsement_days_left' => $document->has_endorsement && $document->endorsement_next_date
+                    ? app(ReminderService::class)->daysUntil($document->endorsement_next_date->toDateString())
+                    : null,
+                'can_void' => $document->source_type === 'terbitan' && ! $document->voided_at,
             ],
+            'relations' => $document->relationsFrom()->with('toDocument')->get()->map(fn ($r) => [
+                'id' => $r->id,
+                'direction' => 'dari',
+                'relation_type' => $r->relation_type,
+                'notes' => $r->notes,
+                'related' => [
+                    'id' => $r->toDocument?->id,
+                    'document_name' => $r->toDocument?->document_name,
+                    'document_number' => $r->toDocument?->document_number,
+                ],
+            ])->concat($document->relationsTo()->with('fromDocument')->get()->map(fn ($r) => [
+                'id' => $r->id,
+                'direction' => 'ke',
+                'relation_type' => $r->relation_type,
+                'notes' => $r->notes,
+                'related' => [
+                    'id' => $r->fromDocument?->id,
+                    'document_name' => $r->fromDocument?->document_name,
+                    'document_number' => $r->fromDocument?->document_number,
+                ],
+            ])),
             'versions' => $document->versions->map(fn ($v) => [
                 'id' => $v->id,
                 'version_number' => $v->version_number,
@@ -228,6 +316,9 @@ class DocumentController extends Controller
                 'voyage_code' => $v->voyage_code,
                 'voyage_status' => $v->voyage_status,
             ]),
+            'categories' => DocumentCategory::orderBy('sort')->get(['id', 'code', 'name', 'group_code']),
+            'requirements' => DocumentRequirement::orderBy('sort')
+                ->get(['code', 'name', 'group_code', 'applies_to', 'applicability', 'is_conditional']),
             'actions' => [
                 'can_submit' => $user?->can('submit', $document)
                     && in_array($document->verification_status, [
@@ -258,6 +349,9 @@ class DocumentController extends Controller
             'responsible_person' => ['nullable', 'string', 'max:120'],
             'archive_location' => ['nullable', 'string', 'max:180'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'has_endorsement' => ['nullable', 'boolean'],
+            'endorsement_last_date' => ['nullable', 'date'],
+            'endorsement_next_date' => ['nullable', 'date'],
         ]);
 
         if ($data['has_expiry'] && empty($data['expiry_date'])) {
@@ -265,6 +359,11 @@ class DocumentController extends Controller
         }
         if (! $data['has_expiry']) {
             $data['expiry_date'] = null;
+        }
+        $data['has_endorsement'] = $data['has_endorsement'] ?? false;
+        if (! $data['has_endorsement']) {
+            $data['endorsement_last_date'] = null;
+            $data['endorsement_next_date'] = null;
         }
 
         $before = $document->only(array_keys($data));
@@ -437,6 +536,11 @@ class DocumentController extends Controller
             'owner_type' => $doc->owner_type,
             'owner_id' => $doc->owner_id,
             'owner_name' => $ownerName,
+            'source_type' => $doc->source_type,
+            'archive_number' => $doc->archive_number,
+            'is_voided' => $doc->voided_at !== null,
+            'has_endorsement' => (bool) $doc->has_endorsement,
+            'endorsement_next_date' => $doc->endorsement_next_date?->toDateString(),
             'group_code' => $doc->category?->group_code,
             'category_name' => $doc->category?->name,
             'has_expiry' => $doc->has_expiry,
@@ -476,5 +580,40 @@ class DocumentController extends Controller
                 'created_at' => now(),
             ]);
         }
+    }
+
+    /** Arsip dokumen (soft delete) — file tetap tersimpan. */
+    public function archive(Document $document)
+    {
+        $this->authorize('update', $document);
+
+        $before = $document->only(['document_name', 'verification_status', 'is_archived']);
+        $document->update(['is_archived' => true]);
+        $document->delete();
+
+        \App\Services\AuditService::log('archived', 'document', $document->id, $before, null, "Dokumen diarsipkan: {$document->document_name}");
+
+        return back()->with('success', 'Dokumen diarsipkan (file tetap tersimpan, bisa dipulihkan lewat database).');
+    }
+
+    /** Void dokumen terbit — nomor tidak dipakai ulang, file tetap arsip. */
+    public function void(Request $request, Document $document)
+    {
+        abort_unless(auth()->user()?->isSuperAdmin() || auth()->user()?->hasRole('doc_controller'), 403);
+
+        $request->validate(['reason' => ['required', 'string', 'max:500']]);
+
+        if ($document->source_type !== 'terbitan') {
+            return back()->with('error', 'Hanya dokumen terbitan yang dapat di-void. Unggahan cukup diarsipkan.');
+        }
+
+        $document->update([
+            'voided_at' => now(),
+            'void_reason' => $request->string('reason')->toString(),
+        ]);
+
+        AuditService::log('voided', 'document', $document->id, null, ['reason' => $request->string('reason')], "Dokumen terbit dibatalkan (void): {$document->document_name}");
+
+        return back()->with('success', 'Dokumen dibatalkan (void) — nomor tidak dipakai ulang, file tetap tersimpan.');
     }
 }

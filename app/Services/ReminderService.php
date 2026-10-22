@@ -82,7 +82,64 @@ class ReminderService
             }
         }
 
+        // Reminder ENDORSEMENT (terpisah dari expiry) — dokumen ber-endorsement
+        foreach ($this->dueEndorsements() as $item) {
+            foreach ($recipients as $userId) {
+                if ($this->notificationExists($userId, $item['type'], $item['refType'], $item['refId'])) {
+                    continue;
+                }
+                Notification::create([
+                    'recipient_id' => $userId,
+                    'notification_type' => $item['type'],
+                    'title' => $item['title'],
+                    'message' => $item['message'],
+                    'reference_type' => $item['refType'],
+                    'reference_id' => $item['refId'],
+                    'read_status' => false,
+                    'created_at' => now(),
+                ]);
+                $created++;
+            }
+        }
+
         return $created;
+    }
+
+    /** @return Collection<int, array> Dokumen dgn endorsement jatuh tempo (Surat Laut & Klasifikasi). */
+    public function dueEndorsements(): Collection
+    {
+        $items = collect();
+        $thresholds = $this->reminderDays();
+        $maxThreshold = max($thresholds);
+
+        Document::query()
+            ->where('has_endorsement', true)
+            ->whereNotNull('endorsement_next_date')
+            ->where('is_archived', false)
+            ->get()
+            ->each(function (Document $doc) use (&$items, $thresholds, $maxThreshold) {
+                $days = $this->daysUntil($doc->endorsement_next_date?->toDateString());
+                $hit = $days < 0 ? 0 : collect($thresholds)->first(fn ($t) => $days <= $t, null);
+                if ($hit === null && $days > $maxThreshold) {
+                    return;
+                }
+                $expired = $days < 0;
+                $items->push([
+                    'type' => $expired
+                        ? NotificationType::EndorsementExpired->value
+                        : NotificationType::EndorsementDue->value,
+                    'refType' => 'document',
+                    'refId' => $doc->id,
+                    'title' => $expired ? 'Endorsement dokumen sudah jatuh tempo' : 'Endorsement dokumen mendekati jatuh tempo',
+                    'message' => "\"{$doc->document_name}\" — endorsement ".(
+                        $expired ? 'jatuh tempo '.abs($days).' hari lalu' : "lagi {$days} hari"
+                    ).'.',
+                    'days' => $days,
+                    'expiry' => $doc->endorsement_next_date?->toDateString(),
+                ]);
+            });
+
+        return $items->sortBy('days')->values();
     }
 
     /** @return Collection<int, array> */

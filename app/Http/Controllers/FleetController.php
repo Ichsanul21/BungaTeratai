@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Policies\VesselPolicy;
 use App\Services\DocumentCompletenessService;
 use App\Models\Vessel;
+use App\Models\Voyage;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -51,7 +52,9 @@ class FleetController extends Controller
                 'fuel_baseline_lph' => $vessel->fuel_baseline_lph,
                 'doc_completeness' => $calc['percent'],
                 'missing_count' => count($calc['missing']),
-                'voyage_count' => $vessel->voyages()->count(),
+                'voyage_count' => Voyage::where('vessel_id', $vessel->id)
+                ->orWhereHas('relationships', fn ($q) => $q->where('tugboat_id', $vessel->id)->orWhere('barge_id', $vessel->id))
+                ->count(),
                 'last_position_at' => $vessel->last_position_at,
             ];
         });
@@ -160,7 +163,9 @@ class FleetController extends Controller
             ],
             'completeness' => $calc,
             'documents' => $vessel->documents()->with('category')->latest()->get()->map([$this, 'mapDocument']),
-            'voyages' => $vessel->voyages()->latest()->limit(10)->get()->map(fn ($v) => [
+            'voyages' => Voyage::where('vessel_id', $vessel->id)
+                ->orWhereHas('relationships', fn ($q) => $q->where('tugboat_id', $vessel->id)->orWhere('barge_id', $vessel->id))
+                ->latest()->limit(10)->get()->map(fn ($v) => [
                 'id' => $v->id,
                 'voyage_code' => $v->voyage_code,
                 'origin' => $v->origin,
@@ -279,5 +284,23 @@ class FleetController extends Controller
             'verification_status' => $doc->verification_status,
             'updated_at' => $doc->updated_at?->toDateTimeString(),
         ];
+    }
+
+    /** Arsip kapal (soft delete) — blokir bila masih punya perjalanan aktif. */
+    public function archive(Vessel $vessel)
+    {
+        $this->authorize('update', $vessel);
+
+        $active = $vessel->voyages()
+            ->whereNotIn('voyage_status', ['completed', 'cancelled'])
+            ->count();
+        if ($active > 0) {
+            return back()->with('error', "Kapal masih memiliki {$active} perjalanan aktif — selesaikan atau batalkan dulu sebelum arsip.");
+        }
+
+        \App\Services\AuditService::log('archived', 'vessel', $vessel->id, $vessel->toArray(), null, "Kapal diarsipkan: {$vessel->vessel_name}");
+        $vessel->delete();
+
+        return redirect()->route('fleet.index')->with('success', "Kapal \"{$vessel->vessel_name}\" diarsipkan.");
     }
 }

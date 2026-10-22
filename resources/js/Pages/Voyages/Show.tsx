@@ -5,6 +5,7 @@ import PageHeader from '@/Components/ui/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TabNav from '@/Components/ui/TabNav';
+import ConfirmModal from '@/Components/ui/ConfirmModal';
 import { VOYAGE_STATUS_LABELS } from '@/Constants/navigation';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { classNames, formatDate, formatDateTime, formatNumber, formatRupiah } from '@/lib/format';
@@ -54,12 +55,21 @@ const CHECK_TONES: Record<string, BadgeTone> = {
     tidak_berlaku: 'neutral',
 };
 
+const CHARTER_STAGES = ['si', 'spal', 'dp', 'keagenan_muat', 'dsr', 'pelunasan', 'keagenan_bongkar', 'closing'];
+const CHARTER_LABELS: Record<string, string> = {
+    si: 'SI Diterima', spal: 'SPAL Dibuat', dp: 'Invoice DP',
+    keagenan_muat: 'Keagenan Muat', dsr: 'DSR Diterima',
+    pelunasan: 'Invoice Pelunasan', keagenan_bongkar: 'Keagenan Bongkar', closing: 'Closing',
+};
+
 export default function VoyagesShow({
     voyage,
     relationships,
     cargo,
     checklists,
     documents,
+    linkableDocuments,
+    agency,
     events,
     approvals,
     expenses,
@@ -70,14 +80,17 @@ export default function VoyagesShow({
     cargo: Array<Record<string, any>>;
     checklists: Array<Record<string, any>>;
     documents: Array<Record<string, any>>;
+    linkableDocuments?: Array<Record<string, any>>;
+    agency?: Array<Record<string, any>>;
     events: Array<Record<string, any>>;
     approvals: Array<Record<string, any>>;
     expenses: { bills: Array<Record<string, any>>; total: number };
     actions: { can_update: boolean; can_approve: boolean; can_confirm_external: boolean };
 }>) {
     const [tab, setTab] = useState('overview');
-    const [modal, setModal] = useState<null | 'approve' | 'external' | 'status'>(null);
+    const [modal, setModal] = useState<null | 'approve' | 'external' | 'status' | 'cancel'>(null);
     const [nextStatus, setNextStatus] = useState('');
+    const [busy, setBusy] = useState(false);
 
     const approveForm = useForm({ decision: 'approved', comments: '' });
     const externalForm = useForm({ evidence: null as File | null, source_note: '' });
@@ -88,6 +101,7 @@ export default function VoyagesShow({
         { key: 'vessel', label: 'Vessel & Route', icon: Ship },
         { key: 'documents', label: 'Documents', icon: FileStack, count: documents.length },
         { key: 'checklist', label: 'Checklist', icon: ListChecks, count: checklists.length },
+        { key: 'berkas', label: 'Berkas Perjalanan', icon: FileStack },
         { key: 'manifest', label: 'Manifest', icon: Users },
         { key: 'approvals', label: 'Approvals', icon: ShieldCheck, count: approvals.length },
         { key: 'timeline', label: 'Timeline', icon: GitCommitVertical, count: events.length },
@@ -163,6 +177,25 @@ export default function VoyagesShow({
                         >
                             Eksternal: {voyage.external_approval_status === 'terkonfirmasi' ? 'Terkonfirmasi' : voyage.external_approval_status === 'menunggu' ? 'Menunggu' : 'Tidak Berlaku'}
                         </Badge>
+                        {actions.can_update && (
+                            <>
+                                <Link
+                                    href={`/perjalanan/${voyage.id}/edit`}
+                                    className="inline-flex items-center gap-2 rounded-lg border border-hairline bg-white px-3 py-2 text-sm font-medium text-ink transition hover:border-primary/40"
+                                >
+                                    Edit
+                                </Link>
+                                {!['cancelled', 'completed'].includes(voyage.voyage_status) && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setModal('cancel')}
+                                        className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition hover:bg-primary/20"
+                                    >
+                                        Batalkan
+                                    </button>
+                                )}
+                            </>
+                        )}
                         {actions.can_update && voyage.allowed_transitions.length > 0 && (
                             <button
                                 type="button"
@@ -372,15 +405,14 @@ export default function VoyagesShow({
                                 className="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
                             >
                                 <option value="">— pilih dokumen —</option>
-                                {documents.map((d) => (
+                                {(linkableDocuments ?? []).map((d) => (
                                     <option key={d.id} value={d.id}>
                                         {d.document_name}
                                     </option>
                                 ))}
                             </select>
                             <p className="mt-2 text-xs text-muted">
-                                Pada produksi, daftar ini mencakup dokumen kapal + perusahaan yang
-                                relevan untuk perjalanan ini.
+                                Pilih dokumen kapal atau perusahaan yang BELUM tertaut ke perjalanan ini.
                             </p>
                         </form>
                     </Card>
@@ -457,6 +489,206 @@ export default function VoyagesShow({
                         Item kondisional tidak diwajibkan untuk semua perjalanan — hanya berlaku sesuai
                         jenis kapal & muatan.
                     </p>
+                </div>
+            )}
+
+            {tab === 'berkas' && (
+                <div className="space-y-5">
+                    {/* Stepper tahap charter */}
+                    {voyage.charter_stage && (
+                        <Card title="Tahap Berkas SPAL" description="SI → SPAL → DP → Keagenan Muat → DSR → Pelunasan → Keagenan Bongkar → Closing.">
+                            {(() => {
+                                const stages = CHARTER_STAGES;
+                                const labels = CHARTER_LABELS;
+                                const currentIdx = stages.indexOf(voyage.charter_stage);
+                                return (
+                                    <div className="flex flex-wrap items-center gap-1">
+                                        {stages.map((s, i) => (
+                                            <span key={s} className="flex items-center">
+                                                <span
+                                                    className={classNames(
+                                                        'rounded-full px-2.5 py-1 text-xs font-medium',
+                                                        i === currentIdx
+                                                            ? 'bg-primary text-white'
+                                                            : i < currentIdx
+                                                              ? 'bg-ok/15 text-ok'
+                                                              : 'bg-appbg text-muted',
+                                                    )}
+                                                >
+                                                    {labels[s]}
+                                                </span>
+                                                {i < stages.length - 1 && <span className="mx-1 h-px w-3 bg-hairline" />}
+                                            </span>
+                                        ))}
+                                    </div>
+                                );
+                            })()}
+                            {actions.can_update && (
+                                <form
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        const fd = new FormData(e.currentTarget as HTMLFormElement);
+                                        router.post(`/perjalanan/${voyage.id}/charter`, {
+                                            charter_stage: fd.get('charter_stage'),
+                                            dsr_mt: fd.get('dsr_mt') || null,
+                                            dsr_date: fd.get('dsr_date') || null,
+                                        }, { preserveScroll: true });
+                                    }}
+                                    className="mt-4 flex flex-wrap items-end gap-3 border-t border-hairline pt-4"
+                                >
+                                    <div>
+                                        <label className="text-xs font-medium text-muted">Tahap saat ini</label>
+                                        <select name="charter_stage" defaultValue={voyage.charter_stage} className="mt-1 block rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary">
+                                            {CHARTER_STAGES.map((s) => (
+                                                <option key={s} value={s}>{CHARTER_LABELS[s]}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-medium text-muted">DSR — Total Muatan (MT)</label>
+                                        <input name="dsr_mt" type="number" step="0.01" defaultValue={voyage.dsr_mt ?? ''} className="mt-1 block w-32 rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-medium text-muted">Tanggal DSR</label>
+                                        <input name="dsr_date" type="date" defaultValue={voyage.dsr_date ?? ''} className="mt-1 block rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
+                                    </div>
+                                    <button type="submit" className="rounded-lg bg-ink px-3.5 py-2 text-sm font-medium text-white hover:bg-black">
+                                        Simpan Tahap
+                                    </button>
+                                </form>
+                            )}
+                            <p className="mt-3 text-xs text-muted">
+                                Tahap <strong>pelunasan</strong> membutuhkan DSR dari nakhoda. Invoice DP/pelunasan diterbitkan lewat menu Keuangan → Invoice (tag voyage ini).
+                            </p>
+                        </Card>
+                    )}
+
+                    {/* Ringkasan SPAL */}
+                    {voyage.spal_number && (
+                        <Card title={`SPAL ${voyage.spal_number}`}>
+                            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm md:grid-cols-3">
+                                {[
+                                    ['Tanggal SPAL', voyage.spal_date],
+                                    ['Sistem Bayar', (voyage.payment_terms ?? '').replace('_', ' ')],
+                                    ['Freight', voyage.freight_rate ? `${formatRupiah(voyage.freight_rate)}${voyage.freight_unit === 'MT' ? ' /MT' : ' lumpsum'}` : '—'],
+                                    ['Laytime', voyage.laytime_days ? `${voyage.laytime_days} hari` : '—'],
+                                    ['Demurrage', voyage.demurrage_per_day ? `${formatRupiah(voyage.demurrage_per_day)} /hari` : '—'],
+                                    ['Muat', voyage.jetty_loading ?? '—'],
+                                    ['Bongkar', voyage.jetty_discharge ?? '—'],
+                                    ['Shipper', voyage.shipper ?? '—'],
+                                    ['Consignee', voyage.consignee ?? '—'],
+                                ].map(([k, v]) => (
+                                    <div key={k as string}>
+                                        <dt className="text-xs uppercase tracking-wide text-muted">{k}</dt>
+                                        <dd className="mt-0.5 font-medium capitalize text-ink">{v}</dd>
+                                    </div>
+                                ))}
+                            </dl>
+                        </Card>
+                    )}
+
+                    {/* Keagenan */}
+                    <Card title="Penunjukan Keagenan" description="Surat penunjukan agen sebelum kapal tiba di pelabuhan muat & bongkar.">
+                        {(agency ?? []).length === 0 ? (
+                            <p className="text-sm text-muted">Belum ada surat keagenan.</p>
+                        ) : (
+                            <ul className="space-y-2">
+                                {(agency ?? []).map((ag: any) => (
+                                    <li key={ag.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-hairline px-3 py-2.5 text-sm">
+                                        <div>
+                                            <p className="font-medium text-ink">
+                                                <span className="font-mono text-xs text-muted">{ag.letter_no}</span> · {ag.agent_name}
+                                            </p>
+                                            <p className="text-xs capitalize text-muted">
+                                                {ag.port_type} · {ag.port_name ?? '—'} · Nakhoda: {ag.captain_name ?? '—'} {ag.captain_phone ? `(${ag.captain_phone})` : ''} · GRT {ag.grt ?? '—'}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-xs font-medium">
+                                            <span className="text-muted">{formatDate(ag.letter_date)}</span>
+                                            {actions.can_update && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => router.delete(`/perjalanan/${voyage.id}/keagenan/${ag.id}`, { preserveScroll: true })}
+                                                    className="text-primary hover:underline"
+                                                >
+                                                    Hapus
+                                                </button>
+                                            )}
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                        {actions.can_update && (
+                            <form
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    const fd = new FormData(e.currentTarget as HTMLFormElement);
+                                    router.post(`/perjalanan/${voyage.id}/keagenan`, Object.fromEntries(fd), {
+                                        preserveScroll: true,
+                                        onSuccess: () => (e.currentTarget as HTMLFormElement).reset(),
+                                    });
+                                }}
+                                className="mt-4 grid grid-cols-2 gap-3 border-t border-hairline pt-4 md:grid-cols-4"
+                            >
+                                <div>
+                                    <label className="text-xs font-medium text-muted">Jenis Pelabuhan *</label>
+                                    <select name="port_type" className="mt-1 block rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary">
+                                        <option value="muat">Muat</option>
+                                        <option value="bongkar">Bongkar</option>
+                                        <option value="lainnya">Lainnya</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-medium text-muted">Nama Pelabuhan</label>
+                                    <input name="port_name" className="mt-1 block rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-medium text-muted">Agen *</label>
+                                    <input name="agent_name" required className="mt-1 block rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-medium text-muted">Alamat Agen</label>
+                                    <input name="agent_address" className="mt-1 block rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-medium text-muted">Nakhoda</label>
+                                    <input name="captain_name" className="mt-1 block rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-medium text-muted">HP Nakhoda</label>
+                                    <input name="captain_phone" className="mt-1 block rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-medium text-muted">Tanggal Surat</label>
+                                    <input name="letter_date" type="date" className="mt-1 block rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
+                                </div>
+                                <div className="flex items-end">
+                                    <button type="submit" className="rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-white hover:bg-primary-hover">
+                                        Terbitkan Surat
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </Card>
+
+                    {/* Dokumen berkait */}
+                    <Card title="Dokumen Berkas Perjalanan" description="Dokumen tertaut perjalanan ini — arsip terpadu.">
+                        {documents.length === 0 ? (
+                            <p className="text-sm text-muted">Belum ada dokumen tertaut — gunakan tab Documents untuk menautkan.</p>
+                        ) : (
+                            <ul className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                                {documents.map((d: any) => (
+                                    <li key={d.id} className="flex items-center justify-between rounded-lg border border-hairline px-3 py-2 text-sm">
+                                        <Link href={`/dokumen/${d.id}`} className="font-medium text-ink hover:text-primary">
+                                            {d.document_name}
+                                        </Link>
+                                        <span className="text-xs text-muted">{d.group_code} · {d.verification_status}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </Card>
                 </div>
             )}
 
@@ -836,6 +1068,27 @@ export default function VoyagesShow({
                     </div>
                 </form>
             </Modal>
+            {/* Modal: Batalkan perjalanan */}
+            <ConfirmModal
+                show={modal === 'cancel'}
+                title="Batalkan perjalanan ini?"
+                message={`Perjalanan ${voyage.voyage_code} (${voyage.vessel_name}) akan dibatalkan. Transisi status tercatat di timeline; dokumen tetap tersimpan.`}
+                confirmLabel="Ya, batalkan"
+                tone="danger"
+                processing={busy}
+                onClose={() => setModal(null)}
+                onConfirm={() => {
+                    setBusy(true);
+                    router.post(
+                        `/perjalanan/${voyage.id}/status`,
+                        { to: 'cancelled', note: 'Dibatalkan oleh pengguna' },
+                        {
+                            preserveScroll: true,
+                            onFinish: () => { setBusy(false); setModal(null); },
+                        },
+                    );
+                }}
+            />
         </AuthenticatedLayout>
     );
 }

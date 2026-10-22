@@ -1,5 +1,6 @@
 import Badge, { type BadgeTone } from '@/Components/ui/Badge';
 import Card from '@/Components/ui/Card';
+import ConfirmModal from '@/Components/ui/ConfirmModal';
 import Modal from '@/Components/Modal';
 import PageHeader from '@/Components/ui/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -38,7 +39,11 @@ export default function InventoryIndex({
     movements: Array<Record<string, any>>;
     canManage: boolean;
 }>) {
-    const [modal, setModal] = useState<null | 'item' | 'movement'>(null);
+    const [modal, setModal] = useState<null | 'item' | 'movement' | 'editItem' | 'batch' | 'editBatch'>(null);
+    const [editItem, setEditItem] = useState<any>(null);
+    const [editBatch, setEditBatch] = useState<any>(null);
+    const [confirmDel, setConfirmDel] = useState<{ url: string; label: string; note?: string } | null>(null);
+    const [busy, setBusy] = useState(false);
 
     const itemForm = useForm({
         sku: '', name: '', category: 'sparepart', unit: 'pcs', unit_price: '',
@@ -51,6 +56,17 @@ export default function InventoryIndex({
         notes: '',
     });
 
+    const batchForm = useForm({
+        item_id: '', location_type: 'kantor', vessel_id: '', batch_no: '', qty: '', expires_at: '',
+    });
+
+    const editItemForm = useForm({
+        sku: '', name: '', category: 'sparepart', unit: 'pcs', unit_price: '',
+        is_consumable: true, is_perishable: false, min_stock: '',
+    });
+
+    const editBatchForm = useForm({ batch_no: '', qty: '', expires_at: '' });
+
     const tabs = [
         { key: 'kantor', label: 'Gudang Kantor', icon: Boxes },
         { key: 'kapal', label: 'Stok di Kapal', icon: Ship },
@@ -60,9 +76,23 @@ export default function InventoryIndex({
         e.preventDefault();
         itemForm.post('/inventory/items', { preserveScroll: true, onSuccess: () => setModal(null) });
     };
+    const submitEditItem = (e: FormEvent) => {
+        e.preventDefault();
+        if (! editItem) return;
+        editItemForm.put(`/inventory/items/${editItem.id}`, { preserveScroll: true, onSuccess: () => { setModal(null); setEditItem(null); } });
+    };
     const submitMovement = (e: FormEvent) => {
         e.preventDefault();
         movementForm.post('/inventory/movements', { preserveScroll: true, onSuccess: () => setModal(null) });
+    };
+    const submitBatch = (e: FormEvent) => {
+        e.preventDefault();
+        batchForm.post('/inventory/batches', { preserveScroll: true, onSuccess: () => { setModal(null); batchForm.reset(); } });
+    };
+    const submitEditBatch = (e: FormEvent) => {
+        e.preventDefault();
+        if (! editBatch) return;
+        editBatchForm.put(`/inventory/batches/${editBatch.id}`, { preserveScroll: true, onSuccess: () => { setModal(null); setEditBatch(null); } });
     };
 
     return (
@@ -75,6 +105,13 @@ export default function InventoryIndex({
                 actions={
                     canManage && (
                         <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setModal('batch')}
+                                className="inline-flex items-center gap-2 rounded-lg border border-hairline bg-white px-3.5 py-2 text-sm font-medium text-ink hover:border-primary/40"
+                            >
+                                <Plus size={16} /> Tambah Batch
+                            </button>
                             <button
                                 type="button"
                                 onClick={() => setModal('movement')}
@@ -144,6 +181,32 @@ export default function InventoryIndex({
                                     <Badge tone={b.is_expired ? 'danger' : 'warning'}>
                                         {b.is_expired ? `Kedaluwarsa ${Math.abs(daysUntil(b.expires_at) ?? 0)} hr lalu` : `${daysUntil(b.expires_at)} hr lagi`}
                                     </Badge>
+                                    {canManage && (
+                                        <div className="flex gap-2 text-xs font-medium">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setEditBatch(b);
+                                                    editBatchForm.setData({
+                                                        batch_no: b.batch_no,
+                                                        qty: String(b.qty),
+                                                        expires_at: b.expires_at ? String(b.expires_at).slice(0, 10) : '',
+                                                    });
+                                                    setModal('editBatch');
+                                                }}
+                                                className="text-primary hover:underline"
+                                            >
+                                                Edit
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setConfirmDel({ url: `/inventory/batches/${b.id}`, label: `batch ${b.batch_no}` })}
+                                                className="text-primary hover:underline"
+                                            >
+                                                Hapus
+                                            </button>
+                                        </div>
+                                    )}
                                 </li>
                             ))}
                         </ul>
@@ -155,7 +218,7 @@ export default function InventoryIndex({
                 <div className="overflow-x-auto">
                     <table className="min-w-full text-sm">
                         <thead className="bg-appbg text-left text-xs uppercase tracking-wide text-muted">
-                            <tr>{['SKU', 'Nama', 'Kategori', 'Harga', 'Qty', 'Nilai', 'Min', 'Flag'].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr>
+                            <tr>{['SKU', 'Nama', 'Kategori', 'Harga', 'Qty', 'Nilai', 'Min', 'Flag', ...(canManage ? ['Aksi'] : [])].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr>
                         </thead>
                         <tbody className="divide-y divide-hairline">
                             {items.map((i) => (
@@ -175,6 +238,39 @@ export default function InventoryIndex({
                                             {i.is_perishable && <Badge tone="warning">Expired-able</Badge>}
                                         </div>
                                     </td>
+                                    {canManage && (
+                                        <td className="px-3 py-2">
+                                            <div className="flex gap-2 text-xs font-medium">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setEditItem(i);
+                                                        editItemForm.setData({
+                                                            sku: i.sku,
+                                                            name: i.name,
+                                                            category: i.category,
+                                                            unit: i.unit,
+                                                            unit_price: String(i.unit_price),
+                                                            is_consumable: Boolean(i.is_consumable),
+                                                            is_perishable: Boolean(i.is_perishable),
+                                                            min_stock: String(i.min_stock),
+                                                        });
+                                                        setModal('editItem');
+                                                    }}
+                                                    className="text-primary hover:underline"
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setConfirmDel({ url: `/inventory/items/${i.id}`, label: `item ${i.sku}` })}
+                                                    className="text-primary hover:underline"
+                                                >
+                                                    Hapus
+                                                </button>
+                                            </div>
+                                        </td>
+                                    )}
                                 </tr>
                             ))}
                         </tbody>
@@ -194,6 +290,15 @@ export default function InventoryIndex({
                                 </p>
                             </div>
                             {m.notes && <p className="max-w-64 text-xs italic text-muted">{m.notes}</p>}
+                            {canManage && m.ref_type === 'manual' && (
+                                <button
+                                    type="button"
+                                    onClick={() => setConfirmDel({ url: `/inventory/movements/${m.id}`, label: `mutasi ${m.item_name} (${m.type})`, note: 'Saldo stok otomatis dibalikkan.' })}
+                                    className="text-xs font-medium text-primary hover:underline"
+                                >
+                                    Hapus
+                                </button>
+                            )}
                         </li>
                     ))}
                 </ul>
@@ -288,6 +393,107 @@ export default function InventoryIndex({
                     </div>
                 </form>
             </Modal>
+
+            {/* Modal: Edit Item */}
+            <Modal show={modal === 'editItem'} onClose={() => setModal(null)} maxWidth="md">
+                <form onSubmit={submitEditItem} className="p-6">
+                    <h2 className="text-lg font-semibold text-ink">Edit Item Inventory</h2>
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                        <div><label className="text-xs font-medium text-muted">SKU *</label>
+                            <input value={editItemForm.data.sku} onChange={(e) => editItemForm.setData('sku', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                        <div><label className="text-xs font-medium text-muted">Nama *</label>
+                            <input value={editItemForm.data.name} onChange={(e) => editItemForm.setData('name', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                        <div><label className="text-xs font-medium text-muted">Kategori</label>
+                            <select value={editItemForm.data.category} onChange={(e) => editItemForm.setData('category', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
+                                {Object.entries(CAT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                            </select></div>
+                        <div><label className="text-xs font-medium text-muted">Satuan</label>
+                            <input value={editItemForm.data.unit} onChange={(e) => editItemForm.setData('unit', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                        <div><label className="text-xs font-medium text-muted">Harga Satuan</label>
+                            <input type="number" step="0.01" value={editItemForm.data.unit_price} onChange={(e) => editItemForm.setData('unit_price', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                        <div><label className="text-xs font-medium text-muted">Stok Minimum</label>
+                            <input type="number" value={editItemForm.data.min_stock} onChange={(e) => editItemForm.setData('min_stock', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                        <div className="flex flex-col justify-end gap-2 pb-1">
+                            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={editItemForm.data.is_consumable} onChange={(e) => editItemForm.setData('is_consumable', e.target.checked)} className="rounded border-gray-300 text-primary focus:ring-primary" /> Habis pakai</label>
+                            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={editItemForm.data.is_perishable} onChange={(e) => editItemForm.setData('is_perishable', e.target.checked)} className="rounded border-gray-300 text-primary focus:ring-primary" /> Ada masa berlaku (batch)</label>
+                        </div>
+                    </div>
+                    <div className="mt-5 flex justify-end gap-3">
+                        <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
+                        <PrimaryButton disabled={editItemForm.processing}>Simpan Perubahan</PrimaryButton>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Modal: Tambah Batch */}
+            <Modal show={modal === 'batch'} onClose={() => setModal(null)} maxWidth="md">
+                <form onSubmit={submitBatch} className="p-6">
+                    <h2 className="text-lg font-semibold text-ink">Tambah Batch (Barang Berkadaluarsa)</h2>
+                    <div className="mt-4 space-y-3">
+                        <div><label className="text-xs font-medium text-muted">Item *</label>
+                            <select value={batchForm.data.item_id} onChange={(e) => batchForm.setData('item_id', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
+                                <option value="">— pilih item —</option>
+                                {items.map((i) => <option key={i.id} value={i.id}>{i.sku} · {i.name}</option>)}
+                            </select></div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div><label className="text-xs font-medium text-muted">Lokasi</label>
+                                <select value={batchForm.data.location_type} onChange={(e) => batchForm.setData('location_type', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
+                                    <option value="kantor">Kantor</option>
+                                    <option value="kapal">Kapal</option>
+                                </select></div>
+                            {batchForm.data.location_type === 'kapal' && (
+                                <div><label className="text-xs font-medium text-muted">Kapal *</label>
+                                    <select value={batchForm.data.vessel_id} onChange={(e) => batchForm.setData('vessel_id', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
+                                        <option value="">— pilih —</option>
+                                        {vessels.map((v) => <option key={v.id} value={v.id}>{v.vessel_name}</option>)}
+                                    </select></div>
+                            )}
+                            <div><label className="text-xs font-medium text-muted">No. Batch *</label>
+                                <input value={batchForm.data.batch_no} onChange={(e) => batchForm.setData('batch_no', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                            <div><label className="text-xs font-medium text-muted">Qty *</label>
+                                <input type="number" step="0.01" value={batchForm.data.qty} onChange={(e) => batchForm.setData('qty', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                            <div><label className="text-xs font-medium text-muted">Kadaluarsa</label>
+                                <input type="date" value={batchForm.data.expires_at} onChange={(e) => batchForm.setData('expires_at', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                        </div>
+                    </div>
+                    <div className="mt-5 flex justify-end gap-3">
+                        <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
+                        <PrimaryButton disabled={batchForm.processing}>Simpan Batch</PrimaryButton>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Modal: Edit Batch */}
+            <Modal show={modal === 'editBatch'} onClose={() => setModal(null)} maxWidth="md">
+                <form onSubmit={submitEditBatch} className="p-6">
+                    <h2 className="text-lg font-semibold text-ink">Edit Batch {editBatch?.batch_no}</h2>
+                    <div className="mt-4 space-y-3">
+                        <div><label className="text-xs font-medium text-muted">No. Batch *</label>
+                            <input value={editBatchForm.data.batch_no} onChange={(e) => editBatchForm.setData('batch_no', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                        <div><label className="text-xs font-medium text-muted">Qty *</label>
+                            <input type="number" step="0.01" value={editBatchForm.data.qty} onChange={(e) => editBatchForm.setData('qty', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                        <div><label className="text-xs font-medium text-muted">Kadaluarsa</label>
+                            <input type="date" value={editBatchForm.data.expires_at} onChange={(e) => editBatchForm.setData('expires_at', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                    </div>
+                    <div className="mt-5 flex justify-end gap-3">
+                        <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
+                        <PrimaryButton disabled={editBatchForm.processing}>Simpan</PrimaryButton>
+                    </div>
+                </form>
+            </Modal>
+
+            <ConfirmModal
+                show={!!confirmDel}
+                title="Hapus data ini?"
+                message={confirmDel ? `${confirmDel.label} akan dihapus. ${confirmDel.note ?? ''}` : ''}
+                processing={busy}
+                onClose={() => setConfirmDel(null)}
+                onConfirm={() => {
+                    if (!confirmDel) return;
+                    setBusy(true);
+                    router.delete(confirmDel.url, { preserveScroll: true, onFinish: () => { setBusy(false); setConfirmDel(null); } });
+                }}
+            />
         </AuthenticatedLayout>
     );
 }

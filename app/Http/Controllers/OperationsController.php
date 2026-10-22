@@ -71,6 +71,7 @@ class OperationsController extends Controller
                 ->orderByDesc('checked_at')->limit(40)->get()
                 ->map(fn ($c) => [
                     'id' => $c->id,
+                    'vessel_id' => $c->vessel_id,
                     'vessel_name' => $c->vessel?->vessel_name,
                     'checked_at' => $c->checked_at,
                     'score' => $c->score,
@@ -89,6 +90,7 @@ class OperationsController extends Controller
                 ->orderByDesc('start_date')->limit(50)->get()
                 ->map(fn ($s) => [
                     'id' => $s->id,
+                    'vessel_id' => $s->vessel_id,
                     'vessel_name' => $s->vessel?->vessel_name,
                     'type' => $s->type,
                     'title' => $s->title,
@@ -98,7 +100,7 @@ class OperationsController extends Controller
                     'cost' => $s->cost,
                     'status' => $s->status,
                     'items' => $s->serviceItems->map(fn ($i) => [
-                        'item_name' => $i->item?->name, 'qty' => $i->qty,
+                        'item_id' => $i->item_id, 'item_name' => $i->item?->name, 'qty' => $i->qty,
                     ]),
                 ]),
             'vessels' => Vessel::orderBy('vessel_name')->get(['id', 'vessel_name']),
@@ -118,6 +120,7 @@ class OperationsController extends Controller
             ->orderByDesc('trip_date')->orderByDesc('id')->limit(100)->get()
             ->map(fn ($f) => [
                 'id' => $f->id,
+                'vessel_id' => $f->vessel_id,
                 'vessel_name' => $f->vessel?->vessel_name,
                 'trip_date' => $f->trip_date,
                 'route' => $f->route,
@@ -331,5 +334,232 @@ class OperationsController extends Controller
         AuditService::log('fuel_logged', 'vessel', $vessel->id, null, $data, 'Log trip BBM', null, null, null);
 
         return back()->with('success', 'Trip BBM tercatat — analisis: '.mb_strtoupper($preview['status']).' ('.$preview['diff_pct'].'%).');
+    }
+
+    // ===== CRUD tambahan (Fase A) =====
+
+    public function updateCondition(Request $request, VesselCondition $condition)
+    {
+        Gate::authorize('operations.manage');
+
+        $data = $request->validate([
+            'vessel_id' => ['required', 'exists:vessels,id'],
+            'checked_at' => ['required', 'date'],
+            'score' => ['required', 'integer', 'between:0,100'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'mesin' => ['required', 'in:baik,cukup,perlu_perbaikan'],
+            'navigasi' => ['required', 'in:baik,cukup,perlu_perbaikan'],
+            'keselamatan' => ['required', 'in:baik,cukup,perlu_perbaikan'],
+            'dek' => ['required', 'in:baik,cukup,perlu_perbaikan'],
+            'kamar' => ['required', 'in:baik,cukup,perlu_perbaikan'],
+        ]);
+
+        $before = $condition->only(['score', 'notes', 'checklist']);
+        $condition->update([
+            'vessel_id' => $data['vessel_id'],
+            'checked_at' => $data['checked_at'],
+            'score' => $data['score'],
+            'notes' => $data['notes'] ?? null,
+            'checklist' => [
+                'mesin' => $data['mesin'],
+                'navigasi' => $data['navigasi'],
+                'keselamatan' => $data['keselamatan'],
+                'dek' => $data['dek'],
+                'kamar' => $data['kamar'],
+            ],
+        ]);
+
+        AuditService::log('condition_updated', 'vessel', $condition->vessel_id, $before, $data, 'Pemeriksaan kondisi diperbarui');
+
+        return back()->with('success', 'Pemeriksaan kondisi diperbarui.');
+    }
+
+    public function deleteCondition(VesselCondition $condition)
+    {
+        Gate::authorize('operations.manage');
+
+        AuditService::log('condition_deleted', 'vessel', $condition->vessel_id, $condition->toArray(), null, 'Pemeriksaan kondisi dihapus');
+        $condition->delete();
+
+        return back()->with('success', 'Pemeriksaan kondisi dihapus.');
+    }
+
+    public function updateService(Request $request, Service $service)
+    {
+        Gate::authorize('operations.manage');
+
+        $data = $request->validate([
+            'vessel_id' => ['required', 'exists:vessels,id'],
+            'type' => ['required', 'in:rutin,urgent,drydock,pemeriksaan'],
+            'title' => ['required', 'string', 'max:180'],
+            'start_date' => ['required', 'date'],
+            'end_date' => ['nullable', 'date'],
+            'workshop' => ['nullable', 'string', 'max:120'],
+            'cost' => ['nullable', 'numeric', 'min:0'],
+            'status' => ['required', 'in:rencana,proses,selesai'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'items' => ['nullable', 'array'],
+            'items.*.item_id' => ['required', 'exists:inventory_items,id'],
+            'items.*.qty' => ['required', 'numeric', 'min:0.01'],
+        ]);
+
+        $wasSelesai = $service->status === 'selesai';
+        $before = $service->only(['title', 'status', 'cost', 'type']);
+
+        DB::transaction(function () use ($data, $service, $wasSelesai) {
+            $becomesSelesai = $data['status'] === 'selesai';
+
+            // Balikkan pemotongan stok lama bila sebelumnya sudah selesai
+            if ($wasSelesai) {
+                foreach ($service->serviceItems as $old) {
+                    $this->restoreStock($old->item_id, $old->qty, 'Penyesuaian: servis dibatalkan/diedit', $service);
+                }
+            }
+            $service->serviceItems()->delete();
+
+            $service->update(collect($data)->except('items')->all());
+
+            foreach ($data['items'] ?? [] as $item) {
+                ServiceItem::create([
+                    'service_id' => $service->id,
+                    'item_id' => $item['item_id'],
+                    'qty' => $item['qty'],
+                ]);
+                if ($becomesSelesai) {
+                    $this->consumeStock($item['item_id'], $item['qty'], "Pemakaian servis: {$service->title}", $service);
+                }
+            }
+        });
+
+        AuditService::log('service_updated', 'vessel', $service->vessel_id, $before, $data, "Servis diperbarui: {$service->title}");
+
+        return back()->with('success', 'Catatan servis diperbarui.');
+    }
+
+    public function deleteService(Service $service)
+    {
+        Gate::authorize('operations.manage');
+
+        $before = $service->only(['title', 'status', 'cost', 'type']);
+        $status = $service->status;
+
+        DB::transaction(function () use ($service, $status) {
+            if ($status === 'selesai') {
+                foreach ($service->serviceItems as $old) {
+                    $this->restoreStock($old->item_id, $old->qty, 'Penyesuaian: catatan servis dihapus', $service);
+                }
+            }
+            $service->serviceItems()->delete();
+            $service->delete();
+        });
+
+        AuditService::log('service_deleted', 'vessel', $service->vessel_id, $before, null, 'Catatan servis dihapus (stok dipulihkan bila ada)');
+
+        return back()->with('success', 'Catatan servis dihapus.');
+    }
+
+    public function updateFuel(Request $request, FuelLog $fuel)
+    {
+        Gate::authorize('operations.manage');
+
+        $data = $request->validate([
+            'vessel_id' => ['required', 'exists:vessels,id'],
+            'trip_date' => ['required', 'date'],
+            'route' => ['required', 'string', 'max:180'],
+            'cargo_type' => ['nullable', 'string', 'max:60'],
+            'duration_hours' => ['required', 'numeric', 'min:0.1'],
+            'distance_nm' => ['nullable', 'numeric', 'min:0'],
+            'liters' => ['required', 'numeric', 'min:0.1'],
+            'cost' => ['nullable', 'numeric', 'min:0'],
+            'explanation' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $vessel = Vessel::findOrFail($data['vessel_id']);
+        $analysis = app(FuelAnalysisService::class)->analyze(
+            (float) $data['liters'],
+            (float) $data['duration_hours'],
+            $vessel->fuel_baseline_lph,
+        );
+
+        if ($analysis['status'] === 'tidak_normal' && empty($data['explanation'])) {
+            return back()->withInput()
+                ->with('error', 'Konsumsi TIDAK NORMAL ('.$analysis['diff_pct'].'%) — catatan penjelasan wajib diisi.');
+        }
+
+        $before = $fuel->only(['route', 'liters', 'duration_hours', 'cost', 'analysis_status']);
+        $fuel->update([
+            'vessel_id' => $vessel->id,
+            'trip_date' => $data['trip_date'],
+            'route' => $data['route'],
+            'cargo_type' => $data['cargo_type'] ?? null,
+            'duration_hours' => $data['duration_hours'],
+            'distance_nm' => $data['distance_nm'] ?? null,
+            'liters' => $data['liters'],
+            'cost' => $data['cost'] ?? 0,
+            'baseline_lph_snapshot' => $vessel->fuel_baseline_lph,
+            'analysis_status' => $analysis['status'],
+            'analysis_diff_pct' => $analysis['diff_pct'],
+            'explanation_note' => $data['explanation'] ?? null,
+        ]);
+
+        AuditService::log('fuel_updated', 'vessel', $vessel->id, $before, $data, 'Log BBM diperbarui (analisis dihitung ulang)');
+
+        return back()->with('success', 'Log BBM diperbarui — analisis: '.mb_strtoupper($analysis['status']).' ('.$analysis['diff_pct'].'%).');
+    }
+
+    public function deleteFuel(FuelLog $fuel)
+    {
+        Gate::authorize('operations.manage');
+
+        AuditService::log('fuel_deleted', 'vessel', $fuel->vessel_id, $fuel->toArray(), null, 'Log BBM dihapus');
+        $fuel->delete();
+
+        return back()->with('success', 'Log BBM dihapus.');
+    }
+
+    private function consumeStock(int $itemId, float $qty, string $note, Service $service): void
+    {
+        $balance = InventoryBalance::where('item_id', $itemId)
+            ->where('location_type', 'kantor')
+            ->lockForUpdate()
+            ->first();
+        if ($balance) {
+            $balance->decrement('qty', $qty);
+        }
+        InventoryMovement::create([
+            'item_id' => $itemId,
+            'type' => 'keluar',
+            'qty' => $qty,
+            'from_location' => 'kantor',
+            'ref_type' => 'service',
+            'ref_id' => $service->id,
+            'movement_date' => now()->toDateString(),
+            'user_id' => auth()->id(),
+            'notes' => $note,
+        ]);
+    }
+
+    private function restoreStock(int $itemId, float $qty, string $note, Service $service): void
+    {
+        $balance = InventoryBalance::where('item_id', $itemId)
+            ->where('location_type', 'kantor')
+            ->lockForUpdate()
+            ->first();
+        if ($balance) {
+            $balance->increment('qty', $qty);
+        } else {
+            InventoryBalance::create(['item_id' => $itemId, 'location_type' => 'kantor', 'qty' => $qty]);
+        }
+        InventoryMovement::create([
+            'item_id' => $itemId,
+            'type' => 'penyesuaian',
+            'qty' => $qty,
+            'to_location' => 'kantor',
+            'ref_type' => 'service',
+            'ref_id' => $service->id,
+            'movement_date' => now()->toDateString(),
+            'user_id' => auth()->id(),
+            'notes' => $note,
+        ]);
     }
 }

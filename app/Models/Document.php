@@ -47,4 +47,24 @@ class Document extends Model
     {
         return $this->belongsTo(User::class, 'uploaded_by');
     }
+
+    public function template()
+    {
+        return $this->belongsTo(DocumentTemplate::class, 'template_id');
+    }
+
+    public function relationsFrom()
+    {
+        return $this->hasMany(DocumentRelation::class, 'from_document_id');
+    }
+
+    public function relationsTo()
+    {
+        return $this->hasMany(DocumentRelation::class, 'to_document_id');
+    }
+
+    public function links()
+    {
+        return $this->hasMany(DocumentLink::class);
+    }
 }

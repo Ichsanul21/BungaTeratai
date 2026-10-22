@@ -1,6 +1,7 @@
 import Badge, { type BadgeTone } from '@/Components/ui/Badge';
 import DataTable from '@/Components/ui/DataTable';
 import PageHeader from '@/Components/ui/PageHeader';
+import TabNav from '@/Components/ui/TabNav';
 import StatCard from '@/Components/ui/StatCard';
 import { VERIFICATION_STATUS_LABELS } from '@/Constants/navigation';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
@@ -12,6 +13,7 @@ import {
     CalendarClock,
     FileCheck2,
     FileStack,
+    FileText,
     Plus,
     Search,
     ShieldCheck,
@@ -33,6 +35,11 @@ interface DocRow {
     days_left?: number | null;
     responsible_person?: string;
     updated_at?: string;
+    source_type?: string;
+    archive_number?: string;
+    is_voided?: boolean;
+    has_endorsement?: boolean;
+    endorsement_next_date?: string;
 }
 
 const GROUPS = [
@@ -73,6 +80,7 @@ const VALIDITY_TEXT: Record<string, string> = {
 
 export default function DocumentsIndex({
     documents,
+    tab,
     filters,
     categories,
     vessels,
@@ -80,6 +88,7 @@ export default function DocumentsIndex({
     validityCounts,
     canCreate,
 }: PageProps<{
+    tab?: string;
     documents: {
         data: DocRow[];
         current_page: number;
@@ -158,6 +167,17 @@ export default function DocumentsIndex({
                     icon={FileCheck2}
                 />
             </div>
+
+            <TabNav
+                tabs={[
+                    { key: 'arsip', label: 'Arsip Semua', icon: FileStack },
+                    { key: 'terbitan', label: 'Terbitan', icon: FileCheck2 },
+                    { key: 'unggahan', label: 'Unggahan', icon: FileText },
+                    { key: 'expiring', label: 'Expiring & Endorsement', icon: CalendarClock },
+                ]}
+                active={tab ?? 'arsip'}
+                onChange={(key) => router.get('/dokumen', { ...filters, tab: key }, { preserveState: true })}
+            />
 
             <div className="mb-4 flex flex-wrap items-center gap-1.5">
                 {GROUPS.map((g) => (
@@ -261,7 +281,15 @@ export default function DocumentsIndex({
                                 <p className="text-xs text-muted">
                                     {row.category_name ?? '—'}
                                     {row.document_number ? ` · No. ${row.document_number}` : ''}
+                                    {row.archive_number ? ` · ${row.archive_number}` : ''}
                                 </p>
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                    <Badge tone={row.source_type === 'terbitan' ? 'primary' : 'info'}>
+                                        {row.source_type === 'terbitan' ? 'Terbitan' : 'Unggahan'}
+                                    </Badge>
+                                    {row.is_voided && <Badge tone="danger">VOID</Badge>}
+                                    {row.has_endorsement && <Badge tone="warning">Endorsement</Badge>}
+                                </div>
                             </div>
                         ),
                     },

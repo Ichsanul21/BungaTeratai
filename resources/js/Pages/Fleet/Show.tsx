@@ -4,6 +4,7 @@ import DataTable from '@/Components/ui/DataTable';
 import EmptyState from '@/Components/ui/EmptyState';
 import PageHeader from '@/Components/ui/PageHeader';
 import TabNav from '@/Components/ui/TabNav';
+import ConfirmModal from '@/Components/ui/ConfirmModal';
 import {
     VALIDITY_LABELS,
     VERIFICATION_STATUS_LABELS,
@@ -112,6 +113,8 @@ export default function FleetShow({
     canEdit?: boolean;
 }>) {
     const [tab, setTab] = useState('overview');
+    const [confirmArchive, setConfirmArchive] = useState(false);
+    const [busy, setBusy] = useState(false);
 
     const tabs = [
         { key: 'overview', label: 'Overview', icon: Anchor },
@@ -538,6 +541,21 @@ export default function FleetShow({
                     emptyIcon={History}
                 />
             )}
+            <ConfirmModal
+                show={confirmArchive}
+                title="Arsipkan kapal ini?"
+                message={`Kapal "${vessel.vessel_name}" akan disembunyikan dari daftar armada (soft delete). Data tetap tersimpan & dapat dipulihkan lewat database. Diblokir bila masih ada perjalanan aktif.`}
+                confirmLabel="Arsipkan"
+                tone="warning"
+                processing={busy}
+                onClose={() => setConfirmArchive(false)}
+                onConfirm={() => {
+                    setBusy(true);
+                    router.post(`/armada/${vessel.id}/archive`, {}, {
+                        onFinish: () => { setBusy(false); setConfirmArchive(false); },
+                    });
+                }}
+            />
         </AuthenticatedLayout>
     );
 }

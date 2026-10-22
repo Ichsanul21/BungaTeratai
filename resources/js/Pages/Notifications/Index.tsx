@@ -15,12 +15,15 @@ import {
     ClipboardCheck,
     Fuel,
     Ship,
+    Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
 
 const TYPE_META: Record<string, { label: string; tone: BadgeTone; icon: any }> = {
     dokumen_mendekati_kedaluwarsa: { label: 'Reminder Dokumen', tone: 'warning', icon: CalendarClock },
     dokumen_kedaluwarsa: { label: 'Dokumen Kedaluwarsa', tone: 'danger', icon: AlertTriangle },
+    endorsement_jatuh_tempo: { label: 'Endorsement', tone: 'warning', icon: CalendarClock },
+    endorsement_kedaluwarsa: { label: 'Endorsement Jatuh Tempo', tone: 'danger', icon: AlertTriangle },
     berkas_perjalanan_belum_lengkap: { label: 'Berkas Perjalanan', tone: 'warning', icon: ClipboardCheck },
     dokumen_membutuhkan_revisi: { label: 'Revisi Dokumen', tone: 'warning', icon: AlertTriangle },
     persetujuan_internal_menunggu: { label: 'Persetujuan', tone: 'info', icon: ClipboardCheck },
@@ -58,6 +61,14 @@ export default function NotificationsIndex({
         });
     };
 
+    const deleteAllRead = () => {
+        setBusy(true);
+        router.post('/notifikasi/delete-read', {}, {
+            onFinish: () => setBusy(false),
+            preserveScroll: true,
+        });
+    };
+
     return (
         <Authenticated>
             <Head title="Notifikasi & Reminder" />
@@ -66,16 +77,26 @@ export default function NotificationsIndex({
                 title="Notifikasi & Reminder"
                 description="Pengingat dokumen, persetujuan, dan kejadian operasional. Notifikasi eksternal (email/WA) belum diaktifkan."
                 actions={
-                    counts.unread > 0 && (
+                    <>
+                        {counts.unread > 0 && (
+                            <button
+                                type="button"
+                                onClick={markAll}
+                                disabled={busy}
+                                className="inline-flex items-center gap-2 rounded-lg border border-hairline bg-white px-3.5 py-2 text-sm font-medium text-ink transition hover:border-primary/40 disabled:opacity-50"
+                            >
+                                <CheckCheck size={16} /> Tandai semua dibaca
+                            </button>
+                        )}
                         <button
                             type="button"
-                            onClick={markAll}
+                            onClick={deleteAllRead}
                             disabled={busy}
-                            className="inline-flex items-center gap-2 rounded-lg border border-hairline bg-white px-3.5 py-2 text-sm font-medium text-ink transition hover:border-primary/40 disabled:opacity-50"
+                            className="inline-flex items-center gap-2 rounded-lg border border-hairline bg-white px-3.5 py-2 text-sm font-medium text-primary transition hover:border-primary/40 disabled:opacity-50"
                         >
-                            <CheckCheck size={16} /> Tandai semua dibaca
+                            <Trash2 size={16} /> Hapus yang sudah dibaca
                         </button>
-                    )
+                    </>
                 }
             />
 
@@ -170,6 +191,17 @@ export default function NotificationsIndex({
                                                 Tandai dibaca
                                             </button>
                                         )}
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                router.delete(`/notifikasi/${n.id}`, {
+                                                    preserveScroll: true,
+                                                })
+                                            }
+                                            className="text-xs text-muted hover:text-primary"
+                                        >
+                                            Hapus
+                                        </button>
                                     </div>
                                 </div>
                             );

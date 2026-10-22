@@ -1,5 +1,6 @@
 import Badge, { type BadgeTone } from '@/Components/ui/Badge';
 import Card from '@/Components/ui/Card';
+import ConfirmModal from '@/Components/ui/ConfirmModal';
 import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -12,10 +13,12 @@ import { Head, Link, router, useForm } from '@inertiajs/react';
 import {
     AlertTriangle,
     ArrowLeft,
+    Archive,
     CheckCircle2,
     Download,
     History,
     MessageSquare,
+    Pencil,
     ShieldX,
     Upload,
 } from 'lucide-react';
@@ -43,12 +46,18 @@ export default function DocumentsShow({
     versions,
     approvals,
     voyages,
+    categories,
+    requirements,
+    relations,
     actions,
 }: PageProps<{
     document: Record<string, any>;
     versions: Array<Record<string, any>>;
     approvals: Array<Record<string, any>>;
     voyages: Array<Record<string, any>>;
+    categories: Array<Record<string, any>>;
+    requirements: Array<Record<string, any>>;
+    relations?: Array<Record<string, any>>;
     actions: {
         can_submit: boolean;
         can_verify: boolean;
@@ -56,13 +65,39 @@ export default function DocumentsShow({
         can_upload_version: boolean;
     };
 }>) {
-    const [modal, setModal] = useState<null | 'revision' | 'reject' | 'version'>(null);
+    const [modal, setModal] = useState<null | 'revision' | 'reject' | 'version' | 'edit' | 'archive' | 'void'>(null);
+    const [busy, setBusy] = useState(false);
+    const [voidReason, setVoidReason] = useState('');
 
     const { data, setData, post, processing, errors, reset } = useForm({
         comments: '',
         file: null as File | null,
         revision_notes: '',
     });
+
+    const editForm = useForm({
+        document_name: document.document_name ?? '',
+        category_id: document.category?.id ?? '',
+        requirement_code: document.requirement_code ?? '',
+        document_number: document.document_number ?? '',
+        issue_date: document.issue_date ?? '',
+        has_expiry: Boolean(document.has_expiry),
+        expiry_date: document.expiry_date ?? '',
+        responsible_person: document.responsible_person ?? '',
+        archive_location: document.archive_location ?? '',
+        notes: document.notes ?? '',
+        has_endorsement: Boolean(document.has_endorsement),
+        endorsement_last_date: document.endorsement_last_date ?? '',
+        endorsement_next_date: document.endorsement_next_date ?? '',
+    });
+
+    const submitEdit = (e: FormEvent) => {
+        e.preventDefault();
+        router.put(`/dokumen/${document.id}`, editForm.data, {
+            preserveScroll: true,
+            onSuccess: () => setModal(null),
+        });
+    };
 
     const action = (path: string) => (e: FormEvent) => {
         e.preventDefault();
@@ -196,6 +231,33 @@ export default function DocumentsShow({
                         <Upload size={16} /> Unggah Versi Baru
                     </button>
                 )}
+                {actions.can_edit && (
+                    <button
+                        type="button"
+                        onClick={() => setModal('edit')}
+                        className="inline-flex items-center gap-2 rounded-lg border border-hairline bg-white px-3.5 py-2 text-sm font-medium text-ink transition hover:border-primary/40"
+                    >
+                        <Pencil size={16} /> Edit Metadata
+                    </button>
+                )}
+                {actions.can_edit && (
+                    <button
+                        type="button"
+                        onClick={() => setModal('archive')}
+                        className="inline-flex items-center gap-2 rounded-lg border border-hairline bg-white px-3.5 py-2 text-sm font-medium text-primary transition hover:border-primary/40"
+                    >
+                        <Archive size={16} /> Arsipkan
+                    </button>
+                )}
+                {document.can_void && (
+                    <button
+                        type="button"
+                        onClick={() => setModal('void')}
+                        className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3.5 py-2 text-sm font-semibold text-primary transition hover:bg-primary/20"
+                    >
+                        <ShieldX size={16} /> Void (Batalkan Terbitan)
+                    </button>
+                )}
                 <a
                     href={`/dokumen/${document.id}/download`}
                     className="inline-flex items-center gap-2 rounded-lg border border-hairline bg-white px-3.5 py-2 text-sm font-medium text-ink transition hover:border-primary/40"
@@ -220,8 +282,19 @@ export default function DocumentsShow({
                             ['Verifikasi', VERIFICATION_STATUS_LABELS[document.verification_status] ?? document.verification_status],
                             ['Penanggung Jawab', document.responsible_person ?? '—'],
                             ['Lokasi Arsip', document.archive_location ?? '—'],
+                            ['Sumber', document.source_type === 'terbitan' ? 'Terbitan sistem' : 'Unggahan scan'],
+                            ['Nomor Arsip', document.archive_number ?? '—'],
+                            ['Periode Arsip', document.period ?? '—'],
+                            ['Endorsement', document.has_endorsement
+                                ? (document.endorsement_next_date
+                                    ? `Next: ${document.endorsement_next_date} (${document.endorsement_days_left} hr)`
+                                    : 'Aktif, tanpa jadwal')
+                                : 'Tidak berlaku'],
                             ['Diunggah oleh', document.uploaded_by_name ?? '—'],
                             ['Terakhir diubah', formatDateTime(document.updated_at)],
+                            ...(document.voided_at
+                                ? [['Status VOID', `Dibatalkan ${formatDateTime(document.voided_at)} — ${document.void_reason ?? ''}`]]
+                                : []),
                         ].map(([label, value]) => (
                             <div key={label as string}>
                                 <dt className="text-xs font-medium uppercase tracking-wide text-muted">
@@ -259,6 +332,37 @@ export default function DocumentsShow({
                                     </Link>
                                 ))}
                             </div>
+                        )}
+                    </div>
+
+                    <div className="mt-5 border-t border-hairline pt-4">
+                        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+                            Dokumen Terkait ({(relations ?? []).length})
+                        </p>
+                        {(relations ?? []).length === 0 ? (
+                            <p className="text-sm text-muted">
+                                Belum ada relasi. Relasi otomatis dibuat saat invoice terbit dari SPAL,
+                                FP melampiri invoice, bukti bayar terkait bill, dll.
+                            </p>
+                        ) : (
+                            <ul className="space-y-1.5">
+                                {(relations ?? []).map((r: any) => (
+                                    <li key={r.id} className="flex items-center justify-between rounded-lg border border-hairline px-3 py-2 text-sm">
+                                        <span className="text-ink">
+                                            <Badge tone="neutral">{r.relation_type}</Badge>{' '}
+                                            <span className="text-xs text-muted">{r.direction}</span>{' '}
+                                            {r.related?.id ? (
+                                                <Link href={`/dokumen/${r.related.id}`} className="font-medium text-primary hover:underline">
+                                                    {r.related.document_name}
+                                                </Link>
+                                            ) : (
+                                                <span className="text-muted">(terhapus)</span>
+                                            )}
+                                        </span>
+                                        <span className="text-xs text-muted">{r.related?.document_number}</span>
+                                    </li>
+                                ))}
+                            </ul>
                         )}
                     </div>
                 </Card>
@@ -425,6 +529,230 @@ export default function DocumentsShow({
                         <PrimaryButton disabled={processing || !data.file}>
                             Simpan Versi
                         </PrimaryButton>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Modal: Edit Metadata */}
+            <Modal show={modal === 'edit'} onClose={() => setModal(null)} maxWidth="lg">
+                <form onSubmit={submitEdit} className="p-6">
+                    <h2 className="text-lg font-semibold text-ink">Edit Metadata Dokumen</h2>
+                    <p className="text-xs text-muted">
+                        Perubahan tercatat di audit trail. File tidak berubah — gunakan "Unggah Versi Baru" bila berkasnya diganti.
+                    </p>
+                    <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div className="md:col-span-2">
+                            <label className="text-xs font-medium text-muted">Nama Dokumen *</label>
+                            <input
+                                value={editForm.data.document_name}
+                                onChange={(e) => editForm.setData('document_name', e.target.value)}
+                                className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                            />
+                            {editForm.errors.document_name && (
+                                <p className="mt-1 text-xs text-primary">{editForm.errors.document_name}</p>
+                            )}
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-muted">Kategori *</label>
+                            <select
+                                value={editForm.data.category_id}
+                                onChange={(e) => editForm.setData('category_id', Number(e.target.value))}
+                                className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                            >
+                                {(categories ?? []).map((c) => (
+                                    <option key={c.id} value={c.id}>
+                                        {c.code} · {c.name}
+                                    </option>
+                                ))}
+                            </select>
+                            {editForm.errors.category_id && (
+                                <p className="mt-1 text-xs text-primary">{editForm.errors.category_id}</p>
+                            )}
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-muted">Requirement (kelengkapan)</label>
+                            <select
+                                value={editForm.data.requirement_code}
+                                onChange={(e) => editForm.setData('requirement_code', e.target.value)}
+                                className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                            >
+                                <option value="">— tidak ditautkan —</option>
+                                {(requirements ?? []).map((r) => (
+                                    <option key={r.code} value={r.code}>
+                                        {r.group_code} · {r.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-muted">Nomor Dokumen</label>
+                            <input
+                                value={editForm.data.document_number}
+                                onChange={(e) => editForm.setData('document_number', e.target.value)}
+                                className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-muted">Tanggal Terbit</label>
+                            <input
+                                type="date"
+                                value={editForm.data.issue_date}
+                                onChange={(e) => editForm.setData('issue_date', e.target.value)}
+                                className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                            />
+                        </div>
+                        <div className="md:col-span-2 rounded-xl border border-hairline bg-appbg p-3">
+                            <label className="flex items-center gap-2 text-sm">
+                                <input
+                                    type="checkbox"
+                                    checked={editForm.data.has_expiry}
+                                    onChange={(e) =>
+                                        editForm.setData('has_expiry', e.target.checked)
+                                    }
+                                    className="rounded border-gray-300 text-primary focus:ring-primary"
+                                />
+                                Punya masa berlaku
+                            </label>
+                            {editForm.data.has_expiry && (
+                                <div className="mt-2 max-w-xs">
+                                    <label className="text-xs font-medium text-muted">Berlaku s/d *</label>
+                                    <input
+                                        type="date"
+                                        value={editForm.data.expiry_date}
+                                        onChange={(e) => editForm.setData('expiry_date', e.target.value)}
+                                        className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                    />
+                                    {editForm.errors.expiry_date && (
+                                        <p className="mt-1 text-xs text-primary">{editForm.errors.expiry_date}</p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        <div className="md:col-span-2 rounded-xl border border-hairline bg-warn/5 p-3">
+                            <label className="flex items-center gap-2 text-sm">
+                                <input
+                                    type="checkbox"
+                                    checked={editForm.data.has_endorsement}
+                                    onChange={(e) => editForm.setData('has_endorsement', e.target.checked)}
+                                    className="rounded border-gray-300 text-primary focus:ring-primary"
+                                />
+                                Punya siklus <strong>endorsement</strong> (Surat Laut & Sertifikat Klasifikasi)
+                            </label>
+                            {editForm.data.has_endorsement && (
+                                <div className="mt-2 grid max-w-md grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-xs font-medium text-muted">Endorsement Terakhir</label>
+                                        <input
+                                            type="date"
+                                            value={editForm.data.endorsement_last_date}
+                                            onChange={(e) => editForm.setData('endorsement_last_date', e.target.value)}
+                                            className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-medium text-muted">Endorsement Berikutnya *</label>
+                                        <input
+                                            type="date"
+                                            value={editForm.data.endorsement_next_date}
+                                            onChange={(e) => editForm.setData('endorsement_next_date', e.target.value)}
+                                            className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-muted">Penanggung Jawab</label>
+                            <input
+                                value={editForm.data.responsible_person}
+                                onChange={(e) => editForm.setData('responsible_person', e.target.value)}
+                                className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-muted">Lokasi Arsip</label>
+                            <input
+                                value={editForm.data.archive_location}
+                                onChange={(e) => editForm.setData('archive_location', e.target.value)}
+                                className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                            />
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="text-xs font-medium text-muted">Catatan</label>
+                            <textarea
+                                value={editForm.data.notes}
+                                onChange={(e) => editForm.setData('notes', e.target.value)}
+                                rows={3}
+                                className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                            />
+                        </div>
+                    </div>
+                    <div className="mt-5 flex justify-end gap-3">
+                        <SecondaryButton type="button" onClick={() => setModal(null)}>
+                            Batal
+                        </SecondaryButton>
+                        <PrimaryButton disabled={editForm.processing}>Simpan Perubahan</PrimaryButton>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Konfirmasi Arsip */}
+            <ConfirmModal
+                show={modal === 'archive'}
+                title="Arsipkan dokumen ini?"
+                message={`Dokumen "${document.document_name}" disembunyikan dari daftar (soft delete). File tetap tersimpan di penyimpanan privat.`}
+                confirmLabel="Arsipkan"
+                tone="warning"
+                processing={busy}
+                onClose={() => setModal(null)}
+                onConfirm={() => {
+                    setBusy(true);
+                    router.post(`/dokumen/${document.id}/archive`, {}, {
+                        onFinish: () => { setBusy(false); setModal(null); },
+                    });
+                }}
+            />
+            {/* Modal: Void dokumen terbit */}
+            <Modal show={modal === 'void'} onClose={() => setModal(null)} maxWidth="md">
+                <form
+                    className="p-6"
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        setBusy(true);
+                        router.post(
+                            `/dokumen/${document.id}/void`,
+                            { reason: voidReason },
+                            {
+                                preserveScroll: true,
+                                onFinish: () => { setBusy(false); setModal(null); setVoidReason(''); },
+                            },
+                        );
+                    }}
+                >
+                    <h2 className="text-lg font-semibold text-ink">Void Dokumen Terbitan?</h2>
+                    <p className="mt-1 text-sm text-muted">
+                        <strong>{document.document_number || document.document_name}</strong> ditandai
+                        dibatalkan. Nomor TIDAK dipakai ulang; file tetap tersimpan sebagai arsip.
+                    </p>
+                    <div className="mt-4">
+                        <label className="text-xs font-medium text-muted">Alasan void *</label>
+                        <textarea
+                            rows={3}
+                            value={voidReason}
+                            onChange={(e) => setVoidReason(e.target.value)}
+                            placeholder="mis. Salah ketik nomor surat"
+                            className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                        />
+                    </div>
+                    <div className="mt-5 flex justify-end gap-3">
+                        <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
+                        <button
+                            type="submit"
+                            disabled={busy || !voidReason.trim()}
+                            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
+                        >
+                            {busy ? 'Memproses…' : 'Ya, Void'}
+                        </button>
                     </div>
                 </form>
             </Modal>

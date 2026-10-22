@@ -1,8 +1,11 @@
 import Badge, { type BadgeTone } from '@/Components/ui/Badge';
 import Card from '@/Components/ui/Card';
+import ConfirmModal from '@/Components/ui/ConfirmModal';
 import EmptyState from '@/Components/ui/EmptyState';
+import Modal from '@/Components/Modal';
 import PageHeader from '@/Components/ui/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
+import SecondaryButton from '@/Components/SecondaryButton';
 import TabNav from '@/Components/ui/TabNav';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { classNames, formatDate, formatDateTime, formatNumber, formatRupiah } from '@/lib/format';
@@ -139,6 +142,11 @@ export default function OperationsIndex({
     const [liters, setLiters] = useState('');
     const [duration, setDuration] = useState('');
     const [serviceItems, setServiceItems] = useState<Array<{ item_id: string; qty: string }>>([]);
+    const [editCondition, setEditCondition] = useState<any>(null);
+    const [editService, setEditService] = useState<any>(null);
+    const [editFuel, setEditFuel] = useState<any>(null);
+    const [confirmDel, setConfirmDel] = useState<{ url: string; label: string } | null>(null);
+    const [busy, setBusy] = useState(false);
 
     const bbmVessel = (vessels ?? []).find((v) => String(v.id) === bbmVesselId);
     const liveAnalysis = useMemo(() => {
@@ -315,6 +323,24 @@ export default function OperationsIndex({
                                             {formatDateTime(c.checked_at)} · {c.checked_by_name ?? '—'}
                                         </p>
                                         {c.notes && <p className="mt-1 text-sm text-ink">{c.notes}</p>}
+                                        {canManage && (
+                                            <div className="mt-2 flex gap-3 text-xs font-medium">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setEditCondition({ ...c, checked_at: String(c.checked_at).slice(0, 10) })}
+                                                    className="text-primary hover:underline"
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setConfirmDel({ url: `/operasional/kondisi/${c.id}`, label: `pemeriksaan kondisi ${c.vessel_name}` })}
+                                                    className="text-primary hover:underline"
+                                                >
+                                                    Hapus
+                                                </button>
+                                            </div>
+                                        )}
                                     </li>
                                 ))}
                             </ul>
@@ -415,7 +441,7 @@ export default function OperationsIndex({
                             <table className="min-w-full text-sm">
                                 <thead className="bg-appbg text-left text-xs uppercase tracking-wide text-muted">
                                     <tr>
-                                        {['Kapal', 'Pekerjaan', 'Jenis', 'Periode', 'Biaya', 'Status'].map((h) => (
+                                        {['Kapal', 'Pekerjaan', 'Jenis', 'Periode', 'Biaya', 'Status', ...(canManage ? ['Aksi'] : [])].map((h) => (
                                             <th key={h} className="px-3 py-2">
                                                 {h}
                                             </th>
@@ -439,6 +465,26 @@ export default function OperationsIndex({
                                                     {s.status}
                                                 </Badge>
                                             </td>
+                                            {canManage && (
+                                                <td className="px-3 py-2">
+                                                    <div className="flex gap-2 text-xs font-medium">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setEditService({ ...s, start_date: String(s.start_date).slice(0, 10), end_date: s.end_date ? String(s.end_date).slice(0, 10) : '' })}
+                                                            className="text-primary hover:underline"
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setConfirmDel({ url: `/operasional/servis/${s.id}`, label: `servis "${s.title}"` })}
+                                                            className="text-primary hover:underline"
+                                                        >
+                                                            Hapus
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            )}
                                         </tr>
                                     ))}
                                 </tbody>
@@ -573,6 +619,24 @@ export default function OperationsIndex({
                                                 {f.analysis_diff_pct > 0 ? '+' : ''}
                                                 {formatNumber(f.analysis_diff_pct, 1)}%)
                                             </Badge>
+                                            {canManage && (
+                                                <div className="flex gap-2 text-xs font-medium">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setEditFuel({ ...f, trip_date: String(f.trip_date).slice(0, 10), explanation: f.explanation_note ?? '' })}
+                                                        className="text-primary hover:underline"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setConfirmDel({ url: `/operasional/bbm/${f.id}`, label: `log BBM ${f.vessel_name} (${f.route})` })}
+                                                        className="text-primary hover:underline"
+                                                    >
+                                                        Hapus
+                                                    </button>
+                                                </div>
+                                            )}
                                         </li>
                                     ))}
                                 </ul>
@@ -657,6 +721,385 @@ export default function OperationsIndex({
                     )}
                 </Card>
             )}
+            {/* Modal Edit Kondisi */}
+            {editCondition && (
+                <Modal show={!!editCondition} onClose={() => setEditCondition(null)} maxWidth="md">
+                    <form
+                        className="space-y-3 p-6"
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            router.put(
+                                `/operasional/kondisi/${editCondition.id}`,
+                                {
+                                    vessel_id: editCondition.vessel_id,
+                                    checked_at: editCondition.checked_at,
+                                    score: editCondition.score,
+                                    mesin: editCondition.checklist?.mesin ?? 'baik',
+                                    navigasi: editCondition.checklist?.navigasi ?? 'baik',
+                                    keselamatan: editCondition.checklist?.keselamatan ?? 'baik',
+                                    dek: editCondition.checklist?.dek ?? 'baik',
+                                    kamar: editCondition.checklist?.kamar ?? 'baik',
+                                    notes: editCondition.notes ?? '',
+                                },
+                                { preserveScroll: true, onSuccess: () => setEditCondition(null) },
+                            );
+                        }}
+                    >
+                        <h2 className="text-lg font-semibold text-ink">Edit Pemeriksaan Kondisi</h2>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="text-xs font-medium text-muted">Kapal</label>
+                                <select
+                                    value={editCondition.vessel_id}
+                                    onChange={(e) => setEditCondition({ ...editCondition, vessel_id: Number(e.target.value) })}
+                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                >
+                                    {(vessels ?? []).map((v: any) => (
+                                        <option key={v.id} value={v.id}>{v.vessel_name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-muted">Tanggal</label>
+                                <input
+                                    type="date"
+                                    value={editCondition.checked_at}
+                                    onChange={(e) => setEditCondition({ ...editCondition, checked_at: e.target.value })}
+                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                />
+                            </div>
+                            {['mesin', 'navigasi', 'keselamatan', 'dek', 'kamar'].map((k) => (
+                                <div key={k}>
+                                    <label className="text-xs font-medium capitalize text-muted">{k}</label>
+                                    <select
+                                        value={editCondition.checklist?.[k] ?? 'baik'}
+                                        onChange={(e) => setEditCondition({ ...editCondition, checklist: { ...editCondition.checklist, [k]: e.target.value } })}
+                                        className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                    >
+                                        <option value="baik">Baik</option>
+                                        <option value="cukup">Cukup</option>
+                                        <option value="perlu_perbaikan">Perlu Perbaikan</option>
+                                    </select>
+                                </div>
+                            ))}
+                            <div>
+                                <label className="text-xs font-medium text-muted">Skor (0–100)</label>
+                                <input
+                                    type="number"
+                                    value={editCondition.score}
+                                    onChange={(e) => setEditCondition({ ...editCondition, score: Number(e.target.value) })}
+                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                />
+                            </div>
+                            <div className="col-span-2">
+                                <label className="text-xs font-medium text-muted">Catatan</label>
+                                <textarea
+                                    value={editCondition.notes ?? ''}
+                                    onChange={(e) => setEditCondition({ ...editCondition, notes: e.target.value })}
+                                    rows={2}
+                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                />
+                            </div>
+                        </div>
+                        <div className="mt-4 flex justify-end gap-3">
+                            <SecondaryButton type="button" onClick={() => setEditCondition(null)}>Batal</SecondaryButton>
+                            <PrimaryButton>Simpan</PrimaryButton>
+                        </div>
+                    </form>
+                </Modal>
+            )}
+
+            {/* Modal Edit Servis */}
+            {editService && (
+                <Modal show={!!editService} onClose={() => setEditService(null)} maxWidth="lg">
+                    <form
+                        className="space-y-3 p-6"
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            router.put(
+                                `/operasional/servis/${editService.id}`,
+                                {
+                                    vessel_id: editService.vessel_id,
+                                    type: editService.type,
+                                    title: editService.title,
+                                    start_date: editService.start_date,
+                                    end_date: editService.end_date || null,
+                                    workshop: editService.workshop ?? '',
+                                    cost: editService.cost ?? 0,
+                                    status: editService.status,
+                                    notes: editService.notes ?? '',
+                                    items: (editService.items ?? []).map((i: any) => ({ item_id: i.item_id, qty: i.qty })),
+                                },
+                                { preserveScroll: true, onSuccess: () => setEditService(null) },
+                            );
+                        }}
+                    >
+                        <h2 className="text-lg font-semibold text-ink">Edit Catatan Servis</h2>
+                        <p className="text-xs text-muted">
+                            Bila status diubah ke/atau tetap "selesai", stok sparepart dipotong ulang secara otomatis (pemotongan lama dipulihkan).
+                        </p>
+                        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                            <div>
+                                <label className="text-xs font-medium text-muted">Kapal</label>
+                                <select
+                                    value={editService.vessel_id}
+                                    onChange={(e) => setEditService({ ...editService, vessel_id: Number(e.target.value) })}
+                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                >
+                                    {(vessels ?? []).map((v: any) => (
+                                        <option key={v.id} value={v.id}>{v.vessel_name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-muted">Jenis</label>
+                                <select
+                                    value={editService.type}
+                                    onChange={(e) => setEditService({ ...editService, type: e.target.value })}
+                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                >
+                                    {['rutin', 'urgent', 'drydock', 'pemeriksaan'].map((t) => <option key={t} value={t}>{t}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-muted">Status</label>
+                                <select
+                                    value={editService.status}
+                                    onChange={(e) => setEditService({ ...editService, status: e.target.value })}
+                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                >
+                                    {['rencana', 'proses', 'selesai'].map((t) => <option key={t} value={t}>{t}</option>)}
+                                </select>
+                            </div>
+                            <div className="col-span-2 md:col-span-3">
+                                <label className="text-xs font-medium text-muted">Judul Pekerjaan</label>
+                                <input
+                                    value={editService.title}
+                                    onChange={(e) => setEditService({ ...editService, title: e.target.value })}
+                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-muted">Mulai</label>
+                                <input
+                                    type="date"
+                                    value={editService.start_date}
+                                    onChange={(e) => setEditService({ ...editService, start_date: e.target.value })}
+                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-muted">Selesai</label>
+                                <input
+                                    type="date"
+                                    value={editService.end_date ?? ''}
+                                    onChange={(e) => setEditService({ ...editService, end_date: e.target.value })}
+                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-muted">Bengkel</label>
+                                <input
+                                    value={editService.workshop ?? ''}
+                                    onChange={(e) => setEditService({ ...editService, workshop: e.target.value })}
+                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-muted">Biaya (Rp)</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={editService.cost ?? 0}
+                                    onChange={(e) => setEditService({ ...editService, cost: e.target.value })}
+                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-muted">Sparepart dipakai</label>
+                            {(editService.items ?? []).map((it: any, idx: number) => (
+                                <div key={idx} className="mt-2 flex items-center gap-2 text-sm">
+                                    <span className="flex-1 text-ink">{it.item_name}</span>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={it.qty}
+                                        onChange={(e) => {
+                                            const next = [...editService.items];
+                                            next[idx] = { ...it, qty: e.target.value };
+                                            setEditService({ ...editService, items: next });
+                                        }}
+                                        className="w-24 rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setEditService({ ...editService, items: editService.items.filter((_: any, i: number) => i !== idx) })}
+                                        className="text-xs text-primary hover:underline"
+                                    >
+                                        Hapus
+                                    </button>
+                                </div>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setEditService({
+                                        ...editService,
+                                        items: [...(editService.items ?? []), { item_id: (items ?? [])[0]?.id, item_name: (items ?? [])[0]?.name, qty: 1 }],
+                                    })
+                                }
+                                className="mt-2 text-xs font-medium text-primary hover:underline"
+                            >
+                                + Tambah item dari inventory
+                            </button>
+                        </div>
+                        <div className="mt-4 flex justify-end gap-3">
+                            <SecondaryButton type="button" onClick={() => setEditService(null)}>Batal</SecondaryButton>
+                            <PrimaryButton>Simpan</PrimaryButton>
+                        </div>
+                    </form>
+                </Modal>
+            )}
+
+            {/* Modal Edit BBM */}
+            {editFuel && (
+                <Modal show={!!editFuel} onClose={() => setEditFuel(null)} maxWidth="md">
+                    <form
+                        className="space-y-3 p-6"
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            router.put(
+                                `/operasional/bbm/${editFuel.id}`,
+                                {
+                                    vessel_id: editFuel.vessel_id,
+                                    trip_date: editFuel.trip_date,
+                                    route: editFuel.route,
+                                    cargo_type: editFuel.cargo_type ?? '',
+                                    duration_hours: editFuel.duration_hours,
+                                    distance_nm: editFuel.distance_nm ?? '',
+                                    liters: editFuel.liters,
+                                    cost: editFuel.cost ?? 0,
+                                    explanation: editFuel.explanation ?? '',
+                                },
+                                { preserveScroll: true, onSuccess: () => setEditFuel(null) },
+                            );
+                        }}
+                    >
+                        <h2 className="text-lg font-semibold text-ink">Edit Log BBM</h2>
+                        <p className="text-xs text-muted">Analisis Normal/Waspada/Tidak Normal dihitung ulang otomatis saat disimpan.</p>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="text-xs font-medium text-muted">Kapal</label>
+                                <select
+                                    value={editFuel.vessel_id}
+                                    onChange={(e) => setEditFuel({ ...editFuel, vessel_id: Number(e.target.value) })}
+                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                >
+                                    {(vessels ?? []).map((v: any) => (
+                                        <option key={v.id} value={v.id}>{v.vessel_name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-muted">Tanggal</label>
+                                <input
+                                    type="date"
+                                    value={editFuel.trip_date}
+                                    onChange={(e) => setEditFuel({ ...editFuel, trip_date: e.target.value })}
+                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                />
+                            </div>
+                            <div className="col-span-2">
+                                <label className="text-xs font-medium text-muted">Rute</label>
+                                <input
+                                    value={editFuel.route}
+                                    onChange={(e) => setEditFuel({ ...editFuel, route: e.target.value })}
+                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-muted">Durasi (jam)</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={editFuel.duration_hours}
+                                    onChange={(e) => setEditFuel({ ...editFuel, duration_hours: e.target.value })}
+                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-muted">Liter</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={editFuel.liters}
+                                    onChange={(e) => setEditFuel({ ...editFuel, liters: e.target.value })}
+                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-muted">Jarak (mil)</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={editFuel.distance_nm ?? ''}
+                                    onChange={(e) => setEditFuel({ ...editFuel, distance_nm: e.target.value })}
+                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-muted">Biaya (Rp)</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={editFuel.cost ?? 0}
+                                    onChange={(e) => setEditFuel({ ...editFuel, cost: e.target.value })}
+                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                />
+                            </div>
+                            <div className="col-span-2">
+                                <label className="text-xs font-medium text-muted">Penjelasan (wajib bila Tidak Normal)</label>
+                                <textarea
+                                    value={editFuel.explanation ?? ''}
+                                    onChange={(e) => setEditFuel({ ...editFuel, explanation: e.target.value })}
+                                    rows={2}
+                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                />
+                            </div>
+                        </div>
+                        <div className="mt-4 flex justify-end gap-3">
+                            <SecondaryButton type="button" onClick={() => setEditFuel(null)}>Batal</SecondaryButton>
+                            <PrimaryButton>Simpan</PrimaryButton>
+                        </div>
+                    </form>
+                </Modal>
+            )}
+
+            {/* Konfirmasi Hapus (kondisi/servis/bbm) */}
+            <ConfirmModal
+                show={!!confirmDel}
+                title="Hapus data ini?"
+                message={
+                    confirmDel
+                        ? `Data "${confirmDel.label}" akan dihapus permanen. ${
+                              confirmDel.url.includes('/servis/')
+                                  ? 'Stok sparepart pada servis selesai akan dipulihkan otomatis.'
+                                  : 'Tindakan tercatat di audit trail.'
+                          }`
+                        : ''
+                }
+                processing={busy}
+                onClose={() => setConfirmDel(null)}
+                onConfirm={() => {
+                    if (! confirmDel) return;
+                    setBusy(true);
+                    router.delete(confirmDel.url, {
+                        preserveScroll: true,
+                        onFinish: () => { setBusy(false); setConfirmDel(null); },
+                    });
+                }}
+            />
         </AuthenticatedLayout>
     );
 }

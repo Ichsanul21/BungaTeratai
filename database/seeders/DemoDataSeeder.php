@@ -26,6 +26,7 @@ class DemoDataSeeder extends Seeder
         $this->seedDocumentCategories();
         $this->seedDocumentRequirements();
         $this->seedFinanceMaster();
+        $this->seedDocumentTemplates();
         $this->seedFleet();
         $this->seedDocuments();
         $this->seedInventory();
@@ -36,6 +37,11 @@ class DemoDataSeeder extends Seeder
         $this->seedOperationalHistory();
         $this->seedFinanceHistory();
         $this->seedPayrollHistory();
+        $this->seedFuelLogs();
+        $this->extendOperationalHistory();
+        $this->seedAssetDepreciations();
+        $this->seedTaxPayments();
+        $this->seedDocumentApprovals();
         app(\App\Services\ReminderService::class)->sync();
     }
 
@@ -1327,6 +1333,321 @@ class DemoDataSeeder extends Seeder
             }
 
             \App\Models\CashAccount::where('name', 'Bank Mandiri Payroll')->decrement('balance', $netto);
+        }
+    }
+
+    /** ~70 log trip BBM (tug & kapal penumpang) — 6 bulan, ~15% tidak normal. */
+    private function seedFuelLogs(): void
+    {
+        if (\App\Models\FuelLog::count() > 0) {
+            return;
+        }
+
+        $journal = app(\App\Services\JournalService::class);
+        $analyzer = app(\App\Services\FuelAnalysisService::class);
+        $routes = [
+            ['Samarinda → Bontang', 6], ['Samarinda → Balikpapan', 9],
+            ['Samarinda → Sangatta', 14], ['Samarinda → Marunda', 18],
+            ['Samarinda → Taboneo', 22], ['Samarinda → Tenggarong', 4],
+            ['Bontang → Samarinda', 6], ['Samarinda → Tanjung Redeb', 16],
+        ];
+        $passengerRoutes = [
+            ['Samarinda → Bontang', 8], ['Samarinda → Tanjung Redeb', 15],
+            ['Samarinda → Tenggarong', 3.5], ['Samarinda → Sebatik', 20],
+        ];
+
+        $vessels = \App\Models\Vessel::whereNotNull('fuel_baseline_lph')
+            ->where('vessel_type', '!=', 'tongkang')
+            ->get();
+
+        $i = 0;
+        foreach ($vessels as $vessel) {
+            $trips = $vessel->vessel_type === 'kapal_penumpang' ? 8 : 7;
+            for ($t = 0; $t < $trips; $t++) {
+                $i++;
+                $isPassenger = $vessel->vessel_type === 'kapal_penumpang';
+                [$route, $hours] = ($isPassenger ? $passengerRoutes : $routes)[mt_rand(0, count($isPassenger ? $passengerRoutes : $routes) - 1)];
+                $hours = $hours + (mt_rand(0, 6) * 0.5);
+
+                $baseline = (float) $vessel->fuel_baseline_lph;
+                $anomaly = $i % 7 === 0; // ~15% tidak normal
+                $factor = $anomaly ? [1.28, 1.42][mt_rand(0, 1)] : [0.92, 0.97, 1.0, 1.05, 1.12][mt_rand(0, 4)];
+                $liters = round($baseline * $factor * $hours, 1);
+                $tripDate = now()->subDays(mt_rand(1, 175));
+
+                $analysis = $analyzer->analyze($liters, $hours, $baseline);
+                if ($analysis['status'] === 'tidak_normal' && ! $anomaly) {
+                    $liters = round($baseline * 1.05 * $hours, 1);
+                    $analysis = $analyzer->analyze($liters, $hours, $baseline);
+                }
+
+                \App\Models\FuelLog::create([
+                    'vessel_id' => $vessel->id,
+                    'voyage_id' => null,
+                    'trip_date' => $tripDate->toDateString(),
+                    'route' => $route,
+                    'cargo_type' => $isPassenger ? null : ['batu_bara', 'semen', 'sawit', 'curah_lain'][mt_rand(0, 3)],
+                    'duration_hours' => $hours,
+                    'distance_nm' => round($hours * 7.5, 1),
+                    'liters' => $liters,
+                    'cost' => round($liters * 12500),
+                    'baseline_lph_snapshot' => $baseline,
+                    'analysis_status' => $analysis['status'],
+                    'analysis_diff_pct' => $analysis['diff_pct'],
+                    'explanation_note' => $anomaly
+                        ? ['Arus deras sungai + muatan penuh, AC kapal penumpang menyala terus.', 'Kemacetan jalur pemandu di muara & menunggu pasang surut.'][mt_rand(0, 1)]
+                        : null,
+                    'created_by' => User::where('email', 'ops@bungateratai.id')->value('id'),
+                ]);
+            }
+        }
+    }
+
+    /** Kondisi + servis utk tongkang, service_items dgn pemakaian stok utk semua servis. */
+    private function extendOperationalHistory(): void
+    {
+        $ops = User::where('email', 'ops@bungateratai.id')->value('id');
+
+        // Kondisi tongkang (deck/tambat) — kapal yang belum punya kondisi
+        foreach (\App\Models\Vessel::whereDoesntHave('conditions')->get() as $vessel) {
+            foreach (range(1, 3) as $k) {
+                $score = mt_rand(70, 96);
+                \App\Models\VesselCondition::create([
+                    'vessel_id' => $vessel->id,
+                    'checked_at' => now()->subDays($k * 15),
+                    'checklist' => [
+                        'mesin' => $vessel->vessel_type === 'tongkang' ? 'tidak berlaku' : ($score > 80 ? 'baik' : 'cukup'),
+                        'navigasi' => 'baik',
+                        'keselamatan' => $score > 75 ? 'baik' : 'cukup',
+                        'dek' => $score > 85 ? 'baik' : 'cukup',
+                        'kamar' => 'cukup',
+                    ],
+                    'score' => $score,
+                    'notes' => $score < 78 ? 'Perlu pengecekan tambang & fender.' : null,
+                    'checked_by' => $ops,
+                ]);
+            }
+        }
+
+        // Servis tongkang (drydock perawatan lambung)
+        foreach (\App\Models\Vessel::where('vessel_type', 'tongkang')->whereDoesntHave('services')->get() as $vessel) {
+            \App\Models\Service::create([
+                'vessel_id' => $vessel->id,
+                'type' => 'drydock',
+                'title' => 'Drydock & perawatan lambung tongkang',
+                'start_date' => now()->subMonths(mt_rand(2, 5))->toDateString(),
+                'end_date' => now()->subMonths(mt_rand(2, 5))->addDays(5)->toDateString(),
+                'workshop' => 'Galangan Kapal Teluk Bajo',
+                'cost' => mt_rand(25, 95) * 1000000,
+                'status' => 'selesai',
+                'notes' => 'DEMO DATA',
+            ]);
+        }
+
+        // Sambungkan servis dgn sparepart (sekali saja)
+        if (\App\Models\ServiceItem::count() > 0) {
+            return;
+        }
+
+        $items = \App\Models\InventoryItem::get();
+        foreach (\App\Models\Service::where('status', 'selesai')->get() as $service) {
+            $picked = $items->random(mt_rand(1, 3));
+            foreach ($picked as $item) {
+                $qty = max(1, (int) round(mt_rand(1, 4)));
+                \App\Models\ServiceItem::create([
+                    'service_id' => $service->id,
+                    'item_id' => $item->id,
+                    'qty' => $qty,
+                ]);
+                // Potong stok kantor + catat mutasi
+                $balance = \App\Models\InventoryBalance::where('item_id', $item->id)
+                    ->where('location_type', 'kantor')->first();
+                if ($balance) {
+                    $balance->decrement('qty', min((float) $balance->qty, $qty));
+                }
+                \App\Models\InventoryMovement::create([
+                    'item_id' => $item->id,
+                    'type' => 'keluar',
+                    'qty' => $qty,
+                    'from_location' => 'kantor',
+                    'ref_type' => 'service',
+                    'ref_id' => $service->id,
+                    'movement_date' => $service->end_date ?? now()->toDateString(),
+                    'user_id' => $ops,
+                    'notes' => "Pemakaian utk servis: {$service->title}",
+                ]);
+            }
+        }
+
+        // Beberapa servis terkait perjalanan (Project P&L)
+        $voyages = \App\Models\Voyage::whereNotIn('voyage_status', ['draft', 'cancelled'])->get();
+        foreach ($voyages->take(4) as $voyage) {
+            $service = \App\Models\Service::where('vessel_id', $voyage->vessel_id)
+                ->whereNull('voyage_id')->inRandomOrder()->first();
+            $service?->update(['voyage_id' => $voyage->id]);
+        }
+    }
+
+    /** Penyusutan aset 3 bulan + jurnal nyata (ganti angka akumulasi hasil seed awal). */
+    private function seedAssetDepreciations(): void
+    {
+        if (\App\Models\AssetDepreciation::count() > 0) {
+            return;
+        }
+
+        $journal = app(\App\Services\JournalService::class);
+
+        foreach (\App\Models\Asset::where('status', 'aktif')->get() as $asset) {
+            $asset->update(['accumulated_depreciation' => 0]);
+
+            $monthly = round(((float) $asset->acquisition_cost - (float) $asset->salvage_value) / max(1, $asset->useful_life_months), 2);
+            foreach (range(3, 1) as $offset) {
+                $periodDate = now()->subMonths($offset);
+                $period = $periodDate->format('Y-m');
+
+                $entry = $journal->post(
+                    [
+                        ['account' => '5500', 'debit' => $monthly],
+                        ['account' => '1399', 'credit' => $monthly],
+                    ],
+                    "Penyusutan {$asset->name} ({$period})",
+                    'depreciation',
+                    $asset->id,
+                    $periodDate->copy()->startOfMonth()->addDays(28)->toDateString(),
+                );
+
+                \App\Models\AssetDepreciation::create([
+                    'asset_id' => $asset->id,
+                    'period' => $period,
+                    'amount' => $monthly,
+                    'journal_entry_id' => $entry->id,
+                ]);
+            }
+
+            $asset->increment('accumulated_depreciation', $monthly * 3);
+        }
+    }
+
+    /** Setor pajak (yang berstatus 'setor') → kas keluar + jurnal 2101↔kas. */
+    private function seedTaxPayments(): void
+    {
+        if (\App\Models\CashTransaction::where('category', 'pajak')->count() > 0) {
+            return;
+        }
+
+        $journal = app(\App\Services\JournalService::class);
+        $cash = \App\Models\CashAccount::where('type', 'bank')->first()
+            ?? \App\Models\CashAccount::first();
+
+        foreach (\App\Models\WithholdingTax::where('status', 'setor')->get() as $tax) {
+            if (! $tax->paid_at) {
+                continue;
+            }
+            $cash->decrement('balance', $tax->tax_amount);
+            $txn = \App\Models\CashTransaction::create([
+                'cash_account_id' => $cash->id,
+                'direction' => 'out',
+                'amount' => $tax->tax_amount,
+                'date' => $tax->paid_at,
+                'category' => 'pajak',
+                'reference' => strtoupper($tax->type).' '.($tax->period ?? ''),
+                'created_by' => User::where('email', 'finance@bungateratai.id')->value('id'),
+            ]);
+            $entry = $journal->post(
+                [
+                    ['account' => '2101', 'debit' => $tax->tax_amount],
+                    ['account' => '1002', 'credit' => $tax->tax_amount],
+                ],
+                'Setor pajak '.strtoupper($tax->type).' periode '.($tax->period ?? '-'),
+                'tax',
+                $tax->id,
+                $tax->paid_at,
+            );
+            $txn->update(['journal_entry_id' => $entry->id]);
+        }
+    }
+
+    /** Approval internal utk sebagian dokumen verified (histori Approvals). */
+    private function seedDocumentApprovals(): void
+    {
+        if (\App\Models\Approval::where('approvable_type', 'document')->count() > 0) {
+            return;
+        }
+
+        $supervisor = User::where('email', 'supervisor@bungateratai.id')->first()
+            ?? User::first();
+
+        $docs = \App\Models\Document::where('verification_status', 'verified')
+            ->inRandomOrder()->limit(18)->get();
+
+        foreach ($docs as $doc) {
+            \App\Models\Approval::create([
+                'approvable_type' => 'document',
+                'approvable_id' => $doc->id,
+                'approver_id' => $supervisor->id,
+                'approval_scope' => 'internal',
+                'approval_status' => 'approved',
+                'comments' => ['Berkas lengkap.', 'Nomor & masa berlaku sesuai.', 'Verifikasi lulus — DEMO DATA.'][mt_rand(0, 2)],
+                'decision_timestamp' => $doc->updated_at ?? now()->subDays(mt_rand(1, 60)),
+            ]);
+        }
+
+        // Sedikit variasi: dokumen dalam revisi
+        $revisionDocs = \App\Models\Document::where('verification_status', 'revision_required')
+            ->inRandomOrder()->limit(4)->get();
+        foreach ($revisionDocs as $doc) {
+            \App\Models\Approval::create([
+                'approvable_type' => 'document',
+                'approvable_id' => $doc->id,
+                'approver_id' => $supervisor->id,
+                'approval_scope' => 'internal',
+                'approval_status' => 'revision_required',
+                'comments' => 'Nomor dokumen tidak terbaca jelas pada scan — unggah ulang.',
+                'decision_timestamp' => $doc->updated_at ?? now()->subDays(mt_rand(1, 20)),
+            ]);
+        }
+    }
+
+    /** 10 master template dokumen terbit + arsip (pola nomor sesuai materi klien). */
+    private function seedDocumentTemplates(): void
+    {
+        if (\App\Models\DocumentTemplate::count() > 0) {
+            return;
+        }
+
+        $templates = [
+            ['SPAL', 'Surat Perjanjian Angkutan Laut', 'kontrak', 'spal', '{seq_raw}/{kode_penyewa}/FC/{kode_kapal}/{bulan_romawi}/{tahun}', 'ARS/SPAL/{tahun}/{seq}', false],
+            ['INV_CHARTER', 'Invoice Charter (DP/Pelunasan)', 'invoice', 'invoice_charter', '{seq_raw}/INV-CHTR/{bulan_romawi}/{tahun}', 'ARS/INV/{tahun}/{seq}', false],
+            ['KEAGENAN', 'Surat Penunjukan Keagenan', 'surat', 'keagenan', '{seq_raw}/{kode_penyewa}/AG/{bulan_romawi}/{tahun}', 'ARS/AGT/{tahun}/{seq}', false],
+            ['PO', 'Purchase Order', 'po', 'po', '{seq}/PO-BT/TB/{bulan_romawi}/{tahun}', 'ARS/PO/{tahun}/{seq}', false],
+            ['LAPORAN_EXPIRY', 'Monthly Document Expiry Report', 'laporan', 'monthly_report', 'LAP-EXP/{bulan_romawi}/{tahun}', null, false],
+            ['LAPORAN_ENDORSEMENT', 'Monthly Document Endorsement Report', 'laporan', 'monthly_report', 'LAP-END/{bulan_romawi}/{tahun}', null, false],
+            ['MASTER_TRACKER', 'TB BG Master Tracker Export', 'laporan', 'monthly_report', 'TRK/{bulan_romawi}/{tahun}', null, false],
+            ['REKAP_NOTA', 'Rekap Nota', 'laporan', 'rekap_nota', 'RN/{bulan_romawi}/{tahun}', null, false],
+            ['OUTSTANDING', 'Rencana Pembayaran Outstanding', 'laporan', 'outstanding', 'OUT/{bulan_romawi}/{tahun}', null, false],
+            ['SURAT_UMUM', 'Surat Umum (Kop PT Bunga Teratai)', 'surat', 'generic_letter', '{seq}/BT/{bulan_romawi}/{tahun}', 'ARS/SU/{tahun}/{seq}', true],
+        ];
+
+        foreach ($templates as [$code, $name, $kategori, $layout, $pattern, $archive, $generic]) {
+            \App\Models\DocumentTemplate::create([
+                'code' => $code,
+                'name' => $name,
+                'kategori' => $kategori,
+                'layout_type' => $layout,
+                'numbering_pattern' => $pattern,
+                'archive_pattern' => $archive,
+                'seq_scope' => 'tahunan',
+                'archive_seq_last' => 0,
+                'enabled' => true,
+                'is_generic_letter' => $generic,
+                'defaults' => [
+                    'bank' => 'Bank BRI Cab. Samarinda 1 — a/c 0082 01000 409 309 a.n. PT Bunga Teratai',
+                    'penandatangan' => 'H. Syarif',
+                    'jabatan_ttd' => 'Direktur',
+                    'ppn_rate' => 11,
+                    'default_pph_rate' => 1.2,
+                ],
+            ]);
         }
     }
 }

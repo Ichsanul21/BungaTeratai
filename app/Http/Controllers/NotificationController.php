@@ -22,6 +22,8 @@ class NotificationController extends Controller
             $query->whereIn('notification_type', [
                 'dokumen_mendekati_kedaluwarsa',
                 'dokumen_kedaluwarsa',
+                'endorsement_jatuh_tempo',
+                'endorsement_kedaluwarsa',
             ]);
         } elseif ($filter === 'workflow') {
             $query->whereNotIn('notification_type', [
@@ -54,10 +56,10 @@ class NotificationController extends Controller
                 'semua' => Notification::where('recipient_id', auth()->id())->count(),
                 'unread' => Notification::where('recipient_id', auth()->id())->where('read_status', false)->count(),
                 'reminder' => Notification::where('recipient_id', auth()->id())
-                    ->whereIn('notification_type', ['dokumen_mendekati_kedaluwarsa', 'dokumen_kedaluwarsa'])
+                    ->whereIn('notification_type', ['dokumen_mendekati_kedaluwarsa', 'dokumen_kedaluwarsa', 'endorsement_jatuh_tempo', 'endorsement_kedaluwarsa'])
                     ->count(),
             ],
-            'due' => $reminder->dueDocuments()->take(15)->values(),
+            'due' => $reminder->dueDocuments()->concat($reminder->dueEndorsements())->sortBy('days')->take(15)->values(),
         ]);
     }
 
@@ -82,5 +84,22 @@ class NotificationController extends Controller
         $this->markAllRead();
 
         return back()->with('success', 'Semua notifikasi ditandai sudah dibaca.');
+    }
+
+    public function destroy(Notification $notification)
+    {
+        abort_unless($notification->recipient_id === auth()->id(), 403);
+        $notification->delete();
+
+        return back()->with('success', 'Notifikasi dihapus.');
+    }
+
+    public function deleteRead()
+    {
+        Notification::where('recipient_id', auth()->id())
+            ->where('read_status', true)
+            ->delete();
+
+        return back()->with('success', 'Notifikasi yang sudah dibaca dihapus.');
     }
 }
