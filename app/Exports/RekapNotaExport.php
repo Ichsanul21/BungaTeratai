@@ -4,6 +4,7 @@ namespace App\Exports;
 
 use App\Models\Bill;
 use App\Models\Supplier;
+use Maatwebsite\Excel\Concerns\Export;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -14,7 +15,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 /**
  * Rekap Nota — format Excel klien (per toko/periode).
  */
-class RekapNotaExport implements FromCollection, WithHeadings, WithMapping, WithStyles, ShouldAutoSize
+class RekapNotaExport implements Export, FromCollection, WithHeadings, WithMapping, WithStyles, ShouldAutoSize
 {
     public function __construct(private string $from, private string $to) {}
 
@@ -23,7 +24,7 @@ class RekapNotaExport implements FromCollection, WithHeadings, WithMapping, With
         return ['No', 'Toko', 'Ref PO / Kode', 'Tanggal Nota', 'Jumlah (Rp)', 'Rencana Bayar', 'Status'];
     }
 
-    public function collection()
+    public function collection(): \Illuminate\Support\Enumerable
     {
         return Bill::with('supplier')
             ->whereBetween('issue_date', [$this->from, $this->to])

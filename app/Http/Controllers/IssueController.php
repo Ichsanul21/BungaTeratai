@@ -33,21 +33,21 @@ class IssueController extends Controller
 
         $result = $this->generator->generateSpal($voyage);
 
-        return Storage::disk('local')->download($result['path'], 'SPAL '.$voyage->spal_number.'.pdf');
+        return Storage::disk('local')->download($result['path'], preg_replace('/[^A-Za-z0-9._-]+/', '_', 'SPAL '.($voyage->spal_number ?? 'Voyage')).'.pdf');
     }
 
     public function agency(AgencyAppointment $agency)
     {
         $result = $this->generator->generateAgency($agency);
 
-        return Storage::disk('local')->download($result['path'], 'Keagenan '.($agency->letter_no ?? '').'.pdf');
+        return Storage::disk('local')->download($result['path'], preg_replace('/[^A-Za-z0-9._-]+/', '_', 'Keagenan '.($agency->letter_no ?? '')).'.pdf');
     }
 
     public function po(PurchaseOrder $po)
     {
         $result = $this->generator->generatePo($po);
 
-        return Storage::disk('local')->download($result['path'], 'PO '.$po->po_number.'.pdf');
+        return Storage::disk('local')->download($result['path'], preg_replace('/[^A-Za-z0-9._-]+/', '_', 'PO '.$po->po_number).'.pdf');
     }
 
     public function charterInvoice(Request $request, Invoice $invoice)
@@ -65,7 +65,7 @@ class IssueController extends Controller
 
         $result = $this->generator->generateCharterInvoice($invoice, $kind);
 
-        return Storage::disk('local')->download($result['path'], 'Invoice Charter '.$invoice->number.'.pdf');
+        return Storage::disk('local')->download($result['path'], preg_replace('/[^A-Za-z0-9._-]+/', '_', 'Invoice Charter '.$invoice->number).'.pdf');
     }
 
     public function financeInvoice(Invoice $invoice)
@@ -74,7 +74,7 @@ class IssueController extends Controller
 
         $path = $this->generator->generateFinanceInvoice($invoice);
 
-        return Storage::disk('local')->download($path, 'Invoice '.$invoice->number.'.pdf');
+        return Storage::disk('local')->download($path, preg_replace('/[^A-Za-z0-9._-]+/', '_', 'Invoice '.$invoice->number).'.pdf');
     }
 
     public function storeGenericLetter(Request $request)

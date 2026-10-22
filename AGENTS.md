@@ -2,7 +2,7 @@
 
 ## Apa ini
 
-**PortWind Intelligence** — prototype ERP manajemen dokumen & operasi pelayaran (PT Bunga Teratai, Samarinda). Status: **Fase 0–8 SELESAI** (aplikasi penuh, seed demo, 53 test hijau). **Fase A–E BELUM dieksekusi** (lihat bawah) — inilah pekerjaan berikutnya.
+**PortWind Intelligence** — prototype ERP manajemen dokumen & operasi pelayaran (PT Bunga Teratai, Samarinda). Status: **Fase 0–E SELESAI** (aplikasi penuh, CRUD lengkap, generator PDF/Excel BahanBT, seed data klien armada Syukur + SPAL 104, **63 test / 311 assertions hijau**).
 
 Stack: **Laravel 13 + Inertia (React 19 + TypeScript) + SQLite + Tailwind + Recharts + Leaflet + lucide-react**. Desktop-first, UI **Bahasa Indonesia**, timezone **Asia/Makassar (WITA)**, primer `#C41212`, sidebar `#172B3A`.
 
@@ -35,14 +35,15 @@ Aturan spek yang gampang dilanggar (hafalkan):
 php artisan serve                    # server dev (port 8000)
 npm run dev                          # Vite dev
 npm run build                        # VERIFIKASI wajib sebelum selesai task
-php artisan test                     # 53 test PortWindTest + Breeze — wajib lulus semua
-php artisan migrate:fresh --seed     # reset + seed demo (±16 detik, wajib sukses)
+php artisan test                     # 63 test PortWindTest + Breeze — wajib lulus semua
+php artisan migrate:fresh --seed     # reset + seed data klien (±16 detik, wajib sukses)
 ```
 
 - Verifikasi akhir berurutan: `php artisan test` → `php artisan migrate:fresh --seed` → `npm run build` → uji manual journey di `docs/08-user-journeys.md`.
 - SQLite: `database/database.sqlite`; `*.sqlite` di-.gitignore (di-seed ulang, jangan commit).
 - Environment: PHP 8.3.30, Composer 2.9.4, Node 22.22.0, npm 11.14.1 — tidak ada pnpm/yarn.
-- Library yang AKAN ditambahkan (Fase B/C): `barryvdh/laravel-dompdf`, `maatwebsite/excel`.
+- Library PDF/Excel: **`barryvdh/laravel-dompdf`** (generator SPAL/invoice/keagenan/PO/surat umum) + **`maatwebsite/excel`** (Master Tracker, Monthly Report, Rekap NotA, Outstanding). Export class wajib `implements Export` (marker interface maatwebsite v4). Nama file download wajib **tanpa `/`** (sanitasi `preg_replace('/[^A-Za-z0-9._-]+/', '_', ...)`).
+- Generator: `app/Services/Generators/DocumentGeneratorService` + blade di `resources/views/pdf/`; setiap generate **otomatis terarsip** (documents source_type=terbitan + nomor arsip ARS/...). Nomor terbit: `NumberingService::next(template, replacements, 'terbit'|'arsip')` — counter per template (PO lanjut #363, SPAL #105, Keagenan #045 — jangan direset).
 
 ## Konvensi repo
 
@@ -63,17 +64,17 @@ php artisan migrate:fresh --seed     # reset + seed demo (±16 detik, wajib suks
 - `app/Policies/` — Vessel, Document, Voyage + Gate: `menu.*`, `operations.manage`, `finance.manage`, `verify-documents`
 - `resources/js/Pages/` — 13 menu sidebar; tab = query param `?tab=` (server-driven)
 - `database/seeders/DemoDataSeeder.php` — satu pintu seed: 12 kapal (8 siap/3 tindak lanjut/1 ditinjau), 15 voyage, 251 dokumen (5 expiring, 2 expired), 42 invoice, 25 bill (16 assist), payroll 6 bulan posted, 20 ABK, 15 karyawan, 20 item inventory, 116+ jurnal
-- **Test: `tests/Feature/PortWindTest.php` (53 test / 244 assertions)** — smoke 13 menu + semua tab, RBAC 7 role, journey A–J, angka target spek
+- **Test: `tests/Feature/PortWindTest.php` (63 test / 311 assertions)** — smoke 13 menu + semua tab, RBAC 7 role, journey A–J, angka target spek
 
-## Fase A–E (BELUM dieksekusi — urutan kerja berikutnya)
+## Fase A–E (SELESAI — riwayat; semua sudah terimplementasi & ter-push)
 
-Detail per fase & exit criteria: `docs/10-implementation-roadmap.md`.
+Rincian per fase: `docs/10-implementation-roadmap.md`.
 
-- **Fase A — CRUD lengkap semua modul + seed interkoneksi**: edit/hapus muncul di semua tabel (kolom Aksi + modal; armada/dokumen/voyage/kondisi/servis/BBM/inventory/batch/mutasi( reversal stok)/ABK/sertifikat/penempatan/karyawan/invoice(unpaid)/bayar(reversal jurnal)/bill/kas/jurnal manual(rewrite)/aset/jadwal bayar/akun/COA/payroll entry(draft)/customer/supplier/katalog/kategori/pengguna/notifikasi). Seeder: tongkang punya riwayat voyage (relasi tug↔tongkang), ~70 fuel_logs, inventory_movements + service_items, posisi+ kondisi semua kapal, asset_depreciations + jurnal, setor pajak berjurnal, approval dokumen.
-- **Fase B — Fitur BahanBT**: template dokumen A1–K1 (TB vs BG, dukung Permanent) + **endorsement cycle** (docs + reminder terpisah + laporan bulanan Excel persis Master Tracker) · **Charter SPAL** (voyage tipe charter: SI intake → kontrak → invoice DP/pelunasan PPh 1.2% → keagenan muat/bongkar → DSR → closing; **Berkas Perjalanan** = agregasi satu layar) · **PO penuh** (purchase_orders+po_items, cetak PO, Buat Bill dari PO) · Outstanding/Rekap Nota + no cek/BG · Arsip SPT Unifikasi · **master document_templates CRUD** (pola nomor konfigurabel, surat umum tanpa programmer) + register dokumen terbit (tab Document Center).
-- **Fase C — Engine generator dokumen**: `barryvdh/laravel-dompdf` + `maatwebsite/excel`; 10 output (PDF: SPAL 2 halaman GENCON, invoice DP/pelunasan, keagenan, PO; Excel: Master Tracker TugBoat/Barge, Monthly Expiry & Endorsement Report, Rekap Nota, Outstanding; PDF invoice keuangan berkop); autosimpan ke arsip (documents + version); tombol Terbitkan & Cetak kontekstual.
-- **Fase D — Seed data klien**: armada TB/BG Syukur menggantikan fiktif Samudra/Nusantara (Prince Soya & Etam Bahari tetap); dokumen tracker A1–K1 nyata (expiry serial Excel + endorsement; sebagian Permanent); SPAL 104 lengkap (TB Syukur 23–BG Syukur 03, PT Sinar Laut Maritim, silica sand 7.500 MT × Rp125.000, invoice 197 DP & 211 pelunasan, 2 keagenan, PPh 1.2%); ~8 PO contoh; rencana pembayaran outstanding (Delta Artha Nusa dgn no cek/BG, Anugerah Lubrindo Raya dgn PO ref); arsip SPT 6 bulan; 10 template terbit dgn counter menyambung (lanjut #105/#361).
-- **Fase E — Verifikasi & push**: ±18 test baru (endorsement reminder, SPAL workflow, PO→Bill, reversal bayar, seed Syukur, nomor urut, arsip terbit) → `php artisan test` → `migrate:fresh --seed` → `npm run build` → commit tematik (`feat: CRUD lengkap…`, `feat: arsip terpadu + penerbitan dokumen (BahanBT)`, `feat: generator PDF/Excel`, `chore: seed data klien`) → **push** ke main.
+- **Fase A** — CRUD edit/hapus semua modul (kolom Aksi + modal + ConfirmModal); seed interkoneksi (fuel_logs, movements, service_items, asset_depreciations + jurnal, setor pajak, approval dokumen, tongkang punya riwayat voyage); aturan Aman: invoice/bill terbayar terkunci, hapus pembayaran = reversal jurnal+kas, hanya jurnal manual yang diedit.
+- **Fase B** — Arsip terpadu (owner wajib kapal/umum, inheritance voyage→kapal & PO→unit), sub-tab Document Center (Arsip/Terbitan/Unggahan/Expiring+Endorsement), void dokumen terbit, document_templates + NumberingService, document_relations/links, template A1–K1 + endorsement (reminder terpisah), Charter SPAL (voyage fields + Berkas Perjalanan stepper + DSR wajib utk pelunasan + Keagenan CRUD), Modul PO (penerimaan stok → Bill dari PO), Outstanding + no cek/BG, tab Template & Nomor Surat.
+- **Fase C** — Generator: 6 PDF (SPAL 2 hal GENCON, invoice charter DP/pelunasan PPh 1.2%, keagenan, PO, invoice keuangan, surat umum) + 4 Excel (Master Tracker TugBoat/Barge, Monthly Expiry & Endorsement, Rekap NotA, Outstanding) — endpoint `/cetak/*` & `/laporan/export/*`, autosave ke arsip.
+- **Fase D** — Seed klien: 8 TB/BG Syukur + 4 kapal lain; dokumen tracker A1–K1 (expiry serial Excel + 15 endorsement); SPAL 104 lengkap (invoice 197/211 FP+PPh1.2%, keagenan 040/044, DSR 7.500 MT); 8 PO + 3 bill + bayar cek/BG; arsip SPT 6 bulan.
+- **Fase E** — Test BahanBT (nomor urut, issue PDF+void, surat umum, export Excel, endorsement reminder, DSR validation, seed Syukur) → **63 test / 311 assertions lulus** → `migrate:fresh --seed` → `npm run build` → push.
 
 ## Jebakan yang sudah ditemukan (JANGAN diulangi)
 

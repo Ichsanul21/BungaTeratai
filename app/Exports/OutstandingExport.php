@@ -4,6 +4,7 @@ namespace App\Exports;
 
 use App\Models\Bill;
 use App\Models\PaymentSchedule;
+use Maatwebsite\Excel\Concerns\Export;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -15,9 +16,9 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * Rencana Pembayaran Outstanding — kolom persis Excel OUTSTANDING:
  * No | Toko | Nomor Cek/BG | Jumlah | Rencana pembayaran
  */
-class OutstandingExport implements FromCollection, WithHeadings, WithMapping, WithStyles, ShouldAutoSize
+class OutstandingExport implements Export, FromCollection, WithHeadings, WithMapping, WithStyles, ShouldAutoSize
 {
-    public function collection()
+    public function collection(): \Illuminate\Support\Enumerable
     {
         return PaymentSchedule::where('status', '!=', 'lunas')
             ->orderBy('due_date')

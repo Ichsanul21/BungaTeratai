@@ -3,13 +3,14 @@
 namespace App\Exports;
 
 use App\Models\Vessel;
+use Maatwebsite\Excel\Concerns\Export;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 use Maatwebsite\Excel\Concerns\WithTitle;
 
-class MasterTrackerExport implements WithMultipleSheets, ShouldAutoSize
+class MasterTrackerExport implements Export, WithMultipleSheets, ShouldAutoSize
 {
     public function sheets(): array
     {
@@ -20,7 +21,7 @@ class MasterTrackerExport implements WithMultipleSheets, ShouldAutoSize
     }
 }
 
-class MasterTrackerSheet implements FromCollection, WithHeadings, WithTitle, ShouldAutoSize
+class MasterTrackerSheet implements Export, FromCollection, WithHeadings, WithTitle, ShouldAutoSize
 {
     public function __construct(private string $title, private string $type) {}
 
@@ -45,7 +46,7 @@ class MasterTrackerSheet implements FromCollection, WithHeadings, WithTitle, Sho
         ];
     }
 
-    public function collection()
+    public function collection(): \Illuminate\Support\Enumerable
     {
         $vessels = Vessel::where('vessel_type', $this->type)
             ->orderBy('vessel_name')

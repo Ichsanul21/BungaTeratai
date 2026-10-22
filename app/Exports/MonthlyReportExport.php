@@ -4,6 +4,7 @@ namespace App\Exports;
 
 use App\Models\Document;
 use Carbon\Carbon;
+use Maatwebsite\Excel\Concerns\Export;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -13,7 +14,7 @@ use Maatwebsite\Excel\Concerns\WithTitle;
 /**
  * Monthly Document Expiry & Endorsement Report (replika Master Tracker).
  */
-class MonthlyReportExport implements WithMultipleSheets, ShouldAutoSize
+class MonthlyReportExport implements Export, WithMultipleSheets, ShouldAutoSize
 {
     public function __construct(private string $period) {} // YYYY-MM
 
@@ -26,7 +27,7 @@ class MonthlyReportExport implements WithMultipleSheets, ShouldAutoSize
     }
 }
 
-class MonthlyReportSheet implements FromCollection, WithHeadings, WithTitle, ShouldAutoSize
+class MonthlyReportSheet implements Export, FromCollection, WithHeadings, WithTitle, ShouldAutoSize
 {
     public function __construct(private string $title, private string $kind, private string $period) {}
 
@@ -40,13 +41,12 @@ class MonthlyReportSheet implements FromCollection, WithHeadings, WithTitle, Sho
         return ['Nama Kapal', 'Document', 'Due Date', 'Status', 'Keterangan'];
     }
 
-    public function collection()
+    public function collection(): \Illuminate\Support\Enumerable
     {
         $periodStart = Carbon::parse($this->period.'-01');
         $periodEnd = $periodStart->copy()->endOfMonth();
 
-        $docs = Document::with('owner')
-            ->where('is_archived', false)
+        $docs = Document::where('is_archived', false)
             ->where(function ($q) use ($periodStart, $periodEnd) {
                 if ($this->kind === 'expiry') {
                     $q->where('has_expiry', true)

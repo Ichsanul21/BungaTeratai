@@ -761,7 +761,7 @@ class VoyageController extends Controller
         $before = $voyage->only(['dsr_mt', 'dsr_date', 'charter_stage']);
         $voyage->update($data);
 
-        $this->recordEvent($voyage, \App\Enums\VoyageEventType::StatusChanged, 'Tahap charter diperbarui: '.$data['charter_stage']);
+        $this->workflow->recordEvent($voyage, \App\Enums\VoyageEventType::StatusChanged, 'Tahap charter diperbarui: '.$data['charter_stage']);
 
         AuditService::log('charter_updated', 'voyage', $voyage->id, $before, $data, 'Detail charter SPAL diperbarui');
 

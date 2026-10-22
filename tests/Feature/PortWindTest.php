@@ -753,4 +753,211 @@ class PortWindTest extends TestCase
             ->count();
         $this->assertGreaterThanOrEqual(6, $monthsWithInvoices);
     }
+
+    // ===== Fase B/C/D — BahanBT =====
+
+    public function test_seed_client_fleet_and_spal104(): void
+    {
+        // Armada Syukur menggantikan fiktif
+        $this->assertTrue(\App\Models\Vessel::where('vessel_name', 'TB Syukur 23')->exists());
+        $this->assertTrue(\App\Models\Vessel::where('vessel_name', 'BG Syukur 03')->exists());
+        $this->assertFalse(\App\Models\Vessel::where('vessel_name', 'TB Samudra 01')->exists());
+
+        // SPAL 104 lengkap
+        $spal = \App\Models\Voyage::where('spal_number', 'like', '104/%')->firstOrFail();
+        $this->assertSame('completed', $spal->voyage_status);
+        $this->assertSame('closing', $spal->charter_stage);
+        $this->assertEquals(7500, (float) $spal->dsr_mt);
+        $this->assertSame(125000.0, (float) $spal->freight_rate);
+        $this->assertSame('PT Sinar Laut Maritim', $spal->customer?->name);
+
+        // Invoice 197 DP & 211 pelunasan, PPh 1.2%
+        $invoices = \App\Models\Invoice::where('voyage_id', $spal->id)->get();
+        $this->assertSame(2, $invoices->count());
+        foreach ($invoices as $inv) {
+            $this->assertEquals(0.012, (float) $inv->pph_rate);
+            $this->assertNotEmpty($inv->fp_number);
+        }
+
+        // 2 keagenan + dokumen perjalanan tertaut
+        $this->assertSame(2, $spal->agencyAppointments()->count());
+        $this->assertGreaterThanOrEqual(4, $spal->documents()->count());
+
+        // Tracker: dokumen A2 Surat Laut + endorsement
+        $this->assertTrue(\App\Models\Document::where('document_name', 'like', '%A2 | Surat Laut%')->exists());
+        $this->assertGreaterThanOrEqual(10, \App\Models\Document::where('has_endorsement', true)->count());
+
+        // Arsip SPT 6 bulan
+        $this->assertSame(6, \App\Models\Document::where('document_name', 'like', '%SPT_Unifikasi%')->count());
+    }
+
+    public function test_po_seed_and_numbering(): void
+    {
+        $this->assertSame(8, \App\Models\PurchaseOrder::count());
+        $this->assertGreaterThanOrEqual(3, \App\Models\Bill::whereNotNull('po_id')->count());
+        $this->assertGreaterThanOrEqual(1, \App\Models\BillPayment::whereNotNull('cheque_number')->count());
+
+        // Nomor PO baru lanjut dari counter (362 → 363)
+        $this->loginUser('finance@bungateratai.id');
+        $this->post('/keuangan/po', [
+            'order_date' => now()->toDateString(),
+            'supplier_id' => \App\Models\Supplier::first()->id,
+            'dept' => 'ENGINE',
+            'items' => [['item_name' => 'Oli Uji', 'qty' => 2, 'unit' => 'pcs', 'price' => 100000]],
+        ])->assertSessionHas('success');
+
+        $po = \App\Models\PurchaseOrder::latest('id')->firstOrFail();
+        $this->assertMatchesRegularExpression('/^363\/PO-BT\/TB\/[IVXL]+\/\d{4}$/', $po->po_number);
+        // PO ikut arsip terpadu
+        $this->assertDatabaseHas('documents', ['document_number' => $po->po_number, 'source_type' => 'terbitan']);
+    }
+
+    public function test_numbering_service_patterns(): void
+    {
+        $svc = app(\App\Services\NumberingService::class);
+
+        $spal = $svc->next('SPAL', ['{kode_penyewa}' => 'SLM', '{kode_kapal}' => '23']);
+        $this->assertSame('105/SLM/FC/23/'.'X/2026', $spal['number']);
+        $this->assertSame(105, $spal['template']->seq_last);
+
+        $arsip = $svc->next('SURAT_UMUM', [], 'arsip');
+        $this->assertStringStartsWith('ARS/SU/2026/', $arsip['number']);
+    }
+
+    public function test_issue_spal_pdf_and_void(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $this->loginUser('supervisor@bungateratai.id');
+
+        $spal = \App\Models\Voyage::where('spal_number', 'like', '104/%')->firstOrFail();
+        $before = \App\Models\Document::where('source_type', 'terbitan')->count();
+
+        $response = $this->get("/cetak/spal/{$spal->id}");
+        $response->assertOk();
+
+        $doc = \App\Models\Document::where('source_type', 'terbitan')->latest('id')->firstOrFail();
+        $this->assertSame($before + 1, \App\Models\Document::where('source_type', 'terbitan')->count());
+        $this->assertSame($spal->spal_number, $doc->document_number);
+        $this->assertNotNull($doc->file_path);
+        $this->assertTrue(\Illuminate\Support\Facades\Storage::disk('local')->exists($doc->file_path));
+        $this->assertTrue($spal->documents()->where('documents.id', $doc->id)->exists());
+
+        // Void dengan alasan → nomor tidak dapat dipakai ulang, file tetap
+        $this->loginUser('admin@bungateratai.id');
+        $this->post("/dokumen/{$doc->id}/void", ['reason' => 'Uji coba void'])->assertRedirect();
+        $doc->refresh();
+        $this->assertNotNull($doc->voided_at);
+        $this->assertSame('Uji coba void', $doc->void_reason);
+
+        // Void dokumen unggahan ditolak
+        $unggahan = \App\Models\Document::where('source_type', 'unggahan')->firstOrFail();
+        $this->post("/dokumen/{$unggahan->id}/void", ['reason' => 'x'])->assertSessionHas('error');
+    }
+
+    public function test_issue_generic_letter(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $this->loginUser('admin@bungateratai.id');
+
+        $before = \App\Models\Document::where('template_id', \App\Models\DocumentTemplate::where('code', 'SURAT_UMUM')->value('id'))->count();
+
+        $this->post('/dokumen/surat-umum', [
+            'to' => 'PT Uji Coba',
+            'subject' => 'Surat Keterangan Operasional',
+            'body' => "Dengan hormat,`n`nBersama ini kami menyatakan bahwa ...",
+            'date' => now()->toDateString(),
+        ])->assertRedirect();
+
+        $this->assertSame($before + 1, \App\Models\Document::where('template_id', \App\Models\DocumentTemplate::where('code', 'SURAT_UMUM')->value('id'))->count());
+        $letter = \App\Models\Document::latest('id')->firstOrFail();
+        $this->assertSame('terbitan', $letter->source_type);
+        $this->assertNotEmpty($letter->document_number);
+        $this->assertTrue(\Illuminate\Support\Facades\Storage::disk('local')->exists($letter->file_path));
+    }
+
+    public function test_issue_agency_letter_generates_pdf(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $this->loginUser('ops@bungateratai.id');
+
+        $agency = \App\Models\AgencyAppointment::firstOrFail();
+        $response = $this->get("/cetak/keagenan/{$agency->id}");
+        $response->assertOk();
+        $this->assertNotNull($agency->fresh()->file_path);
+    }
+
+    public function test_export_excel_endpoints(): void
+    {
+        $this->loginUser('admin@bungateratai.id');
+
+        $this->get('/laporan/export/master-tracker')->assertOk();
+        $this->get('/laporan/export/monthly?period='.now()->format('Y-m'))->assertOk();
+        $this->get('/laporan/export/outstanding')->assertOk();
+        $this->get('/laporan/export/rekap-nota?from='.now()->startOfYear()->toDateString().'&to='.now()->toDateString())->assertOk();
+    }
+
+    public function test_endorsement_reminder_terpisah(): void
+    {
+        // Dokumen endorsement jatuh tempo → notifikasi endorsement, bukan expiry
+        $due = \App\Models\Document::where('has_endorsement', true)
+            ->whereNotNull('endorsement_next_date')
+            ->get()
+            ->first(function ($d) {
+                $days = (int) now()->startOfDay()->diffInDays($d->endorsement_next_date, false);
+
+                return $days <= 30;
+            });
+        $this->assertNotNull($due, 'Seed harus punya endorsement <=30 hari');
+
+        $svc = app(\App\Services\ReminderService::class);
+        $items = $svc->dueEndorsements();
+        $this->assertTrue($items->contains(fn ($i) => $i['refId'] === $due->id));
+
+        $this->assertGreaterThan(0, \App\Models\Notification::where('notification_type', 'endorsement_jatuh_tempo')->count()
+            + \App\Models\Notification::where('notification_type', 'endorsement_kedaluwarsa')->count());
+
+        // Halaman notifikasi tab reminder menampilkan endorsement
+        $this->loginUser('admin@bungateratai.id');
+        $this->get('/notifikasi?filter=reminder')->assertOk();
+    }
+
+    public function test_update_charter_requires_dsr_for_pelunasan(): void
+    {
+        $this->loginUser('ops@bungateratai.id');
+        $spal = \App\Models\Voyage::where('spal_number', 'like', '104/%')->firstOrFail();
+
+        // Pelunasan tanpa DSR (voyage sudah punya dsr → pakai voyage tanpa dsr utk uji)
+        $spal->update(['dsr_mt' => null]);
+        $this->from("/perjalanan/{$spal->id}")
+            ->post("/perjalanan/{$spal->id}/charter", ['charter_stage' => 'pelunasan'])
+            ->assertSessionHas('error');
+
+        // Dengan DSR → lolos
+        $this->from("/perjalanan/{$spal->id}")
+            ->post("/perjalanan/{$spal->id}/charter", ['charter_stage' => 'pelunasan', 'dsr_mt' => 7500, 'dsr_date' => now()->toDateString()])
+            ->assertSessionHas('success');
+        $this->assertSame('pelunasan', $spal->fresh()->charter_stage);
+    }
+
+    public function test_docs_page_and_fleet_show_after_client_seed(): void
+    {
+        $this->loginUser('admin@bungateratai.id');
+
+        // Fleet tongkang kini menampilkan voyage via relasi
+        $barge = \App\Models\Vessel::where('vessel_name', 'BG Syukur 03')->firstOrFail();
+        $this->get("/armada/{$barge->id}")->assertOk();
+
+        $spal = \App\Models\Voyage::where('spal_number', 'like', '104/%')->firstOrFail();
+        $this->assertDatabaseHas('vessel_relationships', ['barge_id' => $barge->id, 'voyage_id' => $spal->id]);
+
+        // Document Center sub-tab + detail dgn relasi/void/endorsement
+        foreach (['arsip', 'terbitan', 'unggahan', 'expiring'] as $tab) {
+            $this->get("/dokumen?tab={$tab}")->assertOk();
+        }
+        $doc = \App\Models\Document::where('source_type', 'terbitan')->firstOrFail();
+        $this->get("/dokumen/{$doc->id}")->assertOk();
+
+        // Pengaturan tab template
+        $this->get('/pengaturan?tab=template')->assertOk();
+    }
 }
