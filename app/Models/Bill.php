@@ -26,6 +26,16 @@ class Bill extends Model
         return $this->belongsTo(Supplier::class);
     }
 
+    public function voyage()
+    {
+        return $this->belongsTo(Voyage::class);
+    }
+
+    public function purchaseOrder()
+    {
+        return $this->belongsTo(PurchaseOrder::class, 'po_id');
+    }
+
     public function payments()
     {
         return $this->hasMany(BillPayment::class);

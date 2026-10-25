@@ -66,7 +66,12 @@ class FinanceController extends Controller
             'suppliers' => Supplier::orderBy('name')->get(['id', 'name', 'category']),
             'voyagesList' => \App\Models\Voyage::orderByDesc('id')->limit(60)
                 ->get(['id', 'voyage_code', 'origin', 'destination']),
-            'cashAccounts' => CashAccount::get(['id', 'name', 'type', 'balance']),
+            'cashAccounts' => CashAccount::get(['id', 'name', 'type', 'balance'])->map(fn ($c) => [
+                'id' => $c->id,
+                'name' => $c->name,
+                'type' => $c->type,
+                'balance' => ($user?->can('finance.view-balances') ?? false) ? $c->balance : null,
+            ]),
             'serviceCatalog' => \App\Models\ServiceCatalog::get(['id', 'name', 'kind', 'default_price']),
             'accounts' => Account::orderBy('code')->get(['id', 'code', 'name', 'type', 'normal_balance']),
             'assets' => Asset::orderBy('name')->get(['id', 'name', 'category', 'acquisition_cost', 'acquisition_date', 'useful_life_months', 'accumulated_depreciation', 'salvage_value', 'status']),
@@ -100,12 +105,69 @@ class FinanceController extends Controller
 
     private function invoiceProps(): array
     {
+        $vesselId = request()->query('vessel_id');
+        $query = Invoice::with(['customer', 'vessel', 'voyage.vessel'])
+            ->when($vesselId, function ($q) use ($vesselId) {
+                $q->where(function ($sub) use ($vesselId) {
+                    $sub->where('vessel_id', $vesselId)
+                        ->orWhereHas('voyage', fn ($v) => $v->where('vessel_id', $vesselId));
+                });
+            })
+            ->orderByDesc('id');
+
+        $invoices = $query->limit(80)->get();
+        $vesselsList = \App\Models\Vessel::orderBy('vessel_name')->get(['id', 'vessel_name', 'vessel_type']);
+
+        $vesselSummary = null;
+        if ($vesselId) {
+            $vesselObj = \App\Models\Vessel::find($vesselId);
+            $totalInvoiced = (float) Invoice::where(function ($sub) use ($vesselId) {
+                $sub->where('vessel_id', $vesselId)
+                    ->orWhereHas('voyage', fn ($v) => $v->where('vessel_id', $vesselId));
+            })->sum('total');
+            $totalPaid = (float) Invoice::where(function ($sub) use ($vesselId) {
+                $sub->where('vessel_id', $vesselId)
+                    ->orWhereHas('voyage', fn ($v) => $v->where('vessel_id', $vesselId));
+            })->sum('paid_amount');
+
+            $vesselSummary = [
+                'vessel_id' => $vesselId,
+                'vessel_name' => $vesselObj?->vessel_name,
+                'total_invoiced' => $totalInvoiced,
+                'total_paid' => $totalPaid,
+                'sisa_piutang' => $totalInvoiced - $totalPaid,
+            ];
+        }
+
+        // Invoice Agent (Tagihan Agen Pelabuhan dari Keagenan Voyage)
+        $agencyInvoices = \App\Models\AgencyAppointment::with(['voyage.vessel'])
+            ->latest()
+            ->limit(30)
+            ->get()
+            ->map(fn ($a) => [
+                'id' => $a->id,
+                'letter_no' => $a->letter_no,
+                'letter_date' => $a->letter_date?->toDateString(),
+                'port_type' => $a->port_type,
+                'port_name' => $a->port_name,
+                'agent_name' => $a->agent_name,
+                'voyage_code' => $a->voyage?->voyage_code,
+                'vessel_name' => $a->voyage?->vessel?->vessel_name,
+            ]);
+
         return [
-            'invoices' => Invoice::with('customer')->orderByDesc('id')->limit(50)->get()->map(fn ($i) => [
+            'selectedVesselId' => $vesselId,
+            'vesselsList' => $vesselsList,
+            'vesselSummary' => $vesselSummary,
+            'agencyInvoices' => $agencyInvoices,
+            'invoices' => $invoices->map(fn ($i) => [
                 'id' => $i->id,
                 'number' => $i->number,
                 'customer_id' => $i->customer_id,
                 'voyage_id' => $i->voyage_id,
+                'vessel_id' => $i->vessel_id ?? $i->voyage?->vessel_id,
+                'vessel_name' => $i->vessel?->vessel_name ?? $i->voyage?->vessel?->vessel_name,
+                'invoice_kind' => $i->invoice_kind ?? 'umum',
                 'notes' => $i->notes,
                 'customer_name' => $i->customer?->name,
                 'issue_date' => $i->issue_date,
@@ -123,7 +185,7 @@ class FinanceController extends Controller
 
     private function piutangProps(): array
     {
-        $invoices = Invoice::with('customer')->whereIn('status', ['unpaid', 'partial'])->orderBy('due_date')->get();
+        $invoices = Invoice::with(['customer', 'vessel', 'voyage.vessel'])->whereIn('status', ['unpaid', 'partial'])->orderBy('due_date')->get();
 
         $aging = ['jatuh_tempo' => 0, 'lebih_30' => 0, 'lebih_60' => 0, 'lebih_90' => 0];
         foreach ($invoices as $inv) {
@@ -145,6 +207,7 @@ class FinanceController extends Controller
                 'number' => $i->number,
                 'customer_id' => $i->customer_id,
                 'voyage_id' => $i->voyage_id,
+                'vessel_name' => $i->vessel?->vessel_name ?? $i->voyage?->vessel?->vessel_name,
                 'notes' => $i->notes,
                 'customer_name' => $i->customer?->name,
                 'due_date' => $i->due_date,
@@ -159,7 +222,7 @@ class FinanceController extends Controller
 
     private function hutangProps(): array
     {
-        $bills = Bill::with('supplier')->whereIn('status', ['unpaid', 'partial'])->orderBy('due_date')->get();
+        $bills = Bill::with(['supplier', 'voyage.vessel'])->whereIn('status', ['unpaid', 'partial'])->orderBy('due_date')->get();
 
         $aging = ['jatuh_tempo' => 0, 'lebih_30' => 0, 'lebih_60' => 0, 'lebih_90' => 0];
         foreach ($bills as $bill) {
@@ -180,6 +243,7 @@ class FinanceController extends Controller
                 'number' => $b->number,
                 'supplier_id' => $b->supplier_id,
                 'voyage_id' => $b->voyage_id,
+                'vessel_name' => $b->voyage?->vessel?->vessel_name,
                 'issue_date' => $b->issue_date,
                 'pph_type' => $b->pph_type,
                 'notes' => $b->notes,
@@ -214,13 +278,25 @@ class FinanceController extends Controller
 
     private function kasProps(): array
     {
+        $user = auth()->user();
+        $canViewBalances = $user?->can('finance.view-balances') ?? false;
+
+        $accounts = CashAccount::with('account')->get();
+        $totalSaldo = $canViewBalances ? (float) $accounts->sum('balance') : null;
+        $kasBalance = $canViewBalances ? (float) $accounts->where('type', 'kas')->sum('balance') : null;
+        $bankBalance = $canViewBalances ? (float) $accounts->where('type', 'bank')->sum('balance') : null;
+
         return [
-            'cashAccounts' => CashAccount::with('account')->get()->map(fn ($c) => [
+            'canViewBalances' => $canViewBalances,
+            'totalSaldo' => $totalSaldo,
+            'kasBalance' => $kasBalance,
+            'bankBalance' => $bankBalance,
+            'cashAccounts' => $accounts->map(fn ($c) => [
                 'id' => $c->id,
                 'name' => $c->name,
                 'type' => $c->type,
                 'account_number' => $c->account_number,
-                'balance' => $c->balance,
+                'balance' => $canViewBalances ? $c->balance : null,
             ]),
             'cashTransactions' => CashTransaction::orderByDesc('date')->orderByDesc('id')->limit(60)->get()
                 ->map(fn ($t) => [
@@ -229,6 +305,8 @@ class FinanceController extends Controller
                     'account_name' => $t->cashAccount?->name,
                     'direction' => $t->direction,
                     'amount' => $t->amount,
+                    'gross_amount' => $t->gross_amount,
+                    'fee_amount' => $t->fee_amount,
                     'date' => $t->date,
                     'category' => $t->category,
                     'reference' => $t->reference,
@@ -415,6 +493,7 @@ class FinanceController extends Controller
         $data = $request->validate([
             'customer_id' => ['required', 'exists:customers,id'],
             'voyage_id' => ['nullable', 'exists:voyages,id'],
+            'vessel_id' => ['nullable', 'exists:vessels,id'],
             'issue_date' => ['required', 'date'],
             'due_date' => ['nullable', 'date'],
             'pph23' => ['required', 'boolean'],
@@ -431,10 +510,16 @@ class FinanceController extends Controller
             $pph23 = $data['pph23'] ? round($subtotal * 0.02) : 0.0;
             $total = $subtotal + $ppn - $pph23;
 
+            $vesselId = $data['vessel_id'] ?? null;
+            if (! $vesselId && ! empty($data['voyage_id'])) {
+                $vesselId = \App\Models\Voyage::find($data['voyage_id'])?->vessel_id;
+            }
+
             $invoice = Invoice::create([
                 'number' => $this->nextNumber('INV'),
                 'customer_id' => $data['customer_id'],
                 'voyage_id' => $data['voyage_id'] ?? null,
+                'vessel_id' => $vesselId,
                 'issue_date' => $data['issue_date'],
                 'due_date' => $data['due_date'] ?? null,
                 'status' => InvoiceStatus::Unpaid->value,
@@ -500,6 +585,7 @@ class FinanceController extends Controller
 
         $data = $request->validate([
             'amount' => ['required', 'numeric', 'min:1'],
+            'bank_fee' => ['nullable', 'numeric', 'min:0'],
             'cash_account_id' => ['required', 'exists:cash_accounts,id'],
             'date' => ['required', 'date'],
             'method' => ['nullable', 'in:transfer,cash,giro'],
@@ -512,17 +598,23 @@ class FinanceController extends Controller
             return back()->with('error', 'Jumlah pembayaran melebihi sisa tagihan.');
         }
 
-        DB::transaction(function () use ($data, $invoice) {
+        $gross = (float) $data['amount'];
+        $fee = (float) ($data['bank_fee'] ?? 0);
+        $net = max(0, $gross - $fee);
+
+        DB::transaction(function () use ($data, $invoice, $gross, $fee, $net) {
             Payment::create([
                 'invoice_id' => $invoice->id,
                 'date' => $data['date'],
-                'amount' => $data['amount'],
+                'amount' => $gross,
+                'bank_fee' => $fee,
+                'net_amount' => $net,
                 'method' => $data['method'] ?? 'transfer',
                 'reference' => $data['reference'] ?? null,
                 'cash_account_id' => $data['cash_account_id'],
             ]);
 
-            $paid = (float) $invoice->paid_amount + (float) $data['amount'];
+            $paid = (float) $invoice->paid_amount + $gross;
             $invoice->update([
                 'paid_amount' => $paid,
                 'status' => $paid >= (float) $invoice->total - 0.01
@@ -531,23 +623,34 @@ class FinanceController extends Controller
             ]);
 
             $cash = CashAccount::findOrFail($data['cash_account_id']);
-            $cash->increment('balance', $data['amount']);
+            $cash->increment('balance', $net);
+
             CashTransaction::create([
                 'cash_account_id' => $cash->id,
                 'direction' => 'in',
-                'amount' => $data['amount'],
+                'amount' => $net,
+                'gross_amount' => $gross,
+                'fee_amount' => $fee,
                 'date' => $data['date'],
                 'category' => 'pendapatan',
                 'reference' => $invoice->number,
+                'notes' => $fee > 0
+                    ? "Bruto: Rp ".number_format($gross, 0, ',', '.')." | Potongan bank: Rp ".number_format($fee, 0, ',', '.')." | Bersih masuk: Rp ".number_format($net, 0, ',', '.')
+                    : null,
                 'created_by' => auth()->id(),
             ]);
 
+            $lines = [
+                ['account' => $this->cashCode($cash), 'debit' => $net],
+            ];
+            if ($fee > 0) {
+                $lines[] = ['account' => '5900', 'debit' => $fee];
+            }
+            $lines[] = ['account' => '1100', 'credit' => $gross];
+
             $entry = $this->journal->post(
-                [
-                    ['account' => $this->cashCode($cash), 'debit' => (float) $data['amount']],
-                    ['account' => '1100', 'credit' => (float) $data['amount']],
-                ],
-                "Pembayaran invoice {$invoice->number}",
+                $lines,
+                "Pembayaran invoice {$invoice->number}".($fee > 0 ? " (Potongan bank Rp ".number_format($fee, 0, ',', '.').")" : ''),
                 'payment',
                 $invoice->id,
                 $data['date'],
@@ -667,6 +770,7 @@ class FinanceController extends Controller
 
         $data = $request->validate([
             'amount' => ['required', 'numeric', 'min:1'],
+            'bank_fee' => ['nullable', 'numeric', 'min:0'],
             'cash_account_id' => ['required', 'exists:cash_accounts,id'],
             'date' => ['required', 'date'],
             'method' => ['nullable', 'in:transfer,cash,giro'],
@@ -678,17 +782,23 @@ class FinanceController extends Controller
             return back()->with('error', 'Jumlah pembayaran melebihi sisa tagihan.');
         }
 
-        DB::transaction(function () use ($data, $bill) {
+        $gross = (float) $data['amount'];
+        $fee = (float) ($data['bank_fee'] ?? 0);
+        $net = $gross + $fee;
+
+        DB::transaction(function () use ($data, $bill, $gross, $fee, $net) {
             BillPayment::create([
                 'bill_id' => $bill->id,
                 'date' => $data['date'],
-                'amount' => $data['amount'],
+                'amount' => $gross,
+                'bank_fee' => $fee,
+                'net_amount' => $net,
                 'method' => $data['method'] ?? 'transfer',
                 'cheque_number' => $data['cheque_number'] ?? null,
                 'cash_account_id' => $data['cash_account_id'],
             ]);
 
-            $paid = (float) $bill->paid_amount + (float) $data['amount'];
+            $paid = (float) $bill->paid_amount + $gross;
             $bill->update([
                 'paid_amount' => $paid,
                 'status' => $paid >= (float) $bill->total - 0.01
@@ -697,23 +807,33 @@ class FinanceController extends Controller
             ]);
 
             $cash = CashAccount::findOrFail($data['cash_account_id']);
-            $cash->decrement('balance', $data['amount']);
+            $cash->decrement('balance', $net);
             CashTransaction::create([
                 'cash_account_id' => $cash->id,
                 'direction' => 'out',
-                'amount' => $data['amount'],
+                'amount' => $net,
+                'gross_amount' => $gross,
+                'fee_amount' => $fee,
                 'date' => $data['date'],
                 'category' => $bill->category,
                 'reference' => $bill->number,
+                'notes' => $fee > 0
+                    ? "Bruto hutang: Rp ".number_format($gross, 0, ',', '.')." | Biaya bank: Rp ".number_format($fee, 0, ',', '.')." | Total keluar: Rp ".number_format($net, 0, ',', '.')
+                    : null,
                 'created_by' => auth()->id(),
             ]);
 
+            $lines = [
+                ['account' => '2100', 'debit' => $gross],
+            ];
+            if ($fee > 0) {
+                $lines[] = ['account' => '5900', 'debit' => $fee];
+            }
+            $lines[] = ['account' => $this->cashCode($cash), 'credit' => $net];
+
             $billEntry = $this->journal->post(
-                [
-                    ['account' => '2100', 'debit' => (float) $data['amount']],
-                    ['account' => $this->cashCode($cash), 'credit' => (float) $data['amount']],
-                ],
-                "Pembayaran bill {$bill->number}",
+                $lines,
+                "Pembayaran bill {$bill->number}".($fee > 0 ? " (Biaya bank Rp ".number_format($fee, 0, ',', '.').")" : ''),
                 'bill_payment',
                 $bill->id,
                 $data['date'],
@@ -747,20 +867,27 @@ class FinanceController extends Controller
             'cash_account_id' => ['required', 'exists:cash_accounts,id'],
             'direction' => ['required', 'in:in,out'],
             'amount' => ['required', 'numeric', 'min:0.01'],
+            'bank_fee' => ['nullable', 'numeric', 'min:0'],
             'date' => ['required', 'date'],
             'category' => ['nullable', 'string', 'max:60'],
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
-        DB::transaction(function () use ($data) {
+        $fee = (float) ($data['bank_fee'] ?? 0);
+        $amount = (float) $data['amount'];
+        $net = $data['direction'] === 'in' ? max(0, $amount - $fee) : ($amount + $fee);
+
+        DB::transaction(function () use ($data, $amount, $fee, $net) {
             $cash = CashAccount::findOrFail($data['cash_account_id']);
-            $delta = $data['direction'] === 'in' ? $data['amount'] : -$data['amount'];
+            $delta = $data['direction'] === 'in' ? $net : -$net;
             $cash->increment('balance', $delta);
 
             $t = CashTransaction::create([
                 'cash_account_id' => $cash->id,
                 'direction' => $data['direction'],
-                'amount' => $data['amount'],
+                'amount' => $net,
+                'gross_amount' => $amount,
+                'fee_amount' => $fee,
                 'date' => $data['date'],
                 'category' => $data['category'] ?? 'lainnya',
                 'notes' => $data['notes'] ?? null,
@@ -768,17 +895,24 @@ class FinanceController extends Controller
             ]);
 
             $expenseCode = $data['category'] === 'bbm' ? '5000' : ($data['category'] === 'gaji' ? '5200' : '5900');
+            $lines = [];
+            if ($data['direction'] === 'in') {
+                $lines[] = ['account' => $this->cashCode($cash), 'debit' => $net];
+                if ($fee > 0) {
+                    $lines[] = ['account' => '5900', 'debit' => $fee];
+                }
+                $lines[] = ['account' => '4300', 'credit' => $amount];
+            } else {
+                $lines[] = ['account' => $expenseCode, 'debit' => $amount];
+                if ($fee > 0) {
+                    $lines[] = ['account' => '5900', 'debit' => $fee];
+                }
+                $lines[] = ['account' => $this->cashCode($cash), 'credit' => $net];
+            }
+
             $entry = $this->journal->post(
-                $data['direction'] === 'in'
-                    ? [
-                        ['account' => $this->cashCode($cash), 'debit' => (float) $data['amount']],
-                        ['account' => '4300', 'credit' => (float) $data['amount']],
-                    ]
-                    : [
-                        ['account' => $expenseCode, 'debit' => (float) $data['amount']],
-                        ['account' => $this->cashCode($cash), 'credit' => (float) $data['amount']],
-                    ],
-                'Kas/Bank â€” '.($data['category'] ?? 'lainnya'),
+                $lines,
+                'Kas/Bank — '.($data['category'] ?? 'lainnya').($fee > 0 ? " (Biaya bank Rp ".number_format($fee, 0, ',', '.').")" : ''),
                 'cash',
                 $t->id,
                 $data['date'],
@@ -1648,6 +1782,8 @@ class FinanceController extends Controller
             'items.*.qty' => ['required', 'numeric', 'min:0.01'],
             'items.*.unit' => ['nullable', 'string', 'max:30'],
             'items.*.price' => ['required', 'numeric', 'min:0'],
+            'items.*.is_consumable' => ['nullable', 'boolean'],
+            'items.*.inventory_item_id' => ['nullable', 'integer'],
         ]);
 
         $numbered = app(\App\Services\NumberingService::class)->next('PO');
@@ -1676,6 +1812,8 @@ class FinanceController extends Controller
                     'unit' => $item['unit'] ?? null,
                     'price' => $item['price'],
                     'amount' => $item['qty'] * $item['price'],
+                    'is_consumable' => ! empty($item['is_consumable']),
+                    'inventory_item_id' => $item['inventory_item_id'] ?? null,
                 ]);
             }
 
@@ -1703,48 +1841,105 @@ class FinanceController extends Controller
         return back()->with('success', "PO {$po->po_number} dibuat & diarsipkan.");
     }
 
-    public function receivePo(\App\Models\PurchaseOrder $po)
+    public function receivePo(Request $request, \App\Models\PurchaseOrder $po)
     {
         Gate::authorize('operations.manage');
 
-        if ($po->status !== 'diterima') {
+        if ($po->status !== 'diterima' && $po->status !== 'dipesan') {
             return back()->with('error', 'PO sudah diproses sebelumnya.');
         }
 
-        DB::transaction(function () use ($po) {
+        $receiptNumber = $request->string('receipt_number')->toString() ?: 'TT-'.preg_replace('/[^A-Za-z0-9]/', '', $po->po_number);
+        $receiptDate = $request->string('receipt_date')->toString() ?: now()->toDateString();
+        $receivedBy = $request->string('received_by')->toString() ?: (auth()->user()?->name ?? 'Petugas Logistik');
+        $receiptNotes = $request->string('receipt_notes')->toString() ?: "Tanda terima barang pesanan PO {$po->po_number}";
+
+        DB::transaction(function () use ($po, $receiptNumber, $receiptDate, $receivedBy, $receiptNotes) {
             foreach ($po->items as $item) {
-                // Catat stok masuk kantor bila item terkait inventory
-                if ($item->inventory_item_id) {
-                    $bal = InventoryBalance::where('item_id', $item->inventory_item_id)
-                        ->where('location_type', 'kantor')->first();
-                    if ($bal) {
-                        $bal->increment('qty', $item->qty);
-                    } else {
-                        InventoryBalance::create([
+                if ($item->is_consumable) {
+                    // Barang habis pakai: langsung dicatat keluar tanpa wajib melalui stok/inventory
+                    if ($item->inventory_item_id) {
+                        InventoryMovement::create([
                             'item_id' => $item->inventory_item_id,
-                            'location_type' => 'kantor',
+                            'type' => 'keluar',
                             'qty' => $item->qty,
+                            'from_location' => 'kantor',
+                            'to_location' => $po->vessel ? $po->vessel->vessel_name : 'langsung_pakai',
+                            'ref_type' => 'po',
+                            'ref_id' => $po->id,
+                            'movement_date' => $receiptDate,
+                            'user_id' => auth()->id(),
+                            'notes' => "Barang habis pakai langsung terpakai pada ".($po->vessel ? $po->vessel->vessel_name : 'operasional')." (PO {$po->po_number})",
                         ]);
                     }
-                    InventoryMovement::create([
-                        'item_id' => $item->inventory_item_id,
-                        'type' => 'masuk',
-                        'qty' => $item->qty,
-                        'to_location' => 'kantor',
-                        'ref_type' => 'po',
-                        'ref_id' => $po->id,
-                        'movement_date' => now()->toDateString(),
-                        'user_id' => auth()->id(),
-                        'notes' => "Penerimaan PO {$po->po_number}",
-                    ]);
+                } else {
+                    // Barang masuk inventory kantor
+                    if ($item->inventory_item_id) {
+                        $bal = InventoryBalance::where('item_id', $item->inventory_item_id)
+                            ->where('location_type', 'kantor')->first();
+                        if ($bal) {
+                            $bal->increment('qty', $item->qty);
+                        } else {
+                            InventoryBalance::create([
+                                'item_id' => $item->inventory_item_id,
+                                'location_type' => 'kantor',
+                                'qty' => $item->qty,
+                            ]);
+                        }
+                        InventoryMovement::create([
+                            'item_id' => $item->inventory_item_id,
+                            'type' => 'masuk',
+                            'qty' => $item->qty,
+                            'to_location' => 'kantor',
+                            'ref_type' => 'po',
+                            'ref_id' => $po->id,
+                            'movement_date' => $receiptDate,
+                            'user_id' => auth()->id(),
+                            'notes' => "Penerimaan PO {$po->po_number} (Tanda Terima: {$receiptNumber})",
+                        ]);
+                    }
                 }
             }
-            $po->update(['status' => 'diambil']);
+
+            // Arsipkan dokumen bukti tanda terima terpadu
+            $doc = \App\Models\Document::create([
+                'document_name' => "Tanda Terima Barang - PO {$po->po_number}",
+                'category_id' => \App\Models\DocumentCategory::where('code', 'F2')->value('id') ?? \App\Models\DocumentCategory::where('group_code', 'F')->value('id') ?? 1,
+                'document_number' => $receiptNumber,
+                'owner_type' => $po->vessel_id ? 'vessel' : 'company',
+                'owner_id' => $po->vessel_id,
+                'source_type' => 'terbitan',
+                'period' => substr($receiptDate, 0, 7),
+                'issue_date' => $receiptDate,
+                'has_expiry' => false,
+                'verification_status' => 'verified',
+                'uploaded_by' => auth()->id(),
+                'responsible_person' => $receivedBy,
+                'notes' => $receiptNotes,
+            ]);
+
+            \App\Models\DocumentLink::firstOrCreate([
+                'document_id' => $doc->id,
+                'linkable_type' => 'po',
+                'linkable_id' => $po->id,
+            ]);
+
+            $po->update([
+                'status' => 'diambil',
+                'receipt_number' => $receiptNumber,
+                'receipt_date' => $receiptDate,
+                'received_by' => $receivedBy,
+                'receipt_notes' => $receiptNotes,
+                'receipt_document_id' => $doc->id,
+            ]);
         });
 
-        AuditService::log('po_received', 'purchase_order', $po->id, null, null, "Barang PO {$po->po_number} diterima");
+        AuditService::log('po_received', 'purchase_order', $po->id, null, [
+            'receipt_number' => $receiptNumber,
+            'received_by' => $receivedBy,
+        ], "Tanda terima {$receiptNumber} dibuat untuk PO {$po->po_number}");
 
-        return back()->with('success', 'Penerimaan barang tercatat — status PO: diambil.');
+        return back()->with('success', "Barang diterima & Tanda Terima {$receiptNumber} terarsip.");
     }
 
     public function makeBillFromPo(Request $request, \App\Models\PurchaseOrder $po)
@@ -1837,6 +2032,11 @@ class FinanceController extends Controller
                     'vessel_id' => $po->vessel_id,
                     'dept' => $po->dept,
                     'status' => $po->status,
+                    'receipt_number' => $po->receipt_number,
+                    'receipt_date' => $po->receipt_date?->toDateString(),
+                    'received_by' => $po->received_by,
+                    'receipt_notes' => $po->receipt_notes,
+                    'receipt_document_id' => $po->receipt_document_id,
                     'subtotal' => $po->subtotal,
                     'notes' => $po->notes,
                     'items' => $po->items->map(fn ($i) => [
@@ -1847,6 +2047,7 @@ class FinanceController extends Controller
                         'unit' => $i->unit,
                         'price' => $i->price,
                         'amount' => $i->amount,
+                        'is_consumable' => (bool) $i->is_consumable,
                         'inventory_item_id' => $i->inventory_item_id,
                     ]),
                     'bill_numbers' => $po->bills->pluck('number'),

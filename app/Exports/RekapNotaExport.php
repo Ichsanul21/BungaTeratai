@@ -13,7 +13,7 @@ use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
- * Rekap Nota — format Excel klien (per toko/periode).
+ * Rekap Nota - format Excel klien (per toko/periode).
  */
 class RekapNotaExport implements Export, FromCollection, WithHeadings, WithMapping, WithStyles, ShouldAutoSize
 {

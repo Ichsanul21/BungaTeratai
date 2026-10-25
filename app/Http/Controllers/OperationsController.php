@@ -134,6 +134,10 @@ class OperationsController extends Controller
                 'analysis_status' => $f->analysis_status,
                 'analysis_diff_pct' => $f->analysis_diff_pct,
                 'explanation_note' => $f->explanation_note,
+                'weather_condition' => $f->weather_condition,
+                'speed_knots' => $f->speed_knots,
+                'delay_hours' => $f->delay_hours,
+                'voyage_id' => $f->voyage_id,
             ]);
 
         $monthLogs = \App\Models\FuelLog::whereMonth('trip_date', now()->month)
@@ -144,6 +148,7 @@ class OperationsController extends Controller
             'vessels' => Vessel::whereNotNull('fuel_baseline_lph')
                 ->orderBy('vessel_name')
                 ->get(['id', 'vessel_name', 'fuel_baseline_lph', 'vessel_type']),
+            'voyages' => Voyage::orderByDesc('id')->limit(40)->get(['id', 'voyage_code', 'vessel_id']),
             'kpis' => [
                 'liter_bulan' => (float) (clone $monthLogs)->sum('liters'),
                 'biaya_bulan' => (float) (clone $monthLogs)->sum('cost'),
@@ -293,6 +298,7 @@ class OperationsController extends Controller
 
         $data = $request->validate([
             'vessel_id' => ['required', 'exists:vessels,id'],
+            'voyage_id' => ['nullable', 'exists:voyages,id'],
             'trip_date' => ['required', 'date'],
             'route' => ['required', 'string', 'max:180'],
             'cargo_type' => ['nullable', 'string', 'max:60'],
@@ -300,6 +306,9 @@ class OperationsController extends Controller
             'distance_nm' => ['nullable', 'numeric', 'min:0'],
             'liters' => ['required', 'numeric', 'min:0.1'],
             'cost' => ['nullable', 'numeric', 'min:0'],
+            'weather_condition' => ['nullable', 'string', 'max:120'],
+            'speed_knots' => ['nullable', 'numeric', 'min:0'],
+            'delay_hours' => ['nullable', 'numeric', 'min:0'],
             'explanation' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -315,7 +324,7 @@ class OperationsController extends Controller
         if ($preview['status'] === 'tidak_normal' && empty($data['explanation'])) {
             return back()
                 ->withInput()
-                ->with('error', 'Konsumsi TIDAK NORMAL ('.$preview['diff_pct'].'%) — catatan penjelasan wajib diisi.');
+                ->with('error', 'Konsumsi TIDAK NORMAL ('.$preview['diff_pct'].'%) - catatan penjelasan wajib diisi.');
         }
 
         $analysis->record(
@@ -328,12 +337,15 @@ class OperationsController extends Controller
             (float) $data['liters'],
             (float) ($data['cost'] ?? 0),
             $data['explanation'] ?? null,
-            null,
+            ! empty($data['voyage_id']) ? (int) $data['voyage_id'] : null,
+            $data['weather_condition'] ?? null,
+            ! empty($data['speed_knots']) ? (float) $data['speed_knots'] : null,
+            ! empty($data['delay_hours']) ? (float) $data['delay_hours'] : null,
         );
 
         AuditService::log('fuel_logged', 'vessel', $vessel->id, null, $data, 'Log trip BBM', null, null, null);
 
-        return back()->with('success', 'Trip BBM tercatat — analisis: '.mb_strtoupper($preview['status']).' ('.$preview['diff_pct'].'%).');
+        return back()->with('success', 'Trip BBM tercatat - analisis: '.mb_strtoupper($preview['status']).' ('.$preview['diff_pct'].'%).');
     }
 
     // ===== CRUD tambahan (Fase A) =====
@@ -464,6 +476,7 @@ class OperationsController extends Controller
 
         $data = $request->validate([
             'vessel_id' => ['required', 'exists:vessels,id'],
+            'voyage_id' => ['nullable', 'exists:voyages,id'],
             'trip_date' => ['required', 'date'],
             'route' => ['required', 'string', 'max:180'],
             'cargo_type' => ['nullable', 'string', 'max:60'],
@@ -471,6 +484,9 @@ class OperationsController extends Controller
             'distance_nm' => ['nullable', 'numeric', 'min:0'],
             'liters' => ['required', 'numeric', 'min:0.1'],
             'cost' => ['nullable', 'numeric', 'min:0'],
+            'weather_condition' => ['nullable', 'string', 'max:120'],
+            'speed_knots' => ['nullable', 'numeric', 'min:0'],
+            'delay_hours' => ['nullable', 'numeric', 'min:0'],
             'explanation' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -483,12 +499,13 @@ class OperationsController extends Controller
 
         if ($analysis['status'] === 'tidak_normal' && empty($data['explanation'])) {
             return back()->withInput()
-                ->with('error', 'Konsumsi TIDAK NORMAL ('.$analysis['diff_pct'].'%) — catatan penjelasan wajib diisi.');
+                ->with('error', 'Konsumsi TIDAK NORMAL ('.$analysis['diff_pct'].'%) - catatan penjelasan wajib diisi.');
         }
 
         $before = $fuel->only(['route', 'liters', 'duration_hours', 'cost', 'analysis_status']);
         $fuel->update([
             'vessel_id' => $vessel->id,
+            'voyage_id' => ! empty($data['voyage_id']) ? (int) $data['voyage_id'] : $fuel->voyage_id,
             'trip_date' => $data['trip_date'],
             'route' => $data['route'],
             'cargo_type' => $data['cargo_type'] ?? null,
@@ -496,6 +513,9 @@ class OperationsController extends Controller
             'distance_nm' => $data['distance_nm'] ?? null,
             'liters' => $data['liters'],
             'cost' => $data['cost'] ?? 0,
+            'weather_condition' => $data['weather_condition'] ?? $fuel->weather_condition,
+            'speed_knots' => ! empty($data['speed_knots']) ? (float) $data['speed_knots'] : $fuel->speed_knots,
+            'delay_hours' => ! empty($data['delay_hours']) ? (float) $data['delay_hours'] : $fuel->delay_hours,
             'baseline_lph_snapshot' => $vessel->fuel_baseline_lph,
             'analysis_status' => $analysis['status'],
             'analysis_diff_pct' => $analysis['diff_pct'],
@@ -504,7 +524,7 @@ class OperationsController extends Controller
 
         AuditService::log('fuel_updated', 'vessel', $vessel->id, $before, $data, 'Log BBM diperbarui (analisis dihitung ulang)');
 
-        return back()->with('success', 'Log BBM diperbarui — analisis: '.mb_strtoupper($analysis['status']).' ('.$analysis['diff_pct'].'%).');
+        return back()->with('success', 'Log BBM diperbarui - analisis: '.mb_strtoupper($analysis['status']).' ('.$analysis['diff_pct'].'%).');
     }
 
     public function deleteFuel(FuelLog $fuel)

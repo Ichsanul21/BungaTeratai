@@ -502,14 +502,53 @@ class DocumentController extends Controller
 
         $path = $document->file_path;
         if ($versionId) {
-            $version = $document->versions()->findOrFail($versionId);
-            $path = $version->file_path;
+            $version = $document->versions()->find($versionId);
+            $path = $version?->file_path;
         }
 
-        abort_unless($path && Storage::disk('local')->exists($path), 404, 'File tidak ditemukan.');
+        if (! $path || ! Storage::disk('local')->exists($path)) {
+            // Jika dokumen merupakan terbitan sistem, buat ulang file PDF-nya secara otomatis
+            if ($document->source_type === 'terbitan') {
+                $generator = app(\App\Services\Generators\DocumentGeneratorService::class);
+                $voyage = $document->voyages()->first();
+                $templateCode = $document->template?->code;
+
+                if ($voyage && ($templateCode === 'SPAL' || str_contains($document->document_name, 'SPAL'))) {
+                    $res = $generator->generateSpal($voyage);
+                    $path = $res['path'];
+                } elseif ($voyage && ($templateCode === 'KEAGENAN' || str_contains($document->document_name, 'Keagenan'))) {
+                    $agency = $voyage->agencyAppointments()->first();
+                    if ($agency) {
+                        $res = $generator->generateAgency($agency);
+                        $path = $res['path'];
+                    }
+                } elseif ($templateCode === 'PO' || str_contains($document->document_name, 'Purchase Order')) {
+                    $po = \App\Models\PurchaseOrder::where('po_number', $document->document_number)->first();
+                    if ($po) {
+                        $res = $generator->generatePo($po);
+                        $path = $res['path'];
+                    }
+                } elseif ($templateCode === 'INV_CHARTER' || str_contains($document->document_name, 'Invoice Charter')) {
+                    $inv = \App\Models\Invoice::where('number', $document->document_number)->first();
+                    if ($inv) {
+                        $res = $generator->generateCharterInvoice($inv, $inv->invoice_kind ?? 'dp');
+                        $path = $res['path'];
+                    }
+                } elseif ($templateCode === 'INV_FINANCE' || str_contains($document->document_name, 'Invoice')) {
+                    $inv = \App\Models\Invoice::where('number', $document->document_number)->first();
+                    if ($inv) {
+                        $path = $generator->generateFinanceInvoice($inv);
+                    }
+                }
+            }
+        }
+
+        if (! $path || ! Storage::disk('local')->exists($path)) {
+            return back()->with('error', 'Dokumen belum diunggah atau tidak ditemukan.');
+        }
 
         $ext = pathinfo($path, PATHINFO_EXTENSION);
-        $name = preg_replace('/[^A-Za-z0-9_-]+/', '_', $document->document_name).($ext ? ".{$ext}" : '');
+        $name = preg_replace('/[^A-Za-z0-9._-]+/', '_', $document->document_name).($ext ? ".{$ext}" : '');
 
         return Storage::disk('local')->download($path, $name);
     }
@@ -582,7 +621,7 @@ class DocumentController extends Controller
         }
     }
 
-    /** Arsip dokumen (soft delete) — file tetap tersimpan. */
+    /** Arsip dokumen (soft delete) - file tetap tersimpan. */
     public function archive(Document $document)
     {
         $this->authorize('update', $document);
@@ -596,7 +635,7 @@ class DocumentController extends Controller
         return back()->with('success', 'Dokumen diarsipkan (file tetap tersimpan, bisa dipulihkan lewat database).');
     }
 
-    /** Void dokumen terbit — nomor tidak dipakai ulang, file tetap arsip. */
+    /** Void dokumen terbit - nomor tidak dipakai ulang, file tetap arsip. */
     public function void(Request $request, Document $document)
     {
         abort_unless(auth()->user()?->isSuperAdmin() || auth()->user()?->hasRole('doc_controller'), 403);
@@ -614,6 +653,6 @@ class DocumentController extends Controller
 
         AuditService::log('voided', 'document', $document->id, null, ['reason' => $request->string('reason')], "Dokumen terbit dibatalkan (void): {$document->document_name}");
 
-        return back()->with('success', 'Dokumen dibatalkan (void) — nomor tidak dipakai ulang, file tetap tersimpan.');
+        return back()->with('success', 'Dokumen dibatalkan (void) - nomor tidak dipakai ulang, file tetap tersimpan.');
     }
 }

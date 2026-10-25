@@ -17,9 +17,15 @@ class AuditService
         ?string $reason = null,
         ?string $referenceType = null,
         int|string|null $referenceId = null,
+        ?int $assignerId = null,
+        ?string $assignerName = null,
+        ?string $assignedTo = null,
     ): AuditLog {
         return AuditLog::create([
             'user_id' => Auth::id(),
+            'assigner_id' => $assignerId ?? ($after['assigner_id'] ?? null),
+            'assigner_name' => $assignerName ?? ($after['assigner_name'] ?? (Auth::user()?->name ?? null)),
+            'assigned_to' => $assignedTo ?? ($after['assigned_to'] ?? ($after['person_in_charge'] ?? null)),
             'action' => $action,
             'entity_type' => $entityType,
             'entity_id' => $entityId,

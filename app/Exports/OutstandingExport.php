@@ -13,7 +13,7 @@ use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
- * Rencana Pembayaran Outstanding — kolom persis Excel OUTSTANDING:
+ * Rencana Pembayaran Outstanding - kolom persis Excel OUTSTANDING:
  * No | Toko | Nomor Cek/BG | Jumlah | Rencana pembayaran
  */
 class OutstandingExport implements Export, FromCollection, WithHeadings, WithMapping, WithStyles, ShouldAutoSize

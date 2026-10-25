@@ -16,6 +16,8 @@ class FuelLog extends Model
         'liters' => 'float',
         'analysis_diff_pct' => 'float',
         'cost' => 'float',
+        'speed_knots' => 'float',
+        'delay_hours' => 'float',
     ];
 
     public function vessel()

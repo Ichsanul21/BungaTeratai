@@ -159,8 +159,8 @@ export default function HrIndex({
                     ) : (
                         <div className="space-y-4">
                             {(crews ?? []).map((c) => (
+                                <div key={c.id} id={`record-crew-${c.id}`}>
                                 <Card
-                                    key={c.id}
                                     title={c.name}
                                     description={`${RANKS.find((r) => r[0] === c.rank)?.[1] ?? c.rank} · ${c.status} · Gaji pokok ${formatRupiah(c.base_salary)}`}
                                     actions={
@@ -270,7 +270,7 @@ export default function HrIndex({
                                                                 ? 'warning'
                                                                 : 'success';
                                                         return (
-                                                            <li key={cert.id} className="flex items-center justify-between rounded-lg border border-hairline px-3 py-1.5 text-sm">
+                                                            <li key={cert.id} id={`record-cert-${cert.id}`} className="flex items-center justify-between rounded-lg border border-hairline px-3 py-1.5 text-sm">
                                                                 <span className="text-ink">
                                                                     {CERT_TYPES.find((t) => t[0] === cert.cert_type)?.[1] ?? cert.cert_type}
                                                                     <span className="ms-1.5 text-xs text-muted">{cert.number}</span>
@@ -316,6 +316,7 @@ export default function HrIndex({
                                         </div>
                                     </div>
                                 </Card>
+                                </div>
                             ))}
                         </div>
                     )}

@@ -56,6 +56,9 @@ class FuelAnalysisService
         float $cost,
         ?string $explanation,
         ?int $voyageId,
+        ?string $weatherCondition = null,
+        ?float $speedKnots = null,
+        ?float $delayHours = null,
     ): FuelLog {
         $analysis = $this->analyze($liters, $durationHours, $vessel->fuel_baseline_lph);
 
@@ -73,6 +76,9 @@ class FuelAnalysisService
             'analysis_status' => $analysis['status'],
             'analysis_diff_pct' => $analysis['diff_pct'],
             'explanation_note' => $explanation,
+            'weather_condition' => $weatherCondition,
+            'speed_knots' => $speedKnots,
+            'delay_hours' => $delayHours,
             'created_by' => auth()->id(),
         ]);
     }

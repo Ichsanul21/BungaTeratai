@@ -1,3 +1,31 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
+@theme {
+    /* Primary — merah brand (CTA, waterline, fokus) */
+    --color-primary: #C1121F;
+    --color-primary-hover: #780000;
+    --color-primary-tint: #FDECEA;
+    --color-primary-tintborder: #F2D4D0;
+
+    /* Netral — kertas hangat */
+    --color-ink: #1C1B1A;
+    --color-muted: #8A8580;
+    --color-appbg: #FAF7F2;
+    --color-hairline: #E7E1D9;
+
+    /* Sekunder — dipertahankan tanpa diubah */
+    --color-maritime: #1E4668;
+    --color-oceanteal: #168C8C;
+    --color-warn: #D99A2B;
+    --color-ok: #2F8F68;
+    --color-danger: #C94C4C;
+    --color-sidebar: #172B3A;
+    --color-sidebarhover: #1F3A4F;
+
+    /* Tipografi */
+    --font-sans: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}

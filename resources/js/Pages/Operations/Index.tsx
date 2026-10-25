@@ -114,6 +114,7 @@ export default function OperationsIndex({
     items,
     logs,
     kpis,
+    voyages,
     checklistVoyages,
     voyageEvents,
 }: PageProps<{
@@ -125,6 +126,7 @@ export default function OperationsIndex({
     services?: Array<Record<string, any>>;
     items?: Array<Record<string, any>>;
     logs?: Array<Record<string, any>>;
+    voyages?: Array<Record<string, any>>;
     kpis?: { liter_bulan: number; biaya_bulan: number; anomali: number; trip_bulan: number };
     checklistVoyages?: Array<Record<string, any>>;
     voyageEvents?: Array<Record<string, any>>;
@@ -521,7 +523,7 @@ export default function OperationsIndex({
                                         required
                                         className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
                                     >
-                                        <option value="">— pilih kapal —</option>
+                                        <option value="">- pilih kapal -</option>
                                         {(vessels ?? []).map((v) => (
                                             <option key={v.id} value={v.id}>
                                                 {v.vessel_name} (baseline {formatNumber(v.fuel_baseline_lph, 0)} L/jam)
@@ -529,23 +531,46 @@ export default function OperationsIndex({
                                         ))}
                                     </select>
                                 </div>
-                                <TextInputField label="Tanggal" name="trip_date" type="date" required />
-                                <TextInputField label="Rute" name="route" required placeholder="mis. Samarinda → Bontang" />
-                                <TextInputField label="Durasi (jam)" name="duration_hours" type="number" step="0.01" required />
-                                <TextInputField label="Jarak (mil)" name="distance_nm" type="number" step="0.01" />
                                 <div>
-                                    <label className="text-xs font-medium text-muted">Liter *</label>
-                                    <input
-                                        name="liters"
-                                        type="number"
-                                        step="0.01"
-                                        required
-                                        value={liters}
-                                        onChange={(e) => setLiters(e.target.value)}
+                                    <label className="text-xs font-medium text-muted">Perjalanan / Voyage (Opsional)</label>
+                                    <select
+                                        name="voyage_id"
                                         className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
-                                    />
+                                    >
+                                        <option value="">- tanpa kaitan perjalanan spesifik -</option>
+                                        {(voyages ?? []).map((vy) => (
+                                            <option key={vy.id} value={vy.id}>
+                                                {vy.voyage_code}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
-                                <TextInputField label="Biaya (Rp)" name="cost" type="number" step="0.01" />
+                                <TextInputField label="Tanggal" name="trip_date" type="date" required />
+                                <TextInputField label="Rute" name="route" required placeholder="mis. Samarinda -> Bontang" />
+                                <div className="grid grid-cols-2 gap-3">
+                                    <TextInputField label="Durasi (jam)" name="duration_hours" type="number" step="0.01" required />
+                                    <TextInputField label="Jarak (mil)" name="distance_nm" type="number" step="0.01" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-xs font-medium text-muted">Liter *</label>
+                                        <input
+                                            name="liters"
+                                            type="number"
+                                            step="0.01"
+                                            required
+                                            value={liters}
+                                            onChange={(e) => setLiters(e.target.value)}
+                                            className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
+                                        />
+                                    </div>
+                                    <TextInputField label="Biaya (Rp)" name="cost" type="number" step="0.01" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <TextInputField label="Kecepatan (knot)" name="speed_knots" type="number" step="0.1" />
+                                    <TextInputField label="Keterlambatan (jam)" name="delay_hours" type="number" step="0.1" />
+                                </div>
+                                <TextInputField label="Kondisi Cuaca" name="weather_condition" placeholder="mis. cerah, gelombang tenang, hujan..." />
                                 {liveAnalysis && (
                                     <div
                                         className={classNames(
@@ -607,10 +632,13 @@ export default function OperationsIndex({
                                                     {f.baseline_lph
                                                         ? ` (baseline ${formatNumber(f.baseline_lph, 0)})`
                                                         : ''}
+                                                    {f.speed_knots ? ` · ${f.speed_knots} knot` : ''}
+                                                    {f.weather_condition ? ` · ${f.weather_condition}` : ''}
+                                                    {f.delay_hours ? ` · kendala ${f.delay_hours} jam` : ''}
                                                 </p>
                                                 {f.explanation_note && (
                                                     <p className="mt-0.5 text-xs italic text-muted">
-                                                        “{f.explanation_note}”
+                                                        "{f.explanation_note}"
                                                     </p>
                                                 )}
                                             </div>

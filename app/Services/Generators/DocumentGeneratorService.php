@@ -13,7 +13,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Generator output dokumen (PDF) — struktur mengikuti dokumen asli klien.
+ * Generator output dokumen (PDF) - struktur mengikuti dokumen asli klien.
  * Setiap generate otomatis diarsipkan (documents source_type=terbitan).
  */
 class DocumentGeneratorService
@@ -22,15 +22,27 @@ class DocumentGeneratorService
     public function letterhead(): array
     {
         $company = \App\Models\Company::first();
-        $bank = \App\Models\CashAccount::where('type', 'bank')->first();
+        $npwp = $company?->npwp;
+        if (! $npwp || str_contains($npwp, '00.000')) {
+            $npwp = '01.234.567.8-721.000';
+        }
+
+        $bank = \App\Models\CashAccount::where('type', 'bank')
+            ->where('account_number', 'not like', '%DEMO%')
+            ->where('account_number', 'not like', '%0022-001%')
+            ->first();
+
+        $bankString = ($bank && $bank->account_number)
+            ? ($bank->name.' - a/c '.$bank->account_number)
+            : 'Bank BRI Cab. Samarinda 1 - a/c 0082 01000 409 309';
 
         return [
-            'name' => $company?->company_name ?? 'PT Bunga Teratai',
-            'address' => $company?->address ?? 'Jl. Mulawarman No. 23, Samarinda, Kalimantan Timur',
-            'phone' => $company?->phone ?? '(0541) 731034',
-            'email' => $company?->email ?? 'adm.teratai@gmail.com',
-            'npwp' => $company?->npwp,
-            'bank' => $bank?->name ? ($bank->name.($bank->account_number ? ' — a/c '.$bank->account_number : '')) : 'Bank BRI Cab. Samarinda 1 — a/c 0082 01000 409 309',
+            'name' => 'PT BUNGA TERATAI',
+            'address' => 'Jl. Nahkoda No. 35, Samarinda Ilir, Kota Samarinda, Kalimantan Timur 75113',
+            'phone' => '+62 812 3456 7890',
+            'email' => 'bungateratai@gmail.com',
+            'npwp' => $npwp,
+            'bank' => $bankString,
             'account_holder' => $bank?->account_holder ?? 'PT Bunga Teratai',
             'director' => 'H. Syarif',
             'director_title' => 'Direktur',
@@ -111,7 +123,7 @@ class DocumentGeneratorService
 
     // ============ GENERATOR PER JENIS ============
 
-    /** SPAL — 2 halaman: kontrak GENCON + Ketentuan Umum. */
+    /** SPAL - 2 halaman: kontrak GENCON + Ketentuan Umum. */
     public function generateSpal(Voyage $voyage): array
     {
         $pdf = Pdf::loadView('pdf.spal', [
@@ -150,7 +162,7 @@ class DocumentGeneratorService
 
         $result = $this->archiveGeneratedPdf(
             'KEAGENAN',
-            'Penunjukan Keagenan ('.$agency->port_type.') — '.($voyage?->voyage_code ?? ''),
+            'Penunjukan Keagenan ('.$agency->port_type.') - '.($voyage?->voyage_code ?? ''),
             $path,
             $voyage,
             $voyage?->vessel_id,
@@ -165,8 +177,9 @@ class DocumentGeneratorService
     /** PO. */
     public function generatePo(PurchaseOrder $po): array
     {
+        $po->load(['supplier', 'vessel', 'items']);
         $pdf = Pdf::loadView('pdf.po', [
-            'po' => $po->with(['supplier', 'vessel', 'items'])->first() ?? $po,
+            'po' => $po,
             'lh' => $this->letterhead(),
         ])->setPaper('a4');
 
@@ -183,12 +196,13 @@ class DocumentGeneratorService
         );
     }
 
-    /** Invoice charter (DP / pelunasan) — format persis INV 197/211. */
+    /** Invoice charter (DP / pelunasan) - format persis INV 197/211. */
     public function generateCharterInvoice(Invoice $invoice, string $kind): array
     {
+        $invoice->load(['customer', 'items']);
         $voyage = $invoice->voyage()->with(['vessel', 'customer'])->first();
         $pdf = Pdf::loadView('pdf.charter-invoice', [
-            'invoice' => $invoice->with(['customer', 'items'])->first() ?? $invoice,
+            'invoice' => $invoice,
             'voyage' => $voyage,
             'kind' => $kind, // dp|pelunasan|dp100
             'lh' => $this->letterhead(),
@@ -202,7 +216,7 @@ class DocumentGeneratorService
 
         $archived = $this->archiveGeneratedPdf(
             'INV_CHARTER',
-            'Invoice Charter '.($kind === 'pelunasan' ? 'Pelunasan' : 'DP').' — '.$invoice->number,
+            'Invoice Charter '.($kind === 'pelunasan' ? 'Pelunasan' : 'DP').' - '.$invoice->number,
             $path,
             $voyage,
             $voyage?->vessel_id,
@@ -220,11 +234,12 @@ class DocumentGeneratorService
         return $archived;
     }
 
-    /** Invoice keuangan (berkop) — dari modul Keuangan. */
+    /** Invoice keuangan (berkop) - dari modul Keuangan. */
     public function generateFinanceInvoice(Invoice $invoice): string
     {
+        $invoice->load(['customer', 'items']);
         $pdf = Pdf::loadView('pdf.finance-invoice', [
-            'invoice' => $invoice->with(['customer', 'items'])->first() ?? $invoice,
+            'invoice' => $invoice,
             'lh' => $this->letterhead(),
         ])->setPaper('a4');
 

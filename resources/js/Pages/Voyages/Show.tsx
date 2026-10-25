@@ -75,6 +75,8 @@ export default function VoyagesShow({
     approvals,
     expenses,
     actions,
+    fuelLogs = [],
+    demurrage,
 }: PageProps<{
     voyage: Record<string, any>;
     relationships: Array<Record<string, any>>;
@@ -88,6 +90,8 @@ export default function VoyagesShow({
     approvals: Array<Record<string, any>>;
     expenses: { bills: Array<Record<string, any>>; total: number };
     actions: { can_update: boolean; can_approve: boolean; can_confirm_external: boolean };
+    fuelLogs?: Array<Record<string, any>>;
+    demurrage?: Record<string, any>;
 }>) {
     const [tab, setTab] = useState('overview');
     const [modal, setModal] = useState<null | 'approve' | 'external' | 'status' | 'cancel'>(null);
@@ -153,6 +157,7 @@ export default function VoyagesShow({
     return (
         <AuthenticatedLayout>
             <Head title={`Perjalanan ${voyage.voyage_code}`} />
+            <div id={`record-voyage-${voyage.id}`}>
 
             <div className="mb-4">
                 <Link href="/perjalanan" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink">
@@ -290,11 +295,41 @@ export default function VoyagesShow({
                                 </span>
                             </div>
                         </div>
+
+                        <div className="mt-4 rounded-lg border border-hairline bg-appbg/40 p-3">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-muted">Tracking Status Kapal (Operasional)</p>
+                                    <p className="text-xs text-muted">Status perjalanan riil: Penerimaan SI -&gt; Ke SPAL -&gt; SPOG -&gt; Sandar Loading -&gt; Waiting (Desk) -&gt; Bunker</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <select
+                                        value={voyage.progress_stage ?? 'penerimaan_si'}
+                                        onChange={(e) => {
+                                            router.post(
+                                                `/perjalanan/${voyage.id}/progress-stage`,
+                                                { progress_stage: e.target.value },
+                                                { preserveScroll: true }
+                                            );
+                                        }}
+                                        disabled={!actions.can_update}
+                                        className="rounded-md border-gray-300 py-1.5 pl-3 pr-8 text-xs font-medium text-ink shadow-sm focus:border-primary focus:ring-primary disabled:bg-gray-100"
+                                    >
+                                        <option value="penerimaan_si">Penerimaan SI</option>
+                                        <option value="ke_spal">Ke SPAL</option>
+                                        <option value="spog">SPOG</option>
+                                        <option value="sandar_loading">Sandar Loading</option>
+                                        <option value="waiting_desk">Waiting (Desk)</option>
+                                        <option value="bunker">Bunker</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
                         {voyage.notes && (
                             <p className="mt-4 rounded-lg bg-appbg p-3 text-sm text-muted">{voyage.notes}</p>
                         )}
                         <p className="mt-4 rounded-lg bg-maritime/5 p-2.5 text-[11px] text-muted">
-                            Status kesiapan adalah <strong>indikator internal sistem</strong> — bukan
+                            Status kesiapan adalah <strong>indikator internal sistem</strong> - bukan
                             pengganti penilaian nakhoda atau persetujuan otoritas pelayaran.
                         </p>
                     </Card>
@@ -303,8 +338,8 @@ export default function VoyagesShow({
                             {[
                                 ['Kegiatan', voyage.activity_type?.replace('_', ' ')],
                                 ['PIC', voyage.person_in_charge],
-                                ['Customer', voyage.customer_name ?? '—'],
-                                ['No. Kontrak', voyage.contract_no ?? '—'],
+                                ['Customer', voyage.customer_name ?? '-'],
+                                ['No. Kontrak', voyage.contract_no ?? '-'],
                                 ['Tipe Rute', voyage.route_type],
                             ].map(([k, v]) => (
                                 <div key={k as string}>
@@ -313,6 +348,50 @@ export default function VoyagesShow({
                                 </div>
                             ))}
                         </dl>
+                    </Card>
+
+                    {/* Ringkasan & Informasi Demurrage (SPAL) */}
+                    <Card
+                        title="Informasi Demurrage & Laytime (SPAL)"
+                        description="Data faktual berbasis waktu operasional riil - tanpa asumsi prediktif."
+                        className="xl:col-span-3"
+                    >
+                        <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-5">
+                            {[
+                                ['Laytime Kontrak', demurrage?.laytime_days > 0 ? `${demurrage.laytime_days} hari` : 'Tidak diatur'],
+                                ['Tarif Demurrage', demurrage?.demurrage_rate > 0 ? `${formatRupiah(demurrage.demurrage_rate)} / hari` : 'Tidak diatur'],
+                                ['Waktu Operasi Aktual', `${demurrage?.elapsed_days ?? 0} hari`],
+                                ['Kelebihan Hari', demurrage?.demurrage_days > 0 ? `${demurrage.demurrage_days} hari` : 'Dalam batas'],
+                                ['Estimasi Demurrage', demurrage?.demurrage_amount > 0 ? formatRupiah(demurrage.demurrage_amount) : 'Rp 0'],
+                            ].map(([k, v]) => (
+                                <div key={k as string} className="rounded-lg border border-hairline bg-appbg/30 p-3">
+                                    <p className="text-xs uppercase tracking-wide text-muted">{k}</p>
+                                    <p className="mt-1 font-semibold text-ink">{v as string}</p>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-hairline pt-3 text-xs">
+                            <span className="text-muted">
+                                Status kepatuhan: <strong className="text-ink">{demurrage?.status ?? 'Dalam batas laytime'}</strong>
+                            </span>
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setTab('berkas')}
+                                    className="font-medium text-primary hover:underline"
+                                >
+                                    Lihat Berkas SPAL & Kontrak &rarr;
+                                </button>
+                                <span className="text-muted">·</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setTab('timeline')}
+                                    className="font-medium text-primary hover:underline"
+                                >
+                                    Histori Kejadian Perjalanan &rarr;
+                                </button>
+                            </div>
+                        </div>
                     </Card>
                 </div>
             )}
@@ -992,7 +1071,7 @@ export default function VoyagesShow({
                         ))}
                     </dl>
                     <p className="mt-6 rounded-lg bg-appbg p-3 text-xs text-muted">
-                        Dokumen resmi PT Bunga Teratai — DEMO DATA. Indikator kesiapan bersifat internal.
+                        Dokumen resmi PT Bunga Teratai - DEMO DATA. Indikator kesiapan bersifat internal.
                     </p>
                 </Card>
             )}
@@ -1140,6 +1219,7 @@ export default function VoyagesShow({
                     );
                 }}
             />
+            </div>
         </AuthenticatedLayout>
     );
 }

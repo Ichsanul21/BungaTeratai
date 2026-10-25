@@ -21,7 +21,10 @@ class DashboardController extends Controller
 {
     public function __invoke(Request $request): Response
     {
-        $months = min(12, max(1, (int) $request->integer('months', 6)));
+        // Default rentang 12 bulan (1 tahun): kunjungan pertama tanpa
+        // parameter `months` tetap menyajikan data 12 bulan penuh,
+        // sehingga URL bisa dipertahankan bersih di "/dashboard".
+        $months = min(12, max(1, (int) $request->integer('months', 12)));
         $vesselType = $request->string('type')->toString();
 
         // ===== Armada =====
@@ -74,7 +77,14 @@ class DashboardController extends Controller
             ->count();
 
         // ===== Keuangan =====
-        $kasTotal = (float) CashAccount::sum('balance');
+        $user = auth()->user();
+        $canViewBalances = $user?->can('finance.view-balances') ?? false;
+        $kasTotal = $canViewBalances ? (float) CashAccount::sum('balance') : null;
+        $kasTunai = $canViewBalances ? (float) CashAccount::where('type', 'kas')->sum('balance') : null;
+        $bankTotal = $canViewBalances ? (float) CashAccount::where('type', 'bank')->sum('balance') : null;
+        $cashAccountsSummary = $canViewBalances
+            ? CashAccount::get(['id', 'name', 'type', 'balance', 'account_number'])
+            : collect();
         $piutang = (float) Invoice::whereIn('status', ['unpaid', 'partial'])
             ->selectRaw('COALESCE(SUM(total - paid_amount),0) as sisa')->value('sisa');
         $hutang = (float) Bill::whereIn('status', ['unpaid', 'partial'])
@@ -119,6 +129,8 @@ class DashboardController extends Controller
             'user_name' => $a->user?->name ?? 'Sistem',
             'change_summary' => $a->change_summary,
             'timestamp' => $a->timestamp,
+            'assigner_name' => $a->assigner_name ?? ($a->after['assigner_name'] ?? null),
+            'assigned_to' => $a->assigned_to ?? ($a->after['assigned_to'] ?? null),
         ]);
 
         return Inertia::render('Dashboard', [
@@ -132,11 +144,15 @@ class DashboardController extends Controller
                 'voyage_selesai' => $voyageSelesai,
                 'docs_expiring' => $docsExpiring,
                 'docs_expired' => $docsExpired,
+                'can_view_balances' => $canViewBalances,
                 'kas_total' => $kasTotal,
+                'kas_tunai' => $kasTunai,
+                'bank_total' => $bankTotal,
                 'piutang' => $piutang,
                 'hutang' => $hutang,
                 'anomali_bbm' => $anomaliBbm,
             ],
+            'cashAccountsSummary' => $cashAccountsSummary,
             'revenueSeries' => $revenueSeries,
             'docsByStatus' => $docsByStatus,
             'reminders' => $reminders,

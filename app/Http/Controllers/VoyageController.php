@@ -283,8 +283,24 @@ class VoyageController extends Controller
                 'dsr_mt' => $voyage->dsr_mt,
                 'dsr_date' => $voyage->dsr_date?->toDateString(),
                 'charter_stage' => $voyage->charter_stage,
+                'progress_stage' => $voyage->progress_stage,
                 'allowed_transitions' => VoyageWorkflowService::TRANSITIONS[$voyage->voyage_status] ?? [],
             ],
+            'fuelLogs' => $voyage->fuelLogs()->orderByDesc('trip_date')->get()->map(fn ($fl) => [
+                'id' => $fl->id,
+                'trip_date' => $fl->trip_date?->toDateString(),
+                'liters' => $fl->liters,
+                'cost' => $fl->cost,
+                'duration_hours' => $fl->duration_hours,
+                'distance_nm' => $fl->distance_nm,
+                'weather_condition' => $fl->weather_condition,
+                'speed_knots' => $fl->speed_knots,
+                'delay_hours' => $fl->delay_hours,
+                'analysis_status' => $fl->analysis_status,
+                'analysis_diff_pct' => $fl->analysis_diff_pct,
+                'explanation_note' => $fl->explanation_note,
+            ]),
+            'demurrage' => $this->calculateDemurrageFacts($voyage),
             'agency' => $voyage->agencyAppointments()->orderByDesc('id')->get()->map(fn ($ag) => [
                 'id' => $ag->id,
                 'letter_no' => $ag->letter_no,
@@ -766,5 +782,108 @@ class VoyageController extends Controller
         AuditService::log('charter_updated', 'voyage', $voyage->id, $before, $data, 'Detail charter SPAL diperbarui');
 
         return back()->with('success', 'Detail charter diperbarui (tahap: '.$data['charter_stage'].').');
+    }
+
+    public function updateProgressStage(Request $request, Voyage $voyage)
+    {
+        $this->authorize('update', $voyage);
+
+        $data = $request->validate([
+            'progress_stage' => ['required', 'in:penerimaan_si,ke_spal,spog,sandar_loading,waiting_desk,bunker'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $stageLabels = [
+            'penerimaan_si' => 'Penerimaan SI',
+            'ke_spal' => 'Ke SPAL',
+            'spog' => 'SPOG',
+            'sandar_loading' => 'Sandar Loading',
+            'waiting_desk' => 'Waiting (Desk)',
+            'bunker' => 'Bunker',
+        ];
+
+        $oldStage = $voyage->progress_stage;
+        $newStage = $data['progress_stage'];
+        $voyage->update(['progress_stage' => $newStage]);
+
+        $label = $stageLabels[$newStage] ?? $newStage;
+        $desc = "Progress tahapan kapal diubah ke: {$label}" . (! empty($data['notes']) ? " - {$data['notes']}" : '');
+
+        $this->workflow->recordEvent($voyage, \App\Enums\VoyageEventType::StatusChanged, $desc);
+        AuditService::log('progress_stage_updated', 'voyage', $voyage->id, ['progress_stage' => $oldStage], $data, $desc);
+
+        return back()->with('success', "Progress kapal diperbarui: {$label}");
+    }
+
+    public function storeFuelLog(Request $request, Voyage $voyage)
+    {
+        $this->authorize('update', $voyage);
+
+        $data = $request->validate([
+            'trip_date' => ['required', 'date'],
+            'duration_hours' => ['required', 'numeric', 'min:0.1'],
+            'distance_nm' => ['nullable', 'numeric', 'min:0'],
+            'liters' => ['required', 'numeric', 'min:0.1'],
+            'cost' => ['nullable', 'numeric', 'min:0'],
+            'weather_condition' => ['nullable', 'string', 'max:60'],
+            'speed_knots' => ['nullable', 'numeric', 'min:0'],
+            'delay_hours' => ['nullable', 'numeric', 'min:0'],
+            'explanation_note' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $vessel = $voyage->vessel;
+        if (! $vessel) {
+            return back()->with('error', 'Kapal tidak ditemukan untuk perjalanan ini.');
+        }
+
+        $log = app(\App\Services\FuelAnalysisService::class)->record(
+            vessel: $vessel,
+            tripDate: $data['trip_date'],
+            route: "{$voyage->origin} → {$voyage->destination}",
+            cargoType: $voyage->cargo?->commodity_type,
+            durationHours: (float) $data['duration_hours'],
+            distanceNm: ! empty($data['distance_nm']) ? (float) $data['distance_nm'] : null,
+            liters: (float) $data['liters'],
+            cost: ! empty($data['cost']) ? (float) $data['cost'] : 0,
+            explanation: $data['explanation_note'] ?? null,
+            voyageId: $voyage->id,
+            weatherCondition: $data['weather_condition'] ?? null,
+            speedKnots: ! empty($data['speed_knots']) ? (float) $data['speed_knots'] : null,
+            delayHours: ! empty($data['delay_hours']) ? (float) $data['delay_hours'] : null,
+        );
+
+        AuditService::log('fuel_log_created', 'voyage', $voyage->id, null, $data, "Catatan BBM perjalanan ditambahkan: {$log->liters} L");
+
+        return back()->with('success', "Data BBM perjalanan tersimpan ({$log->liters} L — status: {$log->analysis_status}).");
+    }
+
+    private function calculateDemurrageFacts(Voyage $voyage): array
+    {
+        $laytimeDays = (float) ($voyage->laytime_days ?? 0);
+        $demurrageRate = (float) ($voyage->demurrage_per_day ?? 0);
+
+        $loadingEvent = $voyage->events()->where('description', 'like', '%Sandar Loading%')->oldest('occurred_at')->first();
+        $startTime = $loadingEvent?->occurred_at ?? $voyage->actual_departure ?? $voyage->planned_departure;
+        $endTime = $voyage->actual_arrival ?? now();
+
+        $elapsedHours = $startTime ? max(0, $startTime->diffInHours($endTime)) : 0;
+        $elapsedDays = round($elapsedHours / 24, 1);
+
+        $demurrageDays = ($laytimeDays > 0 && $elapsedDays > $laytimeDays)
+            ? round($elapsedDays - $laytimeDays, 1)
+            : 0;
+
+        $demurrageAmount = $demurrageDays * $demurrageRate;
+
+        return [
+            'laytime_days' => $laytimeDays,
+            'demurrage_rate' => $demurrageRate,
+            'elapsed_days' => $elapsedDays,
+            'demurrage_days' => $demurrageDays,
+            'demurrage_amount' => $demurrageAmount,
+            'status' => $laytimeDays <= 0
+                ? 'Tidak diatur di kontrak SPAL'
+                : ($demurrageDays > 0 ? "Melebihi laytime ({$demurrageDays} hari)" : 'Dalam batas laytime'),
+        ];
     }
 }

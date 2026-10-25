@@ -5,8 +5,8 @@
     <h2 class="doc-title">I N V O I C E</h2>
     <div class="doc-no">Nomor: {{ $invoice->number }} &nbsp;&middot;&nbsp; Tanggal: {{ optional($invoice->issue_date)->translatedFormat('d F Y') }}</div>
 
-    <div class="field"><span class="lbl">Kepada Yth.</span><span class="val">: <b>{{ $invoice->customer?->name ?? '—' }}</b><br>{{ $invoice->customer?->address ?? '' }}<br>{{ $invoice->customer?->phone ?? '' }}</span></div>
-    <div class="field"><span class="lbl">No. Faktur Pajak</span><span class="val">: {{ $invoice->fp_number ?? '—' }}</span></div>
+    <div class="field"><span class="lbl">Kepada Yth.</span><span class="val">: <b>{{ $invoice->customer?->name ?? '-' }}</b><br>{{ $invoice->customer?->address ?? '' }}<br>{{ $invoice->customer?->phone ?? '' }}</span></div>
+    <div class="field"><span class="lbl">No. Faktur Pajak</span><span class="val">: {{ $invoice->fp_number ?? '-' }}</span></div>
 
     <table class="data" style="margin-top:12px;">
         <tr><th style="width:70%;">Description</th><th class="amount" style="width:30%;">Amount</th></tr>
@@ -24,7 +24,7 @@
         <tr class="total-line"><td>TOTAL TAGIHAN</td><td class="amount">Rp {{ number_format((float) $invoice->total, 0, ',', '.') }} ,-</td></tr>
     </table>
 
-    <div class="field" style="margin-top:12px;"><span class="lbl">Jatuh Tempo</span><span class="val">: {{ optional($invoice->due_date)->translatedFormat('d F Y') ?? '—' }}</span></div>
+    <div class="field" style="margin-top:12px;"><span class="lbl">Jatuh Tempo</span><span class="val">: {{ optional($invoice->due_date)->translatedFormat('d F Y') ?? '-' }}</span></div>
     <div class="field"><span class="lbl">Rekening</span><span class="val">: {{ $lh['bank'] }}<br>a.n. {{ $lh['account_holder'] }}</span></div>
 
     <div class="sign-row">
@@ -35,5 +35,5 @@
         </div>
     </div>
 
-    <div class="footer-note">Dicetak melalui Bunga Teratai System — {{ now()->translatedFormat('d F Y H:i') }} WITA.</div>
+    <div class="footer-note">Dicetak melalui Bunga Teratai System - {{ now()->translatedFormat('d F Y H:i') }} WITA.</div>
 @endsection

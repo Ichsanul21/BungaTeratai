@@ -45,7 +45,9 @@ return new class extends Migration
             $table->string('relation_type', 40);        // terbit_dari|melampiri|pelaksanaan|pendukung|pembayaran|revisi
             $table->string('notes')->nullable();
             $table->timestamps();
-            $table->unique(['from_document_id', 'to_document_id', 'relation_type']);
+            $table->unique(['from_document_id', 'to_document_id', 'relation_type'],
+                'doc_rel_from_to_type_unique'
+            );
         });
 
         Schema::create('document_links', function (Blueprint $table) {

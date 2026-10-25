@@ -23,7 +23,7 @@ class DocumentCompletenessService
             ->values();
     }
 
-    /** Requirement kelompok E–F yang berlaku untuk sebuah perjalanan. */
+    /** Requirement kelompok E-F yang berlaku untuk sebuah perjalanan. */
     public function applicableVoyageRequirements(Voyage $voyage): Collection
     {
         $vessel = $voyage->vessel;
@@ -33,6 +33,11 @@ class DocumentCompletenessService
             ->orderBy('sort')
             ->get()
             ->filter(function (DocumentRequirement $req) use ($vessel, $cargoTypes) {
+                // Manifest hanya wajib untuk kapal penumpang, tidak untuk tugboat
+                if (in_array($req->code, ['E_MANIFEST', 'E_MANIFEST_PENUMPANG']) && $vessel && in_array($vessel->vessel_type, ['tugboat', 'kapal_tunda', 'tongkang'])) {
+                    return false;
+                }
+
                 if (! $this->vesselRequirementApplies($req, $vessel)) {
                     return false;
                 }
@@ -127,7 +132,7 @@ class DocumentCompletenessService
                         'is_conditional' => true,
                         'regulatory_reference' => $req->regulatory_reference,
                     ],
-                    'met' => null, // kondisional — dihitung terpisah
+                    'met' => null, // kondisional - dihitung terpisah
                     'document' => null,
                 ];
 

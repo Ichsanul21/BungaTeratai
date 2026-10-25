@@ -9,7 +9,7 @@
         @else &nbsp;&middot;&nbsp; <b>DOWN PAYMENT (50%)</b> @endif
     </div>
 
-    <div class="field"><span class="lbl">Kepada Yth.</span><span class="val">: <b>{{ $invoice->customer?->name ?? '—' }}</b><br>{{ $invoice->customer?->address ?? '' }}</span></div>
+    <div class="field"><span class="lbl">Kepada Yth.</span><span class="val">: <b>{{ $invoice->customer?->name ?? '-' }}</b><br>{{ $invoice->customer?->address ?? '' }}</span></div>
 
     <table class="data">
         <tr>
@@ -18,7 +18,7 @@
         </tr>
         <tr>
             <th>Kontrak</th>
-            <td>SPAL No: {{ $voyage?->spal_number ?? '—' }} @if($voyage?->spal_date) Tanggal : {{ $voyage->spal_date->translatedFormat('d F Y') }} @endif</td>
+            <td>SPAL No: {{ $voyage?->spal_number ?? '-' }} @if($voyage?->spal_date) Tanggal : {{ $voyage->spal_date->translatedFormat('d F Y') }} @endif</td>
         </tr>
         <tr>
             <th>Periode</th>
@@ -31,7 +31,7 @@
         @if($kind === 'pelunasan')
         <tr>
             <th>DSR (Total Muatan)</th>
-            <td><b>{{ $dsr ? number_format((float) $dsr, 0, ',', '.').' MT' : '— MT' }}</b> — sesuai DSR dari Nakhoda</td>
+            <td><b>{{ $dsr ? number_format((float) $dsr, 0, ',', '.').' MT' : '- MT' }}</b> - sesuai DSR dari Nakhoda</td>
         </tr>
         @endif
         <tr>
@@ -46,7 +46,7 @@
             <tr><td>Down Payment Freight Charter Contract ({{ $kind === 'dp100' ? '100%' : '50%' }} dari total freight)</td>
                 <td class="amount">Rp {{ number_format($kind === 'dp100' ? (float) $invoice->subtotal : (float) $invoice->subtotal, 0, ',', '.') }} ,-</td></tr>
         @elseif($kind === 'pelunasan')
-            <tr><td>Pelunasan Freight Charter Contract (sisa 50%) — DSR {{ $dsr ? number_format((float) $dsr, 0, ',', '.').' MT' : '' }}</td>
+            <tr><td>Pelunasan Freight Charter Contract (sisa 50%) - DSR {{ $dsr ? number_format((float) $dsr, 0, ',', '.').' MT' : '' }}</td>
                 <td class="amount">Rp {{ number_format((float) $invoice->subtotal, 0, ',', '.') }} ,-</td></tr>
         @else
             @foreach($invoice->items as $item)
@@ -72,5 +72,5 @@
         </div>
     </div>
 
-    <div class="footer-note">Dicetak melalui Bunga Teratai System — {{ now()->translatedFormat('d F Y H:i') }} WITA.</div>
+    <div class="footer-note">Dicetak melalui Bunga Teratai System - {{ now()->translatedFormat('d F Y H:i') }} WITA.</div>
 @endsection

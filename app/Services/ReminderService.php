@@ -11,8 +11,8 @@ use App\Models\Setting;
 use Illuminate\Support\Collection;
 
 /**
- * Reminder dokumen — hanya untuk yang punya masa berlaku (tanpa tanggal fiktif).
- * Jadwal default 30/14/7/0 hari, diubah admin via Settings → reminder_days.
+ * Reminder dokumen - hanya untuk yang punya masa berlaku (tanpa tanggal fiktif).
+ * Jadwal default 30/14/7/0 hari, diubah admin via Settings -> reminder_days.
  */
 class ReminderService
 {
@@ -82,8 +82,28 @@ class ReminderService
             }
         }
 
-        // Reminder ENDORSEMENT (terpisah dari expiry) — dokumen ber-endorsement
+        // Reminder ENDORSEMENT (terpisah dari expiry) - dokumen ber-endorsement
         foreach ($this->dueEndorsements() as $item) {
+            foreach ($recipients as $userId) {
+                if ($this->notificationExists($userId, $item['type'], $item['refType'], $item['refId'])) {
+                    continue;
+                }
+                Notification::create([
+                    'recipient_id' => $userId,
+                    'notification_type' => $item['type'],
+                    'title' => $item['title'],
+                    'message' => $item['message'],
+                    'reference_type' => $item['refType'],
+                    'reference_id' => $item['refId'],
+                    'read_status' => false,
+                    'created_at' => now(),
+                ]);
+                $created++;
+            }
+        }
+
+        // Reminder INVOICE & BILL (2 minggu sebelum jatuh tempo)
+        foreach ($this->dueInvoicesAndBills() as $item) {
             foreach ($recipients as $userId) {
                 if ($this->notificationExists($userId, $item['type'], $item['refType'], $item['refId'])) {
                     continue;
@@ -131,7 +151,7 @@ class ReminderService
                     'refType' => 'document',
                     'refId' => $doc->id,
                     'title' => $expired ? 'Endorsement dokumen sudah jatuh tempo' : 'Endorsement dokumen mendekati jatuh tempo',
-                    'message' => "\"{$doc->document_name}\" — endorsement ".(
+                    'message' => "\"{$doc->document_name}\" - endorsement ".(
                         $expired ? 'jatuh tempo '.abs($days).' hari lalu' : "lagi {$days} hari"
                     ).'.',
                     'days' => $days,
@@ -198,7 +218,7 @@ class ReminderService
                     'title' => $expired
                         ? 'Sertifikat ABK kedaluwarsa'
                         : 'Sertifikat ABK mendekati kedaluwarsa',
-                    'message' => ($cert->crew?->name ?? 'ABK')." — {$cert->cert_type}: ".(
+                    'message' => ($cert->crew?->name ?? 'ABK')." - {$cert->cert_type}: ".(
                         $expired ? 'kedaluwarsa '.abs($days).' hari lalu' : "berlaku lagi {$days} hari"
                     ).'.',
                     'days' => $days,
@@ -209,9 +229,61 @@ class ReminderService
         return $items->sortBy('days')->values();
     }
 
+    /** @return Collection<int, array> Invoice dan tagihan mendekati jatuh tempo (2 minggu / 14 hari). */
+    public function dueInvoicesAndBills(): Collection
+    {
+        $items = collect();
+        $thresholds = $this->reminderDays();
+        $maxThreshold = max($thresholds);
+
+        \App\Models\Invoice::whereIn('status', ['unpaid', 'partial'])
+            ->whereNotNull('due_date')
+            ->get()
+            ->each(function (\App\Models\Invoice $inv) use (&$items, $thresholds, $maxThreshold) {
+                $days = $this->daysUntil($inv->due_date?->toDateString());
+                $hit = $days < 0 ? 0 : collect($thresholds)->first(fn ($t) => $days <= $t, null);
+                if ($hit === null && $days > $maxThreshold) {
+                    return;
+                }
+                $expired = $days < 0;
+                $items->push([
+                    'type' => NotificationType::InvoiceDue->value,
+                    'refType' => 'invoice',
+                    'refId' => $inv->id,
+                    'title' => $expired ? 'Invoice telah jatuh tempo' : 'Invoice mendekati jatuh tempo (2 minggu)',
+                    'message' => "Invoice {$inv->number} " . ($expired ? "lewat tempo " . abs($days) . " hari" : "jatuh tempo {$days} hari lagi") . " (Sisa: Rp " . number_format($inv->total - $inv->paid_amount, 0, ',', '.') . ").",
+                    'days' => $days,
+                    'expiry' => $inv->due_date?->toDateString(),
+                ]);
+            });
+
+        \App\Models\Bill::whereIn('status', ['unpaid', 'partial'])
+            ->whereNotNull('due_date')
+            ->get()
+            ->each(function (\App\Models\Bill $bill) use (&$items, $thresholds, $maxThreshold) {
+                $days = $this->daysUntil($bill->due_date?->toDateString());
+                $hit = $days < 0 ? 0 : collect($thresholds)->first(fn ($t) => $days <= $t, null);
+                if ($hit === null && $days > $maxThreshold) {
+                    return;
+                }
+                $expired = $days < 0;
+                $items->push([
+                    'type' => NotificationType::BillDue->value,
+                    'refType' => 'bill',
+                    'refId' => $bill->id,
+                    'title' => $expired ? 'Tagihan/Bill telah jatuh tempo' : 'Tagihan mendekati jatuh tempo (2 minggu)',
+                    'message' => "Bill {$bill->number} " . ($expired ? "lewat tempo " . abs($days) . " hari" : "jatuh tempo {$days} hari lagi") . " (Sisa: Rp " . number_format($bill->total - $bill->paid_amount, 0, ',', '.') . ").",
+                    'days' => $days,
+                    'expiry' => $bill->due_date?->toDateString(),
+                ]);
+            });
+
+        return $items->sortBy('days')->values();
+    }
+
     private function recipients(): array
     {
-        return Role::whereIn('slug', ['super_admin', 'doc_controller'])
+        return Role::whereIn('slug', ['super_admin', 'doc_controller', 'finance', 'management'])
             ->with('users')
             ->get()
             ->flatMap->users

@@ -56,4 +56,9 @@ class Vessel extends Model
     {
         return $this->belongsToMany(Crew::class, 'crew_assignments')->withPivot('role', 'start_date', 'end_date', 'status');
     }
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class);
+    }
 }

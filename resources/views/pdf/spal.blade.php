@@ -3,7 +3,7 @@
 
 @section('content')
     <h2 class="doc-title">Surat Perjanjian Angkutan Laut</h2>
-    <div class="doc-no">Nomor: {{ $voyage->spal_number ?? '—' }} &nbsp;&middot;&nbsp; Tanggal: {{ optional($voyage->spal_date)->translatedFormat('d F Y') }}</div>
+    <div class="doc-no">Nomor: {{ $voyage->spal_number ?? '-' }} &nbsp;&middot;&nbsp; Tanggal: {{ optional($voyage->spal_date)->translatedFormat('d F Y') }}</div>
 
     <div class="clause">
         Perjanjian ini mengikuti dan sesuai dengan THE BALTIC AND INTERNATIONAL MARITIM COUNCIL UNIFORM GENERAL
@@ -11,22 +11,22 @@
         belakang/terlampir.
     </div>
 
-    <div class="field"><span class="lbl">1. PEMILIK KAPAL / OPERATOR</span><span class="val">: {{ $lh['name'] }}<br>{{ $lh['address'] }}<br>Telp. {{ $lh['phone'] }} — {{ $lh['email'] }}</span></div>
-    <div class="field"><span class="lbl">2. PENYEWA RUANG KAPAL / SHIPPER</span><span class="val">: {{ $voyage->customer?->name ?? '—' }}<br>{{ $voyage->customer?->address ?? '' }}</span></div>
-    <div class="field"><span class="lbl">3. NAMA DAN DATA KAPAL</span><span class="val">: {{ $voyage->vessel?->vessel_name }}{{ $relationship ? ' — '.($relationship->tugboat?->vessel_name).' &amp; '.($relationship->barge?->vessel_name) : '' }} (GT {{ $voyage->vessel?->gt ?? '—' }})</span></div>
-    <div class="field"><span class="lbl">4. KEAGENAN KAPAL</span><span class="val">: {{ $voyage->vessel?->base_location ?? '—' }} (Ditanggung Pemilik Kapal)</span></div>
+    <div class="field"><span class="lbl">1. PEMILIK KAPAL / OPERATOR</span><span class="val">: {{ $lh['name'] }}<br>{{ $lh['address'] }}<br>Telp. {{ $lh['phone'] }} - {{ $lh['email'] }}</span></div>
+    <div class="field"><span class="lbl">2. PENYEWA RUANG KAPAL / SHIPPER</span><span class="val">: {{ $voyage->customer?->name ?? '-' }}<br>{{ $voyage->customer?->address ?? '' }}</span></div>
+    <div class="field"><span class="lbl">3. NAMA DAN DATA KAPAL</span><span class="val">: {{ $voyage->vessel?->vessel_name }}{{ $relationship ? ' - '.($relationship->tugboat?->vessel_name).' &amp; '.($relationship->barge?->vessel_name) : '' }} (GT {{ $voyage->vessel?->gt ?? '-' }})</span></div>
+    <div class="field"><span class="lbl">4. KEAGENAN KAPAL</span><span class="val">: {{ $voyage->vessel?->base_location ?? '-' }} (Ditanggung Pemilik Kapal)</span></div>
     <div class="field"><span class="lbl">5. POSISI KAPAL SAAT INI</span><span class="val">: {{ $voyage->origin }}</span></div>
     <div class="field"><span class="lbl">6. KESEDIAAN KAPAL UNTUK MUAT</span><span class="val">: {{ optional($voyage->planned_departure)->translatedFormat('d F Y') }}</span></div>
-    <div class="field"><span class="lbl">7. JENIS MUATAN DAN JUMLAHNYA</span><span class="val">: {{ $cargo ? ucwords(str_replace('_', ' ', $cargo->commodity_type)).' ± '.number_format((float) $cargo->weight_ton, 0, ',', '.') .' MT' : '—' }}</span></div>
+    <div class="field"><span class="lbl">7. JENIS MUATAN DAN JUMLAHNYA</span><span class="val">: {{ $cargo ? ucwords(str_replace('_', ' ', $cargo->commodity_type)).' ± '.number_format((float) $cargo->weight_ton, 0, ',', '.') .' MT' : '-' }}</span></div>
     <div class="field"><span class="lbl">8. JUMLAH BIAYA ANGKUTAN / LUMPSUM</span><span class="val">: {{ $voyage->freight_unit === 'lumpsum' ? 'Rp '.number_format((float) $voyage->freight_rate, 0, ',', '.').' (lumpsum)' : 'Rp '.number_format((float) $voyage->freight_rate, 0, ',', '.').' / MT (belum termasuk PPN)' }}</span></div>
-    <div class="field"><span class="lbl">9. CARA PEMBAYARAN</span><span class="val">: {{ $voyage->payment_terms === 'dp_100' ? '100% dibayar di muka' : ($voyage->payment_terms === 'dp_50_50' ? '50% dibayar pada saat muat — 50% dibayar pada saat kapal tiba POD sebelum bongkar' : ($voyage->payment_terms_note ?? '—')) }}</span></div>
+    <div class="field"><span class="lbl">9. CARA PEMBAYARAN</span><span class="val">: {{ $voyage->payment_terms === 'dp_100' ? '100% dibayar di muka' : ($voyage->payment_terms === 'dp_50_50' ? '50% dibayar pada saat muat - 50% dibayar pada saat kapal tiba POD sebelum bongkar' : ($voyage->payment_terms_note ?? '-')) }}</span></div>
     <div class="field"><span class="lbl">10. PEMBAYARAN DISETOR KE</span><span class="val">: {{ $lh['bank'] }}, a.n. {{ $lh['account_holder'] }}</span></div>
     <div class="field"><span class="lbl">11. PELABUHAN MUAT (POL)</span><span class="val">: {{ $voyage->jetty_loading ?? $voyage->origin }}</span></div>
     <div class="field"><span class="lbl">12. PELABUHAN BONGKAR (POD)</span><span class="val">: {{ $voyage->jetty_discharge ?? $voyage->destination }}</span></div>
-    <div class="field"><span class="lbl">13. LAMA HARI MUAT DAN BONGKAR</span><span class="val">: {{ $voyage->laytime_days ? $voyage->laytime_days.' (empat belas) Hari, muat dan bongkar' : '—' }}</span></div>
+    <div class="field"><span class="lbl">13. LAMA HARI MUAT DAN BONGKAR</span><span class="val">: {{ $voyage->laytime_days ? $voyage->laytime_days.' (empat belas) Hari, muat dan bongkar' : '-' }}</span></div>
     <div class="field"><span class="lbl">14. DENDA KETERLAMBATAN (DEMURRAGE)</span><span class="val">: Rp {{ number_format((float) $voyage->demurrage_per_day, 0, ',', '.') }} per hari</span></div>
-    <div class="field"><span class="lbl">15. PENGIRIM BARANG (SHIPPER)</span><span class="val">: {{ $voyage->shipper ?? $voyage->customer?->name ?? '—' }}</span></div>
-    <div class="field"><span class="lbl">16. PENERIMA BARANG (CONSIGNEE)</span><span class="val">: {{ $voyage->consignee ?? '—' }}</span></div>
+    <div class="field"><span class="lbl">15. PENGIRIM BARANG (SHIPPER)</span><span class="val">: {{ $voyage->shipper ?? $voyage->customer?->name ?? '-' }}</span></div>
+    <div class="field"><span class="lbl">16. PENERIMA BARANG (CONSIGNEE)</span><span class="val">: {{ $voyage->consignee ?? '-' }}</span></div>
     <div class="field"><span class="lbl">17. ASURANSI KAPAL</span><span class="val">: Ditanggung Pemilik Kapal</span></div>
     <div class="field"><span class="lbl">18. ASURANSI BARANG</span><span class="val">: Ditanggung Pemilik Barang</span></div>
 
@@ -75,7 +75,7 @@
         <div class="sign-col"><div class="sign-space"></div>PENYEWA RUANG KAPAL / SHIPPER</div>
     </div>
 
-    <div class="footer-note">Dokumen diterbitkan secara elektronik oleh Bunga Teratai System — {{ now()->translatedFormat('d F Y H:i') }} WITA.</div>
+    <div class="footer-note">Dokumen diterbitkan secara elektronik oleh Bunga Teratai System - {{ now()->translatedFormat('d F Y H:i') }} WITA.</div>
 @endsection
 
 

@@ -147,13 +147,13 @@ export default function FinanceIndex({
         due_date: '', pph23: false, notes: '',
         items: [{ description: 'Jasa Towing (Penarikan)', qty: '1', price: '15000000' }],
     });
-    const payForm = useForm({ amount: '', cash_account_id: '', date: new Date().toISOString().slice(0, 10), method: 'transfer', cheque_number: '' });
+    const payForm = useForm({ amount: '', bank_fee: '', cash_account_id: '', date: new Date().toISOString().slice(0, 10), method: 'transfer', cheque_number: '' });
     const billForm = useForm({
         supplier_id: '', voyage_id: '', category: 'assist',
         issue_date: new Date().toISOString().slice(0, 10), due_date: '', pph_type: '', notes: '',
         items: [{ description: 'Jasa Assist Kolong Jembatan', amount: '5000000' }],
     });
-    const cashForm = useForm({ cash_account_id: '', direction: 'out', amount: '', date: new Date().toISOString().slice(0, 10), category: 'lainnya', notes: '' });
+    const cashForm = useForm({ cash_account_id: '', direction: 'out', amount: '', bank_fee: '', date: new Date().toISOString().slice(0, 10), category: 'lainnya', notes: '' });
     const journalForm = useForm({
         entry_date: new Date().toISOString().slice(0, 10), memo: '',
         lines: [
@@ -285,7 +285,7 @@ export default function FinanceIndex({
                         </thead>
                         <tbody className="divide-y divide-hairline">
                             {(invoices?.data ?? invoices ?? []).map((i: any) => (
-                                <tr key={i.id} className="hover:bg-appbg">
+                                <tr key={i.id} id={`record-invoice-${i.id}`} className="hover:bg-appbg">
                                     <td className="px-3 py-2 font-medium text-ink">{i.number}</td>
                                     <td className="px-3 py-2 text-muted">{i.customer_name}</td>
                                     <td className="px-3 py-2 text-muted">{formatDate(i.due_date)}</td>
@@ -398,7 +398,7 @@ export default function FinanceIndex({
                     <Card title="Invoice Outstanding" className="xl:col-span-2">
                         <ul className="space-y-2">
                             {(openInvoices ?? []).map((i: any) => (
-                                <li key={i.id} className="flex items-center justify-between rounded-lg border border-hairline px-3 py-2.5 text-sm">
+                                <li key={i.id} id={`record-invoice-${i.id}`} className="flex items-center justify-between rounded-lg border border-hairline px-3 py-2.5 text-sm">
                                     <div>
                                         <p className="font-medium text-ink">{i.number} · {i.customer_name}</p>
                                         <p className="text-xs text-muted">
@@ -452,7 +452,7 @@ export default function FinanceIndex({
                     }>
                         <ul className="space-y-2">
                             {(openBills ?? []).map((b: any) => (
-                                <li key={b.id} className="flex items-center justify-between rounded-lg border border-hairline px-3 py-2.5 text-sm">
+                                <li key={b.id} id={`record-bill-${b.id}`} className="flex items-center justify-between rounded-lg border border-hairline px-3 py-2.5 text-sm">
                                     <div>
                                         <p className="font-medium text-ink">{b.number} · {b.supplier_name}</p>
                                         <p className="text-xs capitalize text-muted">
@@ -593,7 +593,7 @@ export default function FinanceIndex({
                     )}
                     <div className="space-y-3">
                         {(pos ?? []).map((po: any) => (
-                            <div key={po.id} className="rounded-xl border border-hairline bg-white p-4 shadow-sm">
+                            <div key={po.id} id={`record-po-${po.id}`} className="rounded-xl border border-hairline bg-white p-4 shadow-sm">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                     <div>
                                         <p className="font-semibold text-ink">
@@ -667,6 +667,13 @@ export default function FinanceIndex({
                                 </table>
                                 {po.bill_numbers?.length > 0 && (
                                     <p className="mt-2 text-xs text-ok">Tertaut bill: {po.bill_numbers.join(', ')}</p>
+                                )}
+                                {po.receipt_number && (
+                                    <div className="mt-2 rounded-md border border-ok/30 bg-ok/5 px-3 py-2 text-xs">
+                                        <p className="font-semibold text-ok">✓ Tanda Terima: {po.receipt_number}</p>
+                                        <p className="text-muted">{po.receipt_date} · {po.received_by ?? '—'}</p>
+                                        {po.receipt_notes && <p className="text-muted">{po.receipt_notes}</p>}
+                                    </div>
                                 )}
                             </div>
                         ))}
@@ -1338,12 +1345,12 @@ export default function FinanceIndex({
                     <p className="text-xs text-muted">Sisa tagihan: {formatRupiah(payTarget?.sisa)}</p>
                     <div className="mt-4 grid grid-cols-2 gap-3">
                         <div>
-                            <label className="text-xs font-medium text-muted">Jumlah *</label>
+                            <label className="text-xs font-medium text-muted">Jumlah Bruto *</label>
                             <input type="number" step="0.01" max={payTarget?.sisa} value={payForm.data.amount} onChange={(e) => payForm.setData('amount', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
                         </div>
                         <div>
-                            <label className="text-xs font-medium text-muted">Tanggal *</label>
-                            <input type="date" value={payForm.data.date} onChange={(e) => payForm.setData('date', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                            <label className="text-xs font-medium text-muted">Potongan / Biaya Bank</label>
+                            <input type="number" step="0.01" min="0" value={payForm.data.bank_fee} onChange={(e) => payForm.setData('bank_fee', e.target.value)} placeholder="0" className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
                         </div>
                         <div className="col-span-2">
                             <label className="text-xs font-medium text-muted">Akun Kas/Bank *</label>
@@ -1351,6 +1358,26 @@ export default function FinanceIndex({
                                 <option value="">— pilih —</option>
                                 {(cashAccounts ?? []).map((c: any) => <option key={c.id} value={c.id}>{c.name} ({formatRupiah(c.balance)})</option>)}
                             </select>
+                        </div>
+                        {(Number(payForm.data.amount) > 0 || Number(payForm.data.bank_fee) > 0) && (
+                            <div className="col-span-2 rounded-lg border border-hairline bg-appbg px-3 py-2 text-xs">
+                                <div className="flex justify-between">
+                                    <span className="text-muted">Bruto</span>
+                                    <span className="font-mono font-medium text-ink">{formatRupiah(Number(payForm.data.amount))}</span>
+                                </div>
+                                <div className="flex justify-between text-warn">
+                                    <span>Potongan bank</span>
+                                    <span className="font-mono">- {formatRupiah(Number(payForm.data.bank_fee ?? 0))}</span>
+                                </div>
+                                <div className="mt-1 flex justify-between border-t border-hairline pt-1 font-semibold">
+                                    <span className="text-ink">{modal === 'payInvoice' ? 'Bersih diterima' : 'Total dikeluarkan'}</span>
+                                    <span className="font-mono text-primary">{formatRupiah(modal === 'payInvoice' ? Math.max(0, Number(payForm.data.amount) - Number(payForm.data.bank_fee ?? 0)) : Number(payForm.data.amount) + Number(payForm.data.bank_fee ?? 0))}</span>
+                                </div>
+                            </div>
+                        )}
+                        <div>
+                            <label className="text-xs font-medium text-muted">Tanggal *</label>
+                            <input type="date" value={payForm.data.date} onChange={(e) => payForm.setData('date', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
                         </div>
                         <div>
                             <label className="text-xs font-medium text-muted">Metode</label>
@@ -1398,8 +1425,12 @@ export default function FinanceIndex({
                                 </select>
                             </div>
                             <div>
-                                <label className="text-xs font-medium text-muted">Jumlah *</label>
+                                <label className="text-xs font-medium text-muted">Jumlah Bruto *</label>
                                 <input type="number" step="0.01" value={cashForm.data.amount} onChange={(e) => cashForm.setData('amount', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-muted">Biaya Bank</label>
+                                <input type="number" step="0.01" min="0" value={cashForm.data.bank_fee} onChange={(e) => cashForm.setData('bank_fee', e.target.value)} placeholder="0" className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
                             </div>
                             <div>
                                 <label className="text-xs font-medium text-muted">Tanggal *</label>

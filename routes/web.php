@@ -75,6 +75,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/perjalanan/{voyage}/charter', [VoyageController::class, 'updateCharter'])->name('voyages.charter');
     Route::post('/perjalanan/{voyage}/keagenan', [VoyageController::class, 'storeAgency'])->name('voyages.agency');
     Route::delete('/perjalanan/{voyage}/keagenan/{agency}', [VoyageController::class, 'deleteAgency'])->name('voyages.agency.delete');
+    Route::post('/perjalanan/{voyage}/progress-stage', [VoyageController::class, 'updateProgressStage'])->name('voyages.progress-stage');
+    Route::post('/perjalanan/{voyage}/fuel', [VoyageController::class, 'storeFuelLog'])->name('voyages.fuel');
 
     // Approvals
     Route::get('/persetujuan', [ApprovalsController::class, 'index'])

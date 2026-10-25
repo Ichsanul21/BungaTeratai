@@ -24,11 +24,17 @@ class NotificationController extends Controller
                 'dokumen_kedaluwarsa',
                 'endorsement_jatuh_tempo',
                 'endorsement_kedaluwarsa',
+                'invoice_jatuh_tempo',
+                'bill_jatuh_tempo',
             ]);
         } elseif ($filter === 'workflow') {
             $query->whereNotIn('notification_type', [
                 'dokumen_mendekati_kedaluwarsa',
                 'dokumen_kedaluwarsa',
+                'endorsement_jatuh_tempo',
+                'endorsement_kedaluwarsa',
+                'invoice_jatuh_tempo',
+                'bill_jatuh_tempo',
             ]);
         }
 
@@ -45,9 +51,13 @@ class NotificationController extends Controller
                 'read_status' => $n->read_status,
                 'created_at' => $n->created_at,
                 'link' => match ($n->reference_type) {
-                    'document' => '/dokumen/'.$n->reference_id,
-                    'crew_certificate' => '/sdm',
-                    'voyage' => '/perjalanan/'.$n->reference_id,
+                    'document' => '/dokumen/'.$n->reference_id.'#record-doc-'.$n->reference_id,
+                    'crew_certificate' => '/sdm?tab=abk#record-cert-'.$n->reference_id,
+                    'crew' => '/sdm?tab=abk#record-crew-'.$n->reference_id,
+                    'voyage' => '/perjalanan/'.$n->reference_id.'#record-voyage-'.$n->reference_id,
+                    'invoice' => '/keuangan?tab=piutang#record-invoice-'.$n->reference_id,
+                    'bill' => '/keuangan?tab=hutang#record-bill-'.$n->reference_id,
+                    'po', 'purchase_order' => '/keuangan?tab=po#record-po-'.$n->reference_id,
                     default => null,
                 },
             ]),
@@ -56,10 +66,10 @@ class NotificationController extends Controller
                 'semua' => Notification::where('recipient_id', auth()->id())->count(),
                 'unread' => Notification::where('recipient_id', auth()->id())->where('read_status', false)->count(),
                 'reminder' => Notification::where('recipient_id', auth()->id())
-                    ->whereIn('notification_type', ['dokumen_mendekati_kedaluwarsa', 'dokumen_kedaluwarsa', 'endorsement_jatuh_tempo', 'endorsement_kedaluwarsa'])
+                    ->whereIn('notification_type', ['dokumen_mendekati_kedaluwarsa', 'dokumen_kedaluwarsa', 'endorsement_jatuh_tempo', 'endorsement_kedaluwarsa', 'invoice_jatuh_tempo', 'bill_jatuh_tempo'])
                     ->count(),
             ],
-            'due' => $reminder->dueDocuments()->concat($reminder->dueEndorsements())->sortBy('days')->take(15)->values(),
+            'due' => $reminder->dueDocuments()->concat($reminder->dueEndorsements())->concat($reminder->dueInvoicesAndBills())->sortBy('days')->take(20)->values(),
         ]);
     }
 

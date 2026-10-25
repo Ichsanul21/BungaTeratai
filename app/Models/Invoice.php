@@ -36,4 +36,19 @@ class Invoice extends Model
     {
         return $this->hasMany(Payment::class);
     }
+
+    public function voyage()
+    {
+        return $this->belongsTo(Voyage::class);
+    }
+
+    public function vessel()
+    {
+        return $this->belongsTo(Vessel::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 }

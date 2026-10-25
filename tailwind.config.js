@@ -9,33 +9,28 @@ export default {
         './resources/views/**/*.blade.php',
         './resources/js/**/*.tsx',
     ],
-
     theme: {
         extend: {
             colors: {
                 primary: {
-                    DEFAULT: '#C41212',
-                    hover: '#A30E0E',
-                    tint: '#FDF3F3',
-                    tintborder: '#F5DCDC',
+                    DEFAULT: '#C1121F', hover: '#780000',
+                    tint: '#FDECEA', tintborder: '#F2D4D0',
                 },
-                maritime: '#1E4668',
-                oceanteal: '#168C8C',
-                ink: '#172B3A',
-                muted: '#64748B',
-                appbg: '#F4F7FA',
-                hairline: '#DFE6ED',
-                warn: '#D99A2B',
-                ok: '#2F8F68',
+                maritime: '#1E4668', oceanteal: '#168C8C',
+                ink: '#1C1B1A', muted: '#8A8580', appbg: '#FAF7F2',
+                hairline: '#E7E1D9', warn: '#D99A2B', ok: '#2F8F68',
                 danger: '#C94C4C',
-                sidebar: '#172B3A',
-                sidebarhover: '#1F3A4F',
+                sidebar: '#451016', sidebarhover: '#5B1A26',
+                cream: '#EFE3D3', gold: '#D4A96A',
+                // Token baru untuk dashboard: netral hangat lembut,
+                // dipakai palet visualisasi (status dokumen "archived").
+                stone: '#C9C0B2',
             },
             fontFamily: {
-                sans: ['Inter', ...defaultTheme.fontFamily.sans],
+                sans: ['Archivo', ...defaultTheme.fontFamily.sans],
+                mono: ['IBM Plex Mono', ...defaultTheme.fontFamily.mono],
             },
         },
     },
-
     plugins: [forms],
 };

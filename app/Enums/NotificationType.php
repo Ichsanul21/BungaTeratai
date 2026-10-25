@@ -15,5 +15,7 @@ enum NotificationType: string
     case ClosureIncomplete = 'penutupan_perjalanan_belum_selesai';
     case EndorsementDue = 'endorsement_jatuh_tempo';
     case EndorsementExpired = 'endorsement_kedaluwarsa';
+    case InvoiceDue = 'invoice_jatuh_tempo';
+    case BillDue = 'bill_jatuh_tempo';
 }
 

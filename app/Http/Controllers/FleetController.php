@@ -121,12 +121,10 @@ class FleetController extends Controller
         $completeness = app(DocumentCompletenessService::class);
         $calc = $completeness->forVessel($vessel);
 
-        $vessel->load([
-            'positions' => fn ($q) => $q->limit(20),
-            'conditions' => fn ($q) => $q->limit(10),
-            'services' => fn ($q) => $q->limit(10),
-            'fuelLogs' => fn ($q) => $q->limit(20),
-        ]);
+        $vessel->setRelation('positions', $vessel->positions()->limit(20)->get());
+        $vessel->setRelation('conditions', $vessel->conditions()->limit(10)->get());
+        $vessel->setRelation('services', $vessel->services()->limit(10)->get());
+        $vessel->setRelation('fuelLogs', $vessel->fuelLogs()->limit(20)->get());
 
         $vessel->doc_completeness = $calc['percent'];
 
@@ -286,7 +284,7 @@ class FleetController extends Controller
         ];
     }
 
-    /** Arsip kapal (soft delete) — blokir bila masih punya perjalanan aktif. */
+    /** Arsip kapal (soft delete) - blokir bila masih punya perjalanan aktif. */
     public function archive(Vessel $vessel)
     {
         $this->authorize('update', $vessel);
@@ -295,7 +293,7 @@ class FleetController extends Controller
             ->whereNotIn('voyage_status', ['completed', 'cancelled'])
             ->count();
         if ($active > 0) {
-            return back()->with('error', "Kapal masih memiliki {$active} perjalanan aktif — selesaikan atau batalkan dulu sebelum arsip.");
+            return back()->with('error', "Kapal masih memiliki {$active} perjalanan aktif - selesaikan atau batalkan dulu sebelum arsip.");
         }
 
         \App\Services\AuditService::log('archived', 'vessel', $vessel->id, $vessel->toArray(), null, "Kapal diarsipkan: {$vessel->vessel_name}");

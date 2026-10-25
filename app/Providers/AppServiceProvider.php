@@ -70,5 +70,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('verify-documents', fn ($user) => $user->hasAnyRole([
             RoleSlug::SuperAdmin->value, RoleSlug::Supervisor->value, RoleSlug::Management->value,
         ]));
+
+        // Hak akses melihat total saldo perusahaan (hanya Superadmin & Direktur/Management)
+        Gate::define('finance.view-balances', fn ($user) => $user->hasAnyRole([
+            RoleSlug::SuperAdmin->value, RoleSlug::Management->value,
+        ]));
     }
 }
