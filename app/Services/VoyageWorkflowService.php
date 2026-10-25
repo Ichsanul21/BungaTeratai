@@ -24,22 +24,70 @@ use InvalidArgumentException;
  */
 class VoyageWorkflowService
 {
-    /** Transisi yang diizinkan (belum memeriksa prasyarat). */
+    public const WORKFLOW_ORDER = [
+        VoyageStatus::Draft->value => 1,
+        VoyageStatus::Planned->value => 2,
+        VoyageStatus::DocumentPreparation->value => 3,
+        VoyageStatus::InternalReview->value => 4,
+        VoyageStatus::AwaitingExternalApproval->value => 5,
+        VoyageStatus::ReadyForDeparture->value => 6,
+        VoyageStatus::Departed->value => 7,
+        VoyageStatus::InTransit->value => 8,
+        VoyageStatus::Arrived->value => 9,
+        VoyageStatus::VoyageClosure->value => 10,
+        VoyageStatus::Completed->value => 11,
+        VoyageStatus::Delayed->value => 98,
+        VoyageStatus::Cancelled->value => 99,
+    ];
+
+    /** Transisi yang diizinkan (maju dan mundur sesuai aturan bisnis). */
     public const TRANSITIONS = [
         VoyageStatus::Draft->value => [VoyageStatus::Planned->value, VoyageStatus::Cancelled->value],
-        VoyageStatus::Planned->value => [VoyageStatus::DocumentPreparation->value, VoyageStatus::Delayed->value, VoyageStatus::Cancelled->value],
-        VoyageStatus::DocumentPreparation->value => [VoyageStatus::InternalReview->value, VoyageStatus::Delayed->value, VoyageStatus::Cancelled->value],
-        VoyageStatus::InternalReview->value => [VoyageStatus::AwaitingExternalApproval->value, VoyageStatus::DocumentPreparation->value, VoyageStatus::Cancelled->value],
-        VoyageStatus::AwaitingExternalApproval->value => [VoyageStatus::ReadyForDeparture->value, VoyageStatus::InternalReview->value, VoyageStatus::Delayed->value, VoyageStatus::Cancelled->value],
-        VoyageStatus::ReadyForDeparture->value => [VoyageStatus::Departed->value, VoyageStatus::Delayed->value, VoyageStatus::Cancelled->value],
-        VoyageStatus::Departed->value => [VoyageStatus::InTransit->value, VoyageStatus::Delayed->value],
-        VoyageStatus::InTransit->value => [VoyageStatus::Arrived->value, VoyageStatus::Delayed->value],
-        VoyageStatus::Arrived->value => [VoyageStatus::VoyageClosure->value, VoyageStatus::Delayed->value],
-        VoyageStatus::VoyageClosure->value => [VoyageStatus::Completed->value, VoyageStatus::Delayed->value],
-        VoyageStatus::Completed->value => [],
-        VoyageStatus::Delayed->value => [VoyageStatus::ReadyForDeparture->value, VoyageStatus::Departed->value, VoyageStatus::Cancelled->value, VoyageStatus::InTransit->value, VoyageStatus::Arrived->value],
-        VoyageStatus::Cancelled->value => [],
+        VoyageStatus::Planned->value => [VoyageStatus::DocumentPreparation->value, VoyageStatus::Draft->value, VoyageStatus::Delayed->value, VoyageStatus::Cancelled->value],
+        VoyageStatus::DocumentPreparation->value => [VoyageStatus::InternalReview->value, VoyageStatus::Planned->value, VoyageStatus::Delayed->value, VoyageStatus::Cancelled->value],
+        VoyageStatus::InternalReview->value => [VoyageStatus::AwaitingExternalApproval->value, VoyageStatus::DocumentPreparation->value, VoyageStatus::Planned->value, VoyageStatus::Cancelled->value],
+        VoyageStatus::AwaitingExternalApproval->value => [VoyageStatus::ReadyForDeparture->value, VoyageStatus::InternalReview->value, VoyageStatus::DocumentPreparation->value, VoyageStatus::Delayed->value, VoyageStatus::Cancelled->value],
+        VoyageStatus::ReadyForDeparture->value => [VoyageStatus::Departed->value, VoyageStatus::AwaitingExternalApproval->value, VoyageStatus::InternalReview->value, VoyageStatus::Delayed->value, VoyageStatus::Cancelled->value],
+        VoyageStatus::Departed->value => [VoyageStatus::InTransit->value, VoyageStatus::ReadyForDeparture->value, VoyageStatus::Delayed->value],
+        VoyageStatus::InTransit->value => [VoyageStatus::Arrived->value, VoyageStatus::Departed->value, VoyageStatus::Delayed->value],
+        VoyageStatus::Arrived->value => [VoyageStatus::VoyageClosure->value, VoyageStatus::InTransit->value, VoyageStatus::Delayed->value],
+        VoyageStatus::VoyageClosure->value => [VoyageStatus::Completed->value, VoyageStatus::Arrived->value, VoyageStatus::Delayed->value],
+        VoyageStatus::Completed->value => [VoyageStatus::VoyageClosure->value],
+        VoyageStatus::Delayed->value => [VoyageStatus::ReadyForDeparture->value, VoyageStatus::Departed->value, VoyageStatus::InTransit->value, VoyageStatus::Arrived->value, VoyageStatus::VoyageClosure->value, VoyageStatus::Cancelled->value],
+        VoyageStatus::Cancelled->value => [VoyageStatus::Draft->value, VoyageStatus::Planned->value],
     ];
+
+    public static function isBackwardTransition(string $from, string $to): bool
+    {
+        $orderFrom = self::WORKFLOW_ORDER[$from] ?? 0;
+        $orderTo = self::WORKFLOW_ORDER[$to] ?? 0;
+
+        if ($orderFrom > 0 && $orderFrom <= 11 && $orderTo > 0 && $orderTo <= 11) {
+            return $orderTo < $orderFrom;
+        }
+
+        return false;
+    }
+
+    public static function statusLabel(string $status): string
+    {
+        return match ($status) {
+            VoyageStatus::Draft->value => 'Draf',
+            VoyageStatus::Planned->value => 'Direncanakan',
+            VoyageStatus::DocumentPreparation->value => 'Persiapan Dokumen',
+            VoyageStatus::InternalReview->value => 'Pemeriksaan Internal',
+            VoyageStatus::AwaitingExternalApproval->value => 'Menunggu Persetujuan Eksternal',
+            VoyageStatus::ReadyForDeparture->value => 'Siap Berangkat',
+            VoyageStatus::Departed->value => 'Berangkat',
+            VoyageStatus::InTransit->value => 'Dalam Pelayaran',
+            VoyageStatus::Arrived->value => 'Tiba di Tujuan',
+            VoyageStatus::VoyageClosure->value => 'Penutupan Pelayaran',
+            VoyageStatus::Completed->value => 'Selesai',
+            VoyageStatus::Delayed->value => 'Tertunda',
+            VoyageStatus::Cancelled->value => 'Dibatalkan',
+            default => ucfirst(str_replace('_', ' ', $status)),
+        };
+    }
 
     public function __construct(
         private DocumentCompletenessService $completeness,
@@ -95,54 +143,65 @@ class VoyageWorkflowService
 
         $allowed = self::TRANSITIONS[$from] ?? [];
         if (! in_array($to, $allowed, true)) {
-            throw new InvalidArgumentException("Transisi status tidak valid: {$from} → {$to}.");
+            $fromLabel = self::statusLabel($from);
+            $toLabel = self::statusLabel($to);
+            throw new InvalidArgumentException("Transisi status tidak valid: {$fromLabel} ke {$toLabel}.");
         }
 
-        // Validasi prasyarat
-        if ($to === VoyageStatus::InternalReview->value) {
-            $this->refreshChecklistCompletion($voyage);
+        $isBackward = self::isBackwardTransition($from, $to);
+        $cleanReason = trim($note ?? $reason ?? '');
+
+        if ($isBackward && $cleanReason === '') {
+            throw new InvalidArgumentException('Alasan perubahan wajib diisi jika status dimundurkan.');
         }
 
-        if ($to === VoyageStatus::AwaitingExternalApproval->value) {
-            if (! $voyage->approvals()
-                ->where('approval_scope', 'internal')
-                ->where('approval_status', ApprovalStatus::Approved->value)
-                ->exists()) {
-                throw new InvalidArgumentException('Persetujuan internal (supervisor) wajib diberikan sebelum maju ke tahap menunggu persetujuan eksternal.');
+        // Validasi prasyarat (hanya diperiksa saat status maju)
+        if (! $isBackward) {
+            if ($to === VoyageStatus::InternalReview->value) {
+                $this->refreshChecklistCompletion($voyage);
             }
-            $this->refreshChecklistCompletion($voyage);
-            $unmet = $voyage->checklists()
-                ->where('applicability', ChecklistApplicability::Wajib->value)
-                ->where('completion_status', '!=', ChecklistCompletion::Terpenuhi->value)
-                ->count();
-            if ($unmet > 0) {
-                throw new InvalidArgumentException("Masih ada {$unmet} item checklist wajib belum terpenuhi.");
-            }
-        }
 
-        if ($to === VoyageStatus::ReadyForDeparture->value) {
-            if ($voyage->external_approval_status === 'menunggu') {
-                throw new InvalidArgumentException('Persetujuan eksternal berstatus menunggu — wajib dikonfirmasi dengan lampiran bukti terlebih dahulu.');
+            if ($to === VoyageStatus::AwaitingExternalApproval->value) {
+                if (! $voyage->approvals()
+                    ->where('approval_scope', 'internal')
+                    ->where('approval_status', ApprovalStatus::Approved->value)
+                    ->exists()) {
+                    throw new InvalidArgumentException('Persetujuan internal (supervisor) wajib diberikan sebelum maju ke tahap menunggu persetujuan eksternal.');
+                }
+                $this->refreshChecklistCompletion($voyage);
+                $unmet = $voyage->checklists()
+                    ->where('applicability', ChecklistApplicability::Wajib->value)
+                    ->where('completion_status', '!=', ChecklistCompletion::Terpenuhi->value)
+                    ->count();
+                if ($unmet > 0) {
+                    throw new InvalidArgumentException("Masih ada {$unmet} item checklist wajib belum terpenuhi.");
+                }
             }
-            if ($voyage->external_approval_status === 'terkonfirmasi' && ! $voyage->external_approval_evidence) {
-                throw new InvalidArgumentException('Persetujuan eksternal menuntut bukti/berkas lampiran yang sah.');
-            }
-            if (! $voyage->approvals()
-                ->where('approval_scope', 'internal')
-                ->where('approval_status', ApprovalStatus::Approved->value)
-                ->exists()) {
-                throw new InvalidArgumentException('Persetujuan internal wajib ada sebelum status Siap Berangkat.');
-            }
-        }
 
-        if ($to === VoyageStatus::Completed->value) {
-            // Bukti kelompok F (laporan tiba/penutupan) harus lengkap
-            $missingClosure = $voyage->checklists()->with('requirement')->get()
-                ->filter(fn ($c) => $c->requirement?->group_code === 'F'
-                    && $c->applicability === ChecklistApplicability::Wajib->value
-                    && $c->completion_status !== ChecklistCompletion::Terpenuhi->value);
-            if ($missingClosure->isNotEmpty()) {
-                throw new InvalidArgumentException('Penutupan perjalanan menuntut bukti kelompok F (laporan berangkat/tiba/penutupan) yang lengkap.');
+            if ($to === VoyageStatus::ReadyForDeparture->value) {
+                if ($voyage->external_approval_status === 'menunggu') {
+                    throw new InvalidArgumentException('Persetujuan eksternal berstatus menunggu - wajib dikonfirmasi dengan lampiran bukti terlebih dahulu.');
+                }
+                if ($voyage->external_approval_status === 'terkonfirmasi' && ! $voyage->external_approval_evidence) {
+                    throw new InvalidArgumentException('Persetujuan eksternal menuntut bukti/berkas lampiran yang sah.');
+                }
+                if (! $voyage->approvals()
+                    ->where('approval_scope', 'internal')
+                    ->where('approval_status', ApprovalStatus::Approved->value)
+                    ->exists()) {
+                    throw new InvalidArgumentException('Persetujuan internal wajib ada sebelum status Siap Berangkat.');
+                }
+            }
+
+            if ($to === VoyageStatus::Completed->value) {
+                // Bukti kelompok F (laporan tiba/penutupan) harus lengkap
+                $missingClosure = $voyage->checklists()->with('requirement')->get()
+                    ->filter(fn ($c) => $c->requirement?->group_code === 'F'
+                        && $c->applicability === ChecklistApplicability::Wajib->value
+                        && $c->completion_status !== ChecklistCompletion::Terpenuhi->value);
+                if ($missingClosure->isNotEmpty()) {
+                    throw new InvalidArgumentException('Penutupan perjalanan menuntut bukti kelompok F (laporan berangkat/tiba/penutupan) yang lengkap.');
+                }
             }
         }
 
@@ -165,11 +224,27 @@ class VoyageWorkflowService
             default => VoyageEventType::StatusChanged,
         };
 
+        $fromLabel = self::statusLabel($from);
+        $toLabel = self::statusLabel($to);
+        $actionDesc = $isBackward ? 'Status dimundurkan' : 'Perubahan status';
+        $description = "{$actionDesc}: {$fromLabel} ke {$toLabel}";
+        if ($cleanReason !== '') {
+            $description .= " (Alasan: {$cleanReason})";
+        }
+
         $this->recordEvent(
             $voyage,
             $eventType,
-            'Status: '.$from.' → '.$to.($note ? " — {$note}" : ''),
-            ['from' => $from, 'to' => $to],
+            $description,
+            [
+                'from' => $from,
+                'to' => $to,
+                'from_label' => $fromLabel,
+                'to_label' => $toLabel,
+                'is_backward' => $isBackward,
+                'reason' => $cleanReason !== '' ? $cleanReason : null,
+                'user_name' => auth()->user()?->name ?? 'Sistem',
+            ],
         );
 
         if (in_array($to, [VoyageStatus::InTransit->value, VoyageStatus::Arrived->value], true)) {

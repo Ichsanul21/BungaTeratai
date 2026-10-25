@@ -355,9 +355,16 @@ class VoyageController extends Controller
                 'id' => $e->id,
                 'event_type' => $e->event_type,
                 'occurred_at' => $e->occurred_at,
-                'user_name' => $e->user?->name,
+                'user_name' => $e->user?->name ?? ($e->payload['user_name'] ?? null),
                 'source' => $e->source,
                 'description' => $e->description,
+                'payload' => $e->payload,
+                'from_status' => $e->payload['from'] ?? null,
+                'to_status' => $e->payload['to'] ?? null,
+                'from_label' => $e->payload['from_label'] ?? null,
+                'to_label' => $e->payload['to_label'] ?? null,
+                'reason' => $e->payload['reason'] ?? null,
+                'is_backward' => (bool) ($e->payload['is_backward'] ?? false),
             ]),
             'approvals' => $voyage->approvals()->with('approver')->orderByDesc('decision_timestamp')->get()->map(fn ($a) => [
                 'id' => $a->id,
@@ -407,13 +414,38 @@ class VoyageController extends Controller
             'note' => ['nullable', 'string', 'max:1000'],
         ]);
 
+        $from = $voyage->voyage_status;
+        $to = $data['to'];
+        $note = trim($data['note'] ?? '');
+        $isBackward = VoyageWorkflowService::isBackwardTransition($from, $to);
+
+        if ($isBackward && $note === '') {
+            return back()->with('error', 'Alasan perubahan wajib diisi jika status dimundurkan.');
+        }
+
         try {
-            $this->workflow->transition($voyage, $data['to'], $data['note'] ?? null);
+            $this->workflow->transition($voyage, $to, $note);
         } catch (InvalidArgumentException $e) {
             return back()->with('error', $e->getMessage());
         }
 
-        return back()->with('success', 'Status perjalanan diperbarui: '.$data['to']);
+        $label = VoyageWorkflowService::statusLabel($to);
+        $action = $isBackward ? 'dimundurkan ke' : 'diperbarui ke';
+
+        return back()->with('success', "Status perjalanan {$action}: {$label}");
+    }
+
+    public function updateProgressStage(Request $request, Voyage $voyage)
+    {
+        $this->authorize('update', $voyage);
+
+        $data = $request->validate([
+            'progress_stage' => ['required', 'string', 'max:50'],
+        ]);
+
+        $voyage->update(['progress_stage' => $data['progress_stage']]);
+
+        return back()->with('success', 'Status progres berhasil diperbarui.');
     }
 
     public function approve(Request $request, Voyage $voyage)
@@ -433,7 +465,7 @@ class VoyageController extends Controller
 
         if ($request->string('decision')->toString() === 'approved'
             && $voyage->voyage_status === VoyageStatus::InternalReview->value) {
-            // tetap di internal_review — operator maju manual ke awaiting external
+            // tetap di internal_review - operator maju manual ke awaiting external
         }
 
         return back()->with('success', 'Keputusan persetujuan internal tersimpan.');

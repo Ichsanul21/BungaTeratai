@@ -62,6 +62,31 @@ const CHARTER_LABELS: Record<string, string> = {
     pelunasan: 'Invoice Pelunasan', keagenan_bongkar: 'Keagenan Bongkar', closing: 'Closing',
 };
 
+const WORKFLOW_ORDER: Record<string, number> = {
+    draft: 1,
+    planned: 2,
+    document_preparation: 3,
+    internal_review: 4,
+    awaiting_external_approval: 5,
+    ready_for_departure: 6,
+    departed: 7,
+    in_transit: 8,
+    arrived: 9,
+    voyage_closure: 10,
+    completed: 11,
+    delayed: 98,
+    cancelled: 99,
+};
+
+const isBackwardTransition = (from: string, to: string): boolean => {
+    const oFrom = WORKFLOW_ORDER[from] ?? 0;
+    const oTo = WORKFLOW_ORDER[to] ?? 0;
+    if (oFrom > 0 && oFrom <= 11 && oTo > 0 && oTo <= 11) {
+        return oTo < oFrom;
+    }
+    return false;
+};
+
 export default function VoyagesShow({
     voyage,
     relationships,
@@ -141,9 +166,15 @@ export default function VoyagesShow({
 
     const submitStatus = (e: FormEvent) => {
         e.preventDefault();
+        const isBackward = isBackwardTransition(voyage.voyage_status, statusForm.data.to);
+        const trimmedNote = (statusForm.data.note || '').trim();
+        if (isBackward && trimmedNote === '') {
+            alert('Alasan perubahan wajib diisi jika status dimundurkan.');
+            return;
+        }
         router.post(
             `/perjalanan/${voyage.id}/status`,
-            { to: statusForm.data.to, note: statusForm.data.note },
+            { to: statusForm.data.to, note: trimmedNote },
             {
                 preserveScroll: true,
                 onSuccess: () => setModal(null),
@@ -300,27 +331,35 @@ export default function VoyagesShow({
                             <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div>
                                     <p className="text-xs font-semibold uppercase tracking-wide text-muted">Tracking Status Kapal (Operasional)</p>
-                                    <p className="text-xs text-muted">Status perjalanan riil: Penerimaan SI -&gt; Ke SPAL -&gt; SPOG -&gt; Sandar Loading -&gt; Waiting (Desk) -&gt; Bunker</p>
+                                    <p className="text-xs text-muted">
+                                        Status operasional kapal saat ini selaras dengan Status Perjalanan: <strong>{VOYAGE_STATUS_LABELS[voyage.voyage_status] ?? voyage.voyage_status}</strong>.
+                                    </p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <select
-                                        value={voyage.progress_stage ?? 'penerimaan_si'}
+                                        value={voyage.voyage_status}
                                         onChange={(e) => {
-                                            router.post(
-                                                `/perjalanan/${voyage.id}/progress-stage`,
-                                                { progress_stage: e.target.value },
-                                                { preserveScroll: true }
-                                            );
+                                            const target = e.target.value;
+                                            if (target && target !== voyage.voyage_status) {
+                                                setNextStatus(target);
+                                                statusForm.setData({ to: target, note: '' });
+                                                setModal('status');
+                                            }
                                         }}
-                                        disabled={!actions.can_update}
+                                        disabled={!actions.can_update || !voyage.allowed_transitions || voyage.allowed_transitions.length === 0}
                                         className="rounded-md border-gray-300 py-1.5 pl-3 pr-8 text-xs font-medium text-ink shadow-sm focus:border-primary focus:ring-primary disabled:bg-gray-100"
                                     >
-                                        <option value="penerimaan_si">Penerimaan SI</option>
-                                        <option value="ke_spal">Ke SPAL</option>
-                                        <option value="spog">SPOG</option>
-                                        <option value="sandar_loading">Sandar Loading</option>
-                                        <option value="waiting_desk">Waiting (Desk)</option>
-                                        <option value="bunker">Bunker</option>
+                                        <option value={voyage.voyage_status}>
+                                            {VOYAGE_STATUS_LABELS[voyage.voyage_status] ?? voyage.voyage_status} (Status Saat Ini)
+                                        </option>
+                                        {(voyage.allowed_transitions ?? []).map((s: string) => {
+                                            const isBwd = isBackwardTransition(voyage.voyage_status, s);
+                                            return (
+                                                <option key={s} value={s}>
+                                                    {isBwd ? '<< Mundur ke: ' : 'Ubah ke: '}{VOYAGE_STATUS_LABELS[s] ?? s}
+                                                </option>
+                                            );
+                                        })}
                                     </select>
                                 </div>
                             </div>
@@ -994,25 +1033,74 @@ export default function VoyagesShow({
             )}
 
             {tab === 'timeline' && (
-                <Card title="Timeline Perjalanan" description="Semua kejadian dengan waktu & pencatat.">
-                    <ol className="relative ms-3 space-y-5 border-s border-hairline ps-5">
-                        {events.map((e) => (
-                            <li key={e.id} className="relative">
-                                <span className="absolute -start-[27px] top-1 h-3.5 w-3.5 rounded-full border-2 border-white bg-primary" />
-                                <p className="text-sm font-semibold text-ink">{e.description}</p>
-                                <p className="text-xs text-muted">
-                                    {formatDateTime(e.occurred_at)} · {e.user_name ?? 'Sistem'} · {e.event_type}
-                                </p>
-                            </li>
-                        ))}
-                    </ol>
+                <Card title="Timeline Perjalanan" description="Semua kejadian riil perjalanan beserta waktu, pelaku, dan status.">
+                    {events.length === 0 ? (
+                        <p className="text-sm text-muted">Belum ada riwayat kejadian tercatat.</p>
+                    ) : (
+                        <ol className="relative ms-3 space-y-5 border-s border-hairline ps-5">
+                            {events.map((e) => {
+                                const fromLabel = e.from_label || (e.from_status ? (VOYAGE_STATUS_LABELS[e.from_status] ?? e.from_status) : null);
+                                const toLabel = e.to_label || (e.to_status ? (VOYAGE_STATUS_LABELS[e.to_status] ?? e.to_status) : null);
+                                const hasStatusChange = Boolean(fromLabel && toLabel);
+                                const isBackward = Boolean(e.is_backward);
+                                const reason = e.reason || (e.payload && e.payload.reason) || null;
+
+                                return (
+                                    <li key={e.id} className="relative">
+                                        <span
+                                            className={classNames(
+                                                'absolute -start-[27px] top-1.5 h-3.5 w-3.5 rounded-full border-2 border-white',
+                                                isBackward ? 'bg-warn' : 'bg-primary',
+                                            )}
+                                        />
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <p className="text-sm font-semibold text-ink">
+                                                {isBackward
+                                                    ? 'Status Dimundurkan'
+                                                    : (hasStatusChange ? 'Perubahan Status' : e.description)}
+                                            </p>
+                                            {isBackward && (
+                                                <span className="rounded bg-warn/15 px-2 py-0.5 text-[11px] font-semibold text-warn">
+                                                    Status Mundur
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {hasStatusChange && (
+                                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                                                <span className="text-muted">Status sebelumnya:</span>
+                                                <span className="rounded bg-appbg px-2 py-0.5 font-medium text-ink">
+                                                    {fromLabel}
+                                                </span>
+                                                <span className="text-muted">menjadi</span>
+                                                <span className="rounded bg-primary/10 px-2 py-0.5 font-semibold text-primary">
+                                                    {toLabel}
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        {reason && (
+                                            <p className="mt-1.5 rounded bg-appbg/80 px-2.5 py-1.5 text-xs text-ink">
+                                                <span className="font-semibold text-muted">Alasan: </span>
+                                                {reason}
+                                            </p>
+                                        )}
+
+                                        <p className="mt-1 text-xs text-muted">
+                                            {formatDateTime(e.occurred_at)} · Pelaku: {e.user_name ?? 'Sistem'}
+                                        </p>
+                                    </li>
+                                );
+                            })}
+                        </ol>
+                    )}
                 </Card>
             )}
 
             {tab === 'expenses' && (
                 <Card
                     title="Operational Expenses"
-                    description="Biaya ter-tag perjalanan (bill) — dari modul Keuangan."
+                    description="Biaya ter-tag perjalanan (bill) - dari modul Keuangan."
                 >
                     {expenses.bills.length === 0 ? (
                         <p className="text-sm text-muted">
@@ -1159,9 +1247,15 @@ export default function VoyagesShow({
                 <form onSubmit={submitStatus} className="p-6">
                     <h2 className="text-lg font-semibold text-ink">Ubah Status Perjalanan</h2>
                     <p className="mt-1 text-sm text-muted">
-                        Status saat ini: <strong>{VOYAGE_STATUS_LABELS[voyage.voyage_status]}</strong>.
-                        Transisi divalidasi server (checklist, approval, bukti eksternal).
+                        Status saat ini: <strong>{VOYAGE_STATUS_LABELS[voyage.voyage_status] ?? voyage.voyage_status}</strong>.
                     </p>
+
+                    {isBackwardTransition(voyage.voyage_status, statusForm.data.to) && (
+                        <div className="mt-3 rounded-md bg-warn/15 p-3 text-xs text-warn">
+                            <strong>Perhatian:</strong> Anda sedang memundurkan status. Deskripsi alasan perubahan wajib diisi dan tidak boleh kosong atau hanya berisi spasi.
+                        </div>
+                    )}
+
                     <div className="mt-4">
                         <label className="text-sm font-medium text-ink">Pindah ke</label>
                         <select
@@ -1172,18 +1266,31 @@ export default function VoyagesShow({
                             }}
                             className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
                         >
-                            {voyage.allowed_transitions.map((s: string) => (
-                                <option key={s} value={s}>
-                                    {VOYAGE_STATUS_LABELS[s] ?? s}
-                                </option>
-                            ))}
+                            {voyage.allowed_transitions.map((s: string) => {
+                                const isBwd = isBackwardTransition(voyage.voyage_status, s);
+                                return (
+                                    <option key={s} value={s}>
+                                        {isBwd ? '<< Mundur ke: ' : ''}{VOYAGE_STATUS_LABELS[s] ?? s}
+                                    </option>
+                                );
+                            })}
                         </select>
                     </div>
                     <div className="mt-4">
-                        <label className="text-sm font-medium text-ink">Catatan</label>
+                        <label className="text-sm font-medium text-ink">
+                            {isBackwardTransition(voyage.voyage_status, statusForm.data.to)
+                                ? 'Alasan Perubahan Status (Wajib)'
+                                : 'Catatan'}
+                        </label>
                         <input
                             value={statusForm.data.note}
                             onChange={(e) => statusForm.setData('note', e.target.value)}
+                            placeholder={
+                                isBackwardTransition(voyage.voyage_status, statusForm.data.to)
+                                    ? 'Tuliskan alasan jelas pemunduran status...'
+                                    : 'Catatan opsional...'
+                            }
+                            required={isBackwardTransition(voyage.voyage_status, statusForm.data.to)}
                             className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
                         />
                     </div>
@@ -1191,7 +1298,13 @@ export default function VoyagesShow({
                         <SecondaryButton type="button" onClick={() => setModal(null)}>
                             Batal
                         </SecondaryButton>
-                        <PrimaryButton disabled={statusForm.processing}>
+                        <PrimaryButton
+                            disabled={
+                                statusForm.processing ||
+                                (isBackwardTransition(voyage.voyage_status, statusForm.data.to) &&
+                                    (!statusForm.data.note || statusForm.data.note.trim() === ''))
+                            }
+                        >
                             {statusForm.processing ? <Loader2 size={16} className="animate-spin" /> : null}
                             Simpan Status
                         </PrimaryButton>
