@@ -435,18 +435,18 @@ class VoyageController extends Controller
         return back()->with('success', "Status perjalanan {$action}: {$label}");
     }
 
-    public function updateProgressStage(Request $request, Voyage $voyage)
-    {
-        $this->authorize('update', $voyage);
+    // public function updateProgressStage(Request $request, Voyage $voyage)
+    // {
+    //     $this->authorize('update', $voyage);
 
-        $data = $request->validate([
-            'progress_stage' => ['required', 'string', 'max:50'],
-        ]);
+    //     $data = $request->validate([
+    //         'progress_stage' => ['required', 'string', 'max:50'],
+    //     ]);
 
-        $voyage->update(['progress_stage' => $data['progress_stage']]);
+    //     $voyage->update(['progress_stage' => $data['progress_stage']]);
 
-        return back()->with('success', 'Status progres berhasil diperbarui.');
-    }
+    //     return back()->with('success', 'Status progres berhasil diperbarui.');
+    // }
 
     public function approve(Request $request, Voyage $voyage)
     {
