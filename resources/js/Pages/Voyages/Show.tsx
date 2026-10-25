@@ -397,11 +397,11 @@ export default function VoyagesShow({
                     >
                         <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-5">
                             {[
-                                ['Laytime Kontrak', demurrage?.laytime_days > 0 ? `${demurrage.laytime_days} hari` : 'Tidak diatur'],
-                                ['Tarif Demurrage', demurrage?.demurrage_rate > 0 ? `${formatRupiah(demurrage.demurrage_rate)} / hari` : 'Tidak diatur'],
+                                ['Laytime Kontrak', (demurrage?.laytime_days ?? 0) > 0 ? `${demurrage?.laytime_days} hari` : 'Tidak diatur'],
+                                ['Tarif Demurrage', (demurrage?.demurrage_rate ?? 0) > 0 ? `${formatRupiah(demurrage?.demurrage_rate ?? 0)} / hari` : 'Tidak diatur'],
                                 ['Waktu Operasi Aktual', `${demurrage?.elapsed_days ?? 0} hari`],
-                                ['Kelebihan Hari', demurrage?.demurrage_days > 0 ? `${demurrage.demurrage_days} hari` : 'Dalam batas'],
-                                ['Estimasi Demurrage', demurrage?.demurrage_amount > 0 ? formatRupiah(demurrage.demurrage_amount) : 'Rp 0'],
+                                ['Kelebihan Hari', (demurrage?.demurrage_days ?? 0) > 0 ? `${demurrage?.demurrage_days} hari` : 'Dalam batas'],
+                                ['Estimasi Demurrage', (demurrage?.demurrage_amount ?? 0) > 0 ? formatRupiah(demurrage?.demurrage_amount ?? 0) : 'Rp 0'],
                             ].map(([k, v]) => (
                                 <div key={k as string} className="rounded-lg border border-hairline bg-appbg/30 p-3">
                                     <p className="text-xs uppercase tracking-wide text-muted">{k}</p>
