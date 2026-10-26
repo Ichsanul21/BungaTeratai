@@ -83,6 +83,9 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('can:menu.approvals')->name('approvals.index');
 
     Route::get('/operasional', [OperationsController::class, 'index'])->name('operations.index');
+    Route::get('/operasional/kapal/{vessel}/riwayat', [OperationsController::class, 'vesselHistory'])
+        ->name('operations.vessel-history');
+    Route::post('/operasional/posisi', [OperationsController::class, 'storePosition'])->name('operations.position');
     Route::post('/operasional/kondisi', [OperationsController::class, 'storeCondition'])->name('operations.condition');
     Route::post('/operasional/servis', [OperationsController::class, 'storeService'])->name('operations.service');
     Route::post('/operasional/bbm', [OperationsController::class, 'storeFuel'])->name('operations.fuel');

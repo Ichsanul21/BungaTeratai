@@ -2,7 +2,9 @@ import Badge, { type BadgeTone } from '@/Components/ui/Badge';
 import Card from '@/Components/ui/Card';
 import ConfirmModal from '@/Components/ui/ConfirmModal';
 import Modal from '@/Components/Modal';
+import NumericInput from '@/Components/NumericInput';
 import PageHeader from '@/Components/ui/PageHeader';
+import PriceInput from '@/Components/PriceInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
@@ -658,7 +660,7 @@ export default function FinanceIndex({
                                             <tr key={it.id}>
                                                 <td className="py-1 text-ink">{it.item_name}</td>
                                                 <td className="py-1 text-muted">{it.item_code ?? '—'}</td>
-                                                <td className="py-1 text-right tabular-nums">{formatNumber(it.qty, 0)} {it.unit ?? ''}</td>
+                                                <td className="py-1 text-right tabular-nums">{formatNumber(it.qty, 2)} {it.unit ?? ''}</td>
                                                 <td className="py-1 text-right tabular-nums">{formatRupiah(it.price)}</td>
                                                 <td className="py-1 text-right tabular-nums">{formatRupiah(it.amount)}</td>
                                             </tr>
@@ -1257,8 +1259,8 @@ export default function FinanceIndex({
                                 >
                                     {(serviceCatalog ?? []).filter((s: any) => s.kind === 'pendapatan').map((s: any) => <option key={s.id} value={s.name}>{s.name}</option>)}
                                 </select>
-                                <input type="number" step="0.01" value={item.qty} onChange={(e) => invoiceForm.setData('items', invoiceForm.data.items.map((p, i) => i === idx ? { ...p, qty: e.target.value } : p))} className="w-20 rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
-                                <input type="number" step="0.01" value={item.price} onChange={(e) => invoiceForm.setData('items', invoiceForm.data.items.map((p, i) => i === idx ? { ...p, price: e.target.value } : p))} className="w-36 rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                                <NumericInput decimalPlaces={2} value={item.qty} onChange={(e) => invoiceForm.setData('items', invoiceForm.data.items.map((p, i) => i === idx ? { ...p, qty: e.target.value } : p))} className="w-20 rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                                <PriceInput value={item.price} onChange={(e) => invoiceForm.setData('items', invoiceForm.data.items.map((p, i) => i === idx ? { ...p, price: e.target.value } : p))} className="w-36 rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
                             </div>
                         ))}
                         <button type="button" onClick={() => invoiceForm.setData('items', [...invoiceForm.data.items, { description: 'Tiket Penumpang', qty: '1', price: '185000' }])} className="mt-2 text-xs font-medium text-primary hover:underline">+ Tambah baris</button>
@@ -1328,7 +1330,7 @@ export default function FinanceIndex({
                                 >
                                     {(serviceCatalog ?? []).filter((s: any) => s.kind === 'biaya').map((s: any) => <option key={s.id} value={s.name}>{s.name}</option>)}
                                 </select>
-                                <input type="number" step="0.01" value={item.amount} onChange={(e) => billForm.setData('items', billForm.data.items.map((p, i) => i === idx ? { ...p, amount: e.target.value } : p))} className="w-36 rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                                <PriceInput value={item.amount} onChange={(e) => billForm.setData('items', billForm.data.items.map((p, i) => i === idx ? { ...p, amount: e.target.value } : p))} className="w-36 rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
                             </div>
                         ))}
                     </div>
@@ -1346,11 +1348,11 @@ export default function FinanceIndex({
                     <div className="mt-4 grid grid-cols-2 gap-3">
                         <div>
                             <label className="text-xs font-medium text-muted">Jumlah Bruto *</label>
-                            <input type="number" step="0.01" max={payTarget?.sisa} value={payForm.data.amount} onChange={(e) => payForm.setData('amount', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                            <PriceInput max={payTarget?.sisa} value={payForm.data.amount} onChange={(e) => payForm.setData('amount', e.target.value)} className="mt-1 block w-full" />
                         </div>
                         <div>
                             <label className="text-xs font-medium text-muted">Potongan / Biaya Bank</label>
-                            <input type="number" step="0.01" min="0" value={payForm.data.bank_fee} onChange={(e) => payForm.setData('bank_fee', e.target.value)} placeholder="0" className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                            <PriceInput min="0" value={payForm.data.bank_fee} onChange={(e) => payForm.setData('bank_fee', e.target.value)} placeholder="0" className="mt-1 block w-full" />
                         </div>
                         <div className="col-span-2">
                             <label className="text-xs font-medium text-muted">Akun Kas/Bank *</label>
@@ -1426,11 +1428,11 @@ export default function FinanceIndex({
                             </div>
                             <div>
                                 <label className="text-xs font-medium text-muted">Jumlah Bruto *</label>
-                                <input type="number" step="0.01" value={cashForm.data.amount} onChange={(e) => cashForm.setData('amount', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                                <PriceInput value={cashForm.data.amount} onChange={(e) => cashForm.setData('amount', e.target.value)} className="mt-1 block w-full" />
                             </div>
                             <div>
                                 <label className="text-xs font-medium text-muted">Biaya Bank</label>
-                                <input type="number" step="0.01" min="0" value={cashForm.data.bank_fee} onChange={(e) => cashForm.setData('bank_fee', e.target.value)} placeholder="0" className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                                <PriceInput min="0" value={cashForm.data.bank_fee} onChange={(e) => cashForm.setData('bank_fee', e.target.value)} placeholder="0" className="mt-1 block w-full" />
                             </div>
                             <div>
                                 <label className="text-xs font-medium text-muted">Tanggal *</label>
@@ -1465,8 +1467,8 @@ export default function FinanceIndex({
                                 <select value={line.account} onChange={(e) => journalForm.setData('lines', journalForm.data.lines.map((p, i) => i === idx ? { ...p, account: e.target.value } : p))} className="flex-1 rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
                                     {(accounts ?? bbAccounts ?? []).map((a: any) => <option key={a.code ?? a.id} value={a.code}>{a.code} — {a.name}</option>)}
                                 </select>
-                                <input type="number" step="0.01" placeholder="Debit" value={line.debit} onChange={(e) => journalForm.setData('lines', journalForm.data.lines.map((p, i) => i === idx ? { ...p, debit: e.target.value } : p))} className="w-28 rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
-                                <input type="number" step="0.01" placeholder="Kredit" value={line.credit} onChange={(e) => journalForm.setData('lines', journalForm.data.lines.map((p, i) => i === idx ? { ...p, credit: e.target.value } : p))} className="w-28 rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                                <PriceInput placeholder="Debit" value={line.debit} onChange={(e) => journalForm.setData('lines', journalForm.data.lines.map((p, i) => i === idx ? { ...p, debit: e.target.value } : p))} className="w-28 rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                                <PriceInput placeholder="Kredit" value={line.credit} onChange={(e) => journalForm.setData('lines', journalForm.data.lines.map((p, i) => i === idx ? { ...p, credit: e.target.value } : p))} className="w-28 rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
                             </div>
                         ))}
                     </div>
@@ -1512,7 +1514,7 @@ export default function FinanceIndex({
                         </div>
                         <div>
                             <label className="text-xs font-medium text-muted">Nilai (Rp) *</label>
-                            <input type="number" step="0.01" value={editInvoiceForm.data.items[0].price} onChange={(e) => editInvoiceForm.setData('items', [{ ...editInvoiceForm.data.items[0], price: e.target.value }])} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                            <PriceInput value={editInvoiceForm.data.items[0].price} onChange={(e) => editInvoiceForm.setData('items', [{ ...editInvoiceForm.data.items[0], price: e.target.value }])} className="mt-1 block w-full" />
                         </div>
                         <label className="col-span-2 flex items-center gap-2 text-sm">
                             <input type="checkbox" checked={editInvoiceForm.data.pph23} onChange={(e) => editInvoiceForm.setData('pph23', e.target.checked)} className="rounded border-gray-300 text-primary focus:ring-primary" />
@@ -1566,7 +1568,7 @@ export default function FinanceIndex({
                         </div>
                         <div>
                             <label className="text-xs font-medium text-muted">Nilai (Rp) *</label>
-                            <input type="number" step="0.01" value={editBillForm.data.items[0].amount} onChange={(e) => editBillForm.setData('items', [{ ...editBillForm.data.items[0], amount: e.target.value }])} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                            <PriceInput value={editBillForm.data.items[0].amount} onChange={(e) => editBillForm.setData('items', [{ ...editBillForm.data.items[0], amount: e.target.value }])} className="mt-1 block w-full" />
                         </div>
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
@@ -1603,7 +1605,7 @@ export default function FinanceIndex({
                             </div>
                             <div>
                                 <label className="text-xs font-medium text-muted">Jumlah *</label>
-                                <input type="number" step="0.01" value={editCashForm.data.amount} onChange={(e) => editCashForm.setData('amount', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                                <PriceInput value={editCashForm.data.amount} onChange={(e) => editCashForm.setData('amount', e.target.value)} className="mt-1 block w-full" />
                             </div>
                             <div>
                                 <label className="text-xs font-medium text-muted">Tanggal *</label>
@@ -1638,8 +1640,8 @@ export default function FinanceIndex({
                                 <select value={line.account} onChange={(e) => editJournalForm.setData('lines', editJournalForm.data.lines.map((p, i) => i === idx ? { ...p, account: e.target.value } : p))} className="flex-1 rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
                                     {(bbAccounts ?? accounts ?? []).map((a: any) => <option key={a.code} value={a.code}>{a.code} — {a.name}</option>)}
                                 </select>
-                                <input type="number" step="0.01" placeholder="Debit" value={line.debit} onChange={(e) => editJournalForm.setData('lines', editJournalForm.data.lines.map((p, i) => i === idx ? { ...p, debit: e.target.value } : p))} className="w-28 rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
-                                <input type="number" step="0.01" placeholder="Kredit" value={line.credit} onChange={(e) => editJournalForm.setData('lines', editJournalForm.data.lines.map((p, i) => i === idx ? { ...p, credit: e.target.value } : p))} className="w-28 rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                                <PriceInput placeholder="Debit" value={line.debit} onChange={(e) => editJournalForm.setData('lines', editJournalForm.data.lines.map((p, i) => i === idx ? { ...p, debit: e.target.value } : p))} className="w-28 rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                                <PriceInput placeholder="Kredit" value={line.credit} onChange={(e) => editJournalForm.setData('lines', editJournalForm.data.lines.map((p, i) => i === idx ? { ...p, credit: e.target.value } : p))} className="w-28 rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
                             </div>
                         ))}
                     </div>
@@ -1662,13 +1664,13 @@ export default function FinanceIndex({
                                     {['kapal', 'tongkang', 'peralatan', 'kendaraan', 'bangunan', 'lainnya'].map((c) => <option key={c} value={c}>{c}</option>)}
                                 </select></div>
                             <div><label className="text-xs font-medium text-muted">Nilai Perolehan *</label>
-                                <input type="number" step="0.01" value={assetForm.data.acquisition_cost} onChange={(e) => assetForm.setData('acquisition_cost', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                                <PriceInput value={assetForm.data.acquisition_cost} onChange={(e) => assetForm.setData('acquisition_cost', e.target.value)} className="mt-1 block w-full" /></div>
                             <div><label className="text-xs font-medium text-muted">Tanggal Perolehan *</label>
                                 <input type="date" value={assetForm.data.acquisition_date} onChange={(e) => assetForm.setData('acquisition_date', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
                             <div><label className="text-xs font-medium text-muted">Umur (bulan) *</label>
-                                <input type="number" value={assetForm.data.useful_life_months} onChange={(e) => assetForm.setData('useful_life_months', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                                <NumericInput value={assetForm.data.useful_life_months} onChange={(e) => assetForm.setData('useful_life_months', e.target.value)} className="mt-1 block w-full" /></div>
                             <div><label className="text-xs font-medium text-muted">Nilai Sisa</label>
-                                <input type="number" step="0.01" value={assetForm.data.salvage_value} onChange={(e) => assetForm.setData('salvage_value', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                                <PriceInput value={assetForm.data.salvage_value} onChange={(e) => assetForm.setData('salvage_value', e.target.value)} className="mt-1 block w-full" /></div>
                         </div>
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
@@ -1690,13 +1692,13 @@ export default function FinanceIndex({
                                     {['kapal', 'tongkang', 'peralatan', 'kendaraan', 'bangunan', 'lainnya'].map((c) => <option key={c} value={c}>{c}</option>)}
                                 </select></div>
                             <div><label className="text-xs font-medium text-muted">Nilai Perolehan *</label>
-                                <input type="number" step="0.01" value={editAssetForm.data.acquisition_cost} onChange={(e) => editAssetForm.setData('acquisition_cost', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                                <PriceInput value={editAssetForm.data.acquisition_cost} onChange={(e) => editAssetForm.setData('acquisition_cost', e.target.value)} className="mt-1 block w-full" /></div>
                             <div><label className="text-xs font-medium text-muted">Tanggal Perolehan *</label>
                                 <input type="date" value={editAssetForm.data.acquisition_date} onChange={(e) => editAssetForm.setData('acquisition_date', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
                             <div><label className="text-xs font-medium text-muted">Umur (bulan) *</label>
-                                <input type="number" value={editAssetForm.data.useful_life_months} onChange={(e) => editAssetForm.setData('useful_life_months', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                                <NumericInput value={editAssetForm.data.useful_life_months} onChange={(e) => editAssetForm.setData('useful_life_months', e.target.value)} className="mt-1 block w-full" /></div>
                             <div><label className="text-xs font-medium text-muted">Nilai Sisa</label>
-                                <input type="number" step="0.01" value={editAssetForm.data.salvage_value} onChange={(e) => editAssetForm.setData('salvage_value', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                                <PriceInput value={editAssetForm.data.salvage_value} onChange={(e) => editAssetForm.setData('salvage_value', e.target.value)} className="mt-1 block w-full" /></div>
                             <div><label className="text-xs font-medium text-muted">Status</label>
                                 <select value={editAssetForm.data.status} onChange={(e) => editAssetForm.setData('status', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
                                     <option value="aktif">Aktif</option>
@@ -1719,7 +1721,7 @@ export default function FinanceIndex({
                             <input value={scheduleForm.data.description} onChange={(e) => scheduleForm.setData('description', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" placeholder="mis. Sewa gudang bulan depan" /></div>
                         <div className="grid grid-cols-2 gap-3">
                             <div><label className="text-xs font-medium text-muted">Jumlah *</label>
-                                <input type="number" step="0.01" value={scheduleForm.data.amount} onChange={(e) => scheduleForm.setData('amount', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                                <PriceInput value={scheduleForm.data.amount} onChange={(e) => scheduleForm.setData('amount', e.target.value)} className="mt-1 block w-full" /></div>
                             <div><label className="text-xs font-medium text-muted">Jatuh Tempo *</label>
                                 <input type="date" value={scheduleForm.data.due_date} onChange={(e) => scheduleForm.setData('due_date', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
                         </div>
@@ -1739,7 +1741,7 @@ export default function FinanceIndex({
                             <input value={editScheduleForm.data.description} onChange={(e) => editScheduleForm.setData('description', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
                         <div className="grid grid-cols-3 gap-3">
                             <div><label className="text-xs font-medium text-muted">Jumlah *</label>
-                                <input type="number" step="0.01" value={editScheduleForm.data.amount} onChange={(e) => editScheduleForm.setData('amount', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                                <PriceInput value={editScheduleForm.data.amount} onChange={(e) => editScheduleForm.setData('amount', e.target.value)} className="mt-1 block w-full" /></div>
                             <div><label className="text-xs font-medium text-muted">Jatuh Tempo *</label>
                                 <input type="date" value={editScheduleForm.data.due_date} onChange={(e) => editScheduleForm.setData('due_date', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
                             <div><label className="text-xs font-medium text-muted">Status</label>
@@ -1807,15 +1809,15 @@ export default function FinanceIndex({
                     <p className="text-xs text-muted">Hanya periode DRAFT. PPh 21 dihitung ulang otomatis (tarif UU HPP).</p>
                     <div className="mt-4 grid grid-cols-2 gap-3">
                         <div><label className="text-xs font-medium text-muted">Gaji Pokok *</label>
-                            <input type="number" step="0.01" value={payrollEntryForm.data.gaji_pokok} onChange={(e) => payrollEntryForm.setData('gaji_pokok', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                            <PriceInput value={payrollEntryForm.data.gaji_pokok} onChange={(e) => payrollEntryForm.setData('gaji_pokok', e.target.value)} className="mt-1 block w-full" /></div>
                         <div><label className="text-xs font-medium text-muted">Tunjangan</label>
-                            <input type="number" step="0.01" value={payrollEntryForm.data.tunjangan} onChange={(e) => payrollEntryForm.setData('tunjangan', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                            <PriceInput value={payrollEntryForm.data.tunjangan} onChange={(e) => payrollEntryForm.setData('tunjangan', e.target.value)} className="mt-1 block w-full" /></div>
                         <div><label className="text-xs font-medium text-muted">Borongan/Insentif</label>
-                            <input type="number" step="0.01" value={payrollEntryForm.data.borongan_insentif} onChange={(e) => payrollEntryForm.setData('borongan_insentif', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                            <PriceInput value={payrollEntryForm.data.borongan_insentif} onChange={(e) => payrollEntryForm.setData('borongan_insentif', e.target.value)} className="mt-1 block w-full" /></div>
                         <div><label className="text-xs font-medium text-muted">Potongan Lain</label>
-                            <input type="number" step="0.01" value={payrollEntryForm.data.potongan_lain} onChange={(e) => payrollEntryForm.setData('potongan_lain', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                            <PriceInput value={payrollEntryForm.data.potongan_lain} onChange={(e) => payrollEntryForm.setData('potongan_lain', e.target.value)} className="mt-1 block w-full" /></div>
                         <div><label className="text-xs font-medium text-muted">BPJS</label>
-                            <input type="number" step="0.01" value={payrollEntryForm.data.bpjs} onChange={(e) => payrollEntryForm.setData('bpjs', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                            <PriceInput value={payrollEntryForm.data.bpjs} onChange={(e) => payrollEntryForm.setData('bpjs', e.target.value)} className="mt-1 block w-full" /></div>
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
                         <SecondaryButton type="button" onClick={closeEdit}>Batal</SecondaryButton>
@@ -1861,9 +1863,9 @@ export default function FinanceIndex({
                             <div key={idx} className="mt-2 grid grid-cols-12 gap-2">
                                 <input placeholder="Nama barang" value={row.item_name} onChange={(e) => poForm.setData('items', poForm.data.items.map((p, i) => i === idx ? { ...p, item_name: e.target.value } : p))} className="col-span-5 rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
                                 <input placeholder="No. barang" value={row.item_code} onChange={(e) => poForm.setData('items', poForm.data.items.map((p, i) => i === idx ? { ...p, item_code: e.target.value } : p))} className="col-span-2 rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
-                                <input type="number" step="0.01" placeholder="Qty" value={row.qty} onChange={(e) => poForm.setData('items', poForm.data.items.map((p, i) => i === idx ? { ...p, qty: e.target.value } : p))} className="col-span-1 rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                                <NumericInput decimalPlaces={2} placeholder="Qty" value={row.qty} onChange={(e) => poForm.setData('items', poForm.data.items.map((p, i) => i === idx ? { ...p, qty: e.target.value } : p))} className="col-span-1 rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
                                 <input placeholder="Satuan" value={row.unit} onChange={(e) => poForm.setData('items', poForm.data.items.map((p, i) => i === idx ? { ...p, unit: e.target.value } : p))} className="col-span-1 rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
-                                <input type="number" step="0.01" placeholder="Harga" value={row.price} onChange={(e) => poForm.setData('items', poForm.data.items.map((p, i) => i === idx ? { ...p, price: e.target.value } : p))} className="col-span-3 rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                                <PriceInput placeholder="Harga" value={row.price} onChange={(e) => poForm.setData('items', poForm.data.items.map((p, i) => i === idx ? { ...p, price: e.target.value } : p))} className="col-span-3 rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
                             </div>
                         ))}
                         <button

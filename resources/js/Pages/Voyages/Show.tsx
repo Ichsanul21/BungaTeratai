@@ -1,6 +1,7 @@
 import Badge, { type BadgeTone } from '@/Components/ui/Badge';
 import Card from '@/Components/ui/Card';
 import Modal from '@/Components/Modal';
+import NumericInput from '@/Components/NumericInput';
 import PageHeader from '@/Components/ui/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -330,7 +331,7 @@ export default function VoyagesShow({
                         <div className="mt-4 rounded-lg border border-hairline bg-appbg/40 p-3">
                             <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div>
-                                    <p className="text-xs font-semibold uppercase tracking-wide text-muted">Tracking Status Kapal (Operasional)</p>
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-muted">Tracking Status Vessel (Operasional)</p>
                                     <p className="text-xs text-muted">
                                         Status operasional kapal saat ini selaras dengan Status Perjalanan: <strong>{VOYAGE_STATUS_LABELS[voyage.voyage_status] ?? voyage.voyage_status}</strong>.
                                     </p>
@@ -437,7 +438,7 @@ export default function VoyagesShow({
 
             {tab === 'vessel' && (
                 <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-                    <Card title="Kapal Utama">
+                    <Card title="Vessel Utama">
                         <Link
                             href={`/armada/${voyage.vessel_id}`}
                             className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
@@ -666,7 +667,7 @@ export default function VoyagesShow({
                                     </div>
                                     <div>
                                         <label className="text-xs font-medium text-muted">DSR — Total Muatan (MT)</label>
-                                        <input name="dsr_mt" type="number" step="0.01" defaultValue={voyage.dsr_mt ?? ''} className="mt-1 block w-32 rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
+                                        <NumericInput name="dsr_mt" decimalPlaces={2} defaultValue={voyage.dsr_mt ?? ''} className="mt-1 block w-32 rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
                                     </div>
                                     <div>
                                         <label className="text-xs font-medium text-muted">Tanggal DSR</label>
@@ -877,7 +878,7 @@ export default function VoyagesShow({
                                         <div key={k as string} className="rounded-lg bg-appbg p-3">
                                             <p className="text-xs uppercase tracking-wide text-muted">{k}</p>
                                             <p className="mt-0.5 text-xl font-semibold tabular-nums text-ink">
-                                                {v ?? '—'}
+                                                {v == null ? '—' : formatNumber(Number(v))}
                                             </p>
                                         </div>
                                     ))}
@@ -907,7 +908,7 @@ export default function VoyagesShow({
                                         </div>
                                         <div>
                                             <label className="text-xs font-medium text-muted">Jumlah</label>
-                                            <input name="count" type="number" min={0} className="mt-1 block w-28 rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
+                                            <NumericInput name="count" min={0} className="mt-1 block w-28 rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
                                         </div>
                                         <button type="submit" className="rounded-lg bg-ink px-3.5 py-2 text-sm font-medium text-white hover:bg-black">
                                             Catat Log
@@ -1143,7 +1144,7 @@ export default function VoyagesShow({
                     <dl className="grid grid-cols-2 gap-4 text-sm md:grid-cols-3">
                         {[
                             ['Kode', voyage.voyage_code],
-                            ['Kapal', voyage.vessel_name],
+                            ['Vessel', voyage.vessel_name],
                             ['Rute', `${voyage.origin} → ${voyage.destination}`],
                             ['Status', VOYAGE_STATUS_LABELS[voyage.voyage_status]],
                             ['Berangkat', formatDateTime(voyage.actual_departure)],

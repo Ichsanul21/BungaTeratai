@@ -132,6 +132,18 @@ class DashboardController extends Controller
             'assigner_name' => $a->assigner_name ?? ($a->after['assigner_name'] ?? null),
             'assigned_to' => $a->assigned_to ?? ($a->after['assigned_to'] ?? null),
         ]);
+        $vesselPositions = Vessel::orderBy('vessel_name')->get([
+            'id', 'vessel_name', 'vessel_type', 'last_lat', 'last_lng',
+            'last_position_at', 'operational_status',
+        ])->map(fn ($vessel) => [
+            'id' => $vessel->id,
+            'vessel_name' => $vessel->vessel_name,
+            'vessel_type' => $vessel->vessel_type,
+            'last_lat' => $vessel->last_lat,
+            'last_lng' => $vessel->last_lng,
+            'last_position_at' => $vessel->last_position_at,
+            'operational_status' => $vessel->operational_status,
+        ]);
 
         return Inertia::render('Dashboard', [
             'kpis' => [
@@ -158,6 +170,7 @@ class DashboardController extends Controller
             'reminders' => $reminders,
             'recentVoyages' => $recentVoyages,
             'recentActivity' => $recentActivity,
+            'vesselPositions' => $vesselPositions,
             'filters' => ['months' => $months, 'type' => $vesselType],
             'vesselTypes' => Vessel::selectRaw('DISTINCT vessel_type')->pluck('vessel_type'),
             'unreadNotifications' => auth()->user()

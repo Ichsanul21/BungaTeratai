@@ -17,6 +17,7 @@ use App\Services\DocumentCompletenessService;
 use App\Services\VoyageWorkflowService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -65,7 +66,7 @@ class VoyageController extends Controller
             'voyages' => $query->limit(100)->get()->map(fn ($v) => $this->mapVoyage($v)),
             'group' => $group,
             'filters' => $request->only(['status', 'vessel_id', 'search']),
-            'vessels' => Vessel::orderBy('vessel_name')->get(['id', 'vessel_name', 'vessel_type']),
+            'vessels' => Vessel::orderBy('vessel_name')->get(['id', 'vessel_name', 'vessel_type', 'vessel_type_custom']),
             'statusCounts' => [
                 'aktif' => Voyage::whereIn('voyage_status', [
                     VoyageStatus::Planned->value, VoyageStatus::DocumentPreparation->value,
@@ -88,7 +89,7 @@ class VoyageController extends Controller
         $this->authorize('create', Voyage::class);
 
         return Inertia::render('Voyages/Create', [
-            'vessels' => Vessel::orderBy('vessel_name')->get(['id', 'vessel_name', 'vessel_type', 'navigation_type']),
+            'vessels' => Vessel::orderBy('vessel_name')->get(['id', 'vessel_name', 'vessel_type', 'vessel_type_custom', 'navigation_type']),
             'customers' => Customer::orderBy('name')->get(['id', 'name']),
         ]);
     }
@@ -96,6 +97,8 @@ class VoyageController extends Controller
     public function store(Request $request)
     {
         $this->authorize('create', Voyage::class);
+
+        $this->normalizeCurrencyInputs($request, ['freight_rate', 'demurrage_per_day']);
 
         $data = $request->validate([
             'vessel_id' => ['required', 'exists:vessels,id'],
@@ -112,6 +115,7 @@ class VoyageController extends Controller
             'person_in_charge' => ['required', 'string', 'max:120'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'commodity_type' => ['nullable', 'string', 'max:60'],
+            'commodity_is_custom' => ['nullable', 'boolean'],
             'weight_ton' => ['nullable', 'numeric', 'min:0'],
             'capacity' => ['nullable', 'integer', 'min:0'],
             'tickets_sold' => ['nullable', 'integer', 'min:0'],
@@ -119,7 +123,7 @@ class VoyageController extends Controller
             'spal_number' => ['nullable', 'string', 'max:80'],
             'spal_date' => ['nullable', 'date'],
             'payment_terms' => ['nullable', 'in:dp_50_50,dp_100,custom'],
-            'payment_terms_note' => ['nullable', 'string', 'max:240'],
+            'payment_terms_note' => ['required_if:payment_terms,custom', 'nullable', 'string', 'max:240'],
             'freight_rate' => ['nullable', 'numeric', 'min:0'],
             'freight_unit' => ['nullable', 'in:MT,lumpsum'],
             'laytime_days' => ['nullable', 'integer', 'min:1'],
@@ -129,10 +133,12 @@ class VoyageController extends Controller
             'shipper' => ['nullable', 'string', 'max:160'],
             'consignee' => ['nullable', 'string', 'max:160'],
         ]);
+        $data = $this->normalizeCustomCommodity($data);
 
         $voyage = DB::transaction(function () use ($data) {
             $vessel = Vessel::findOrFail($data['vessel_id']);
             $isPassenger = $vessel->vessel_type === 'kapal_penumpang';
+            $relationshipIds = $this->resolveVesselRelationshipIds($data, $vessel);
             $externalStatus = $isPassenger
                 ? ExternalApprovalStatus::TidakDiperlukan->value
                 : ExternalApprovalStatus::Menunggu->value;
@@ -184,11 +190,10 @@ class VoyageController extends Controller
                 'charter_stage' => $isPassenger ? null : 'si',
             ]);
 
-            if (! $isPassenger && ($data['tugboat_id'] ?? null) && ($data['barge_id'] ?? null)) {
+            if (! $isPassenger && $relationshipIds['tugboat_id'] && $relationshipIds['barge_id']) {
                 VesselRelationship::create([
                     'voyage_id' => $voyage->id,
-                    'tugboat_id' => $data['tugboat_id'],
-                    'barge_id' => $data['barge_id'],
+                    ...$relationshipIds,
                 ]);
             }
 
@@ -336,7 +341,7 @@ class VoyageController extends Controller
                     })->orWhere('owner_type', 'company');
                 })
                 ->whereDoesntHave('voyages', fn ($vq) => $vq->where('voyages.id', $voyage->id))
-                ->orderByDesc('updated_at')->limit(100)
+                ->orderByDesc('created_at')->orderByDesc('id')->limit(100)
                 ->get()
                 ->map(fn ($d) => [
                     'id' => $d->id,
@@ -344,7 +349,7 @@ class VoyageController extends Controller
                     'requirement_code' => $d->requirement_code,
                     'owner_name' => $d->ownerName(),
                     'group_code' => $d->category?->group_code,
-                ]),'documents' => $voyage->documents()->with('category')->get()->map(fn ($d) => [
+                ]),'documents' => $voyage->documents()->with('category')->orderByDesc('documents.created_at')->orderByDesc('documents.id')->get()->map(fn ($d) => [
                 'id' => $d->id,
                 'document_name' => $d->document_name,
                 'requirement_code' => $d->requirement_code,
@@ -573,6 +578,25 @@ class VoyageController extends Controller
         return sprintf('VYG-%d-%04d', $year, $seq);
     }
 
+    private function normalizeCurrencyInputs(Request $request, array $fields): void
+    {
+        foreach ($fields as $field) {
+            if (! $request->filled($field) || ! is_string($request->input($field))) {
+                continue;
+            }
+
+            $value = str_replace(' ', '', trim($request->input($field)));
+            if (str_contains($value, ',')) {
+                $value = str_replace('.', '', $value);
+                $value = str_replace(',', '.', $value);
+            } elseif (preg_match('/^\d{1,3}(?:\.\d{3})+$/', $value)) {
+                $value = str_replace('.', '', $value);
+            }
+
+            $request->merge([$field => $value]);
+        }
+    }
+
     private function mapVoyage(Voyage $v): array
     {
         return [
@@ -619,7 +643,7 @@ class VoyageController extends Controller
                 'tickets_sold' => (string) ($voyage->tickets_sold ?? ''),
                 'voyage_status' => $voyage->voyage_status,
             ],
-            'vessels' => Vessel::orderBy('vessel_name')->get(['id', 'vessel_name', 'vessel_type', 'navigation_type']),
+            'vessels' => Vessel::orderBy('vessel_name')->get(['id', 'vessel_name', 'vessel_type', 'vessel_type_custom', 'navigation_type']),
             'customers' => Customer::orderBy('name')->get(['id', 'name']),
             'isEdit' => true,
         ]);
@@ -632,6 +656,8 @@ class VoyageController extends Controller
         if (in_array($voyage->voyage_status, ['departed', 'in_transit', 'arrived', 'voyage_closure', 'completed', 'cancelled'], true)) {
             return back()->with('error', 'Perjalanan yang sudah berlayar/selesai tidak dapat diedit — gunakan catatan perjalanan.');
         }
+
+        $this->normalizeCurrencyInputs($request, ['freight_rate', 'demurrage_per_day']);
 
         $data = $request->validate([
             'vessel_id' => ['required', 'exists:vessels,id'],
@@ -648,6 +674,7 @@ class VoyageController extends Controller
             'person_in_charge' => ['required', 'string', 'max:120'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'commodity_type' => ['nullable', 'string', 'max:60'],
+            'commodity_is_custom' => ['nullable', 'boolean'],
             'weight_ton' => ['nullable', 'numeric', 'min:0'],
             'capacity' => ['nullable', 'integer', 'min:0'],
             'tickets_sold' => ['nullable', 'integer', 'min:0'],
@@ -655,7 +682,7 @@ class VoyageController extends Controller
             'spal_number' => ['nullable', 'string', 'max:80'],
             'spal_date' => ['nullable', 'date'],
             'payment_terms' => ['nullable', 'in:dp_50_50,dp_100,custom'],
-            'payment_terms_note' => ['nullable', 'string', 'max:240'],
+            'payment_terms_note' => ['required_if:payment_terms,custom', 'nullable', 'string', 'max:240'],
             'freight_rate' => ['nullable', 'numeric', 'min:0'],
             'freight_unit' => ['nullable', 'in:MT,lumpsum'],
             'laytime_days' => ['nullable', 'integer', 'min:1'],
@@ -665,11 +692,14 @@ class VoyageController extends Controller
             'shipper' => ['nullable', 'string', 'max:160'],
             'consignee' => ['nullable', 'string', 'max:160'],
         ]);
+        $data = $this->normalizeCustomCommodity($data);
 
         $before = $voyage->only(['vessel_id', 'origin', 'destination', 'planned_departure', 'person_in_charge', 'contract_no']);
 
         DB::transaction(function () use ($voyage, $data) {
-            $isPassenger = Vessel::find($data['vessel_id'])?->vessel_type === 'kapal_penumpang';
+            $vessel = Vessel::findOrFail($data['vessel_id']);
+            $isPassenger = $vessel->vessel_type === 'kapal_penumpang';
+            $relationshipIds = $this->resolveVesselRelationshipIds($data, $vessel);
 
             $voyage->update([
                 'vessel_id' => $data['vessel_id'],
@@ -701,11 +731,10 @@ class VoyageController extends Controller
 
             // Relasi tug ↔ tongkang
             $voyage->relationships()->delete();
-            if (! $isPassenger && ($data['tugboat_id'] ?? null) && ($data['barge_id'] ?? null)) {
+            if (! $isPassenger && $relationshipIds['tugboat_id'] && $relationshipIds['barge_id']) {
                 \App\Models\VesselRelationship::create([
                     'voyage_id' => $voyage->id,
-                    'tugboat_id' => $data['tugboat_id'],
-                    'barge_id' => $data['barge_id'],
+                    ...$relationshipIds,
                 ]);
             }
 
@@ -725,6 +754,57 @@ class VoyageController extends Controller
         AuditService::log('updated', 'voyage', $voyage->id, $before, $data, "Perjalanan diedit: {$voyage->voyage_code}");
 
         return redirect()->route('voyages.show', $voyage)->with('success', 'Perjalanan diperbarui.');
+    }
+
+    private function resolveVesselRelationshipIds(array $data, Vessel $vessel): array
+    {
+        $isPassenger = $vessel->vessel_type === 'kapal_penumpang';
+        $validActivity = $isPassenger
+            ? $data['activity_type'] === 'penumpang'
+            : in_array($data['activity_type'], ['towing', 'sewa_tongkang', 'bongkar_muat'], true);
+
+        if (! $validActivity) {
+            throw ValidationException::withMessages([
+                'activity_type' => 'Jenis kegiatan tidak sesuai dengan jenis kapal yang dipilih.',
+            ]);
+        }
+
+        if ($isPassenger) {
+            return ['tugboat_id' => null, 'barge_id' => null];
+        }
+
+        $tugboatId = $vessel->vessel_type === 'tugboat'
+            ? $vessel->id
+            : ($data['tugboat_id'] ?? null);
+        $bargeId = $vessel->vessel_type === 'tongkang'
+            ? $vessel->id
+            : ($data['barge_id'] ?? null);
+
+        if ($tugboatId && Vessel::whereKey($tugboatId)->where('vessel_type', '!=', 'tugboat')->exists()) {
+            throw ValidationException::withMessages([
+                'tugboat_id' => 'Kapal penarik harus berjenis Tugboat.',
+            ]);
+        }
+        if ($bargeId && Vessel::whereKey($bargeId)->where('vessel_type', '!=', 'tongkang')->exists()) {
+            throw ValidationException::withMessages([
+                'barge_id' => 'Kapal yang ditowel harus berjenis Tongkang.',
+            ]);
+        }
+
+        return ['tugboat_id' => $tugboatId, 'barge_id' => $bargeId];
+    }
+
+    private function normalizeCustomCommodity(array $data): array
+    {
+        if (($data['commodity_is_custom'] ?? false) && blank($data['commodity_type'])) {
+            throw ValidationException::withMessages([
+                'commodity_type' => 'Jenis muatan lainnya wajib diisi.',
+            ]);
+        }
+
+        unset($data['commodity_is_custom']);
+
+        return $data;
     }
 
     // ===== Charter SPAL — Keagenan & Detail (B3) =====

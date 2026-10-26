@@ -1,6 +1,9 @@
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
+import NumericInput from '@/Components/NumericInput';
+import PriceInput from '@/Components/PriceInput';
 import PrimaryButton from '@/Components/PrimaryButton';
+import SearchableSelect from '@/Components/SearchableSelect';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
 import { Link, useForm } from '@inertiajs/react';
@@ -9,18 +12,17 @@ import { FormEvent } from 'react';
 const ACTIVITIES = [
     { value: 'towing', label: 'Towing (Penarikan Tongkang)', passenger: false },
     { value: 'sewa_tongkang', label: 'Sewa Tongkang', passenger: false },
-    { value: 'assist', label: 'Assist Kolong Jembatan', passenger: false },
     { value: 'bongkar_muat', label: 'Bongkar Muat', passenger: false },
     { value: 'penumpang', label: 'Pelayaran Penumpang', passenger: true },
 ];
 
 const COMMODITIES = [
-    ['batu_bara', 'Batu Bara'],
-    ['semen', 'Semen'],
-    ['sawit', 'Kelapa Sawit'],
-    ['cpo', 'CPO'],
-    ['curah_lain', 'Curah Lain'],
-    ['lainnya', 'Lainnya'],
+    { value: 'batu_bara', label: 'Batu Bara' },
+    { value: 'semen', label: 'Semen' },
+    { value: 'sawit', label: 'Kelapa Sawit' },
+    { value: 'cpo', label: 'CPO' },
+    { value: 'curah_lain', label: 'Curah Lain' },
+    { value: 'lainnya', label: 'Lainnya' },
 ];
 
 export default function VoyageForm({
@@ -29,7 +31,13 @@ export default function VoyageForm({
     voyage,
     isEdit = false,
 }: {
-    vessels: Array<{ id: number; vessel_name: string; vessel_type: string; navigation_type: string }>;
+    vessels: Array<{
+        id: number;
+        vessel_name: string;
+        vessel_type: string;
+        vessel_type_custom?: string | null;
+        navigation_type: string;
+    }>;
     customers: Array<{ id: number; name: string }>;
     voyage?: Record<string, any>;
     isEdit?: boolean;
@@ -49,6 +57,10 @@ export default function VoyageForm({
         person_in_charge: voyage?.person_in_charge ?? '',
         notes: voyage?.notes ?? '',
         commodity_type: voyage?.commodity_type ?? '',
+        commodity_is_custom:
+            Boolean(voyage?.commodity_type) &&
+            (voyage?.commodity_type === 'lainnya' ||
+                !COMMODITIES.some((commodity) => commodity.value === voyage?.commodity_type)),
         weight_ton: voyage?.weight_ton ?? '',
         capacity: voyage?.capacity ?? '',
         tickets_sold: voyage?.tickets_sold ?? '',
@@ -68,15 +80,18 @@ export default function VoyageForm({
 
     const selectedVessel = vessels.find((v) => String(v.id) === data.vessel_id);
     const isPassengerVessel = selectedVessel?.vessel_type === 'kapal_penumpang';
-    const activityMeta = ACTIVITIES.find((a) => a.value === data.activity_type);
+    const activityOptions = ACTIVITIES.filter(
+        (activity) => activity.passenger === isPassengerVessel || !selectedVessel,
+    );
     const showCargo = ! isPassengerVessel && data.activity_type !== 'penumpang';
     const showPassenger = isPassengerVessel || data.activity_type === 'penumpang';
 
     const tugOptions = vessels.filter((v) => v.vessel_type === 'tugboat');
     const bargeOptions = vessels.filter((v) => v.vessel_type === 'tongkang');
-    const vesselOptions = isPassengerVessel
-        ? vessels.filter((v) => v.vessel_type === 'kapal_penumpang')
-        : vessels.filter((v) => v.vessel_type !== 'kapal_penumpang');
+    const vesselOptions = vessels;
+    const commoditySelection = data.commodity_is_custom
+        ? 'lainnya'
+        : data.commodity_type;
 
     const submit = (e: FormEvent) => {
         e.preventDefault();
@@ -90,95 +105,117 @@ export default function VoyageForm({
     return (
         <form onSubmit={submit} className="max-w-4xl space-y-6">
                 <section className="rounded-xl border border-hairline bg-white p-5 shadow-sm">
-                    <h2 className="mb-4 text-sm font-semibold text-ink">Kapal & Kegiatan</h2>
+                    <h2 className="mb-4 text-sm font-semibold text-ink">Vessel & Kegiatan</h2>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div>
-                            <InputLabel value="Kapal *" />
-                            <select
+                            <InputLabel value="Vessel *" />
+                            <SearchableSelect
                                 value={data.vessel_id}
-                                onChange={(e) => setData('vessel_id', e.target.value)}
-                                className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
-                            >
-                                <option value="">— pilih kapal —</option>
-                                {vesselOptions.map((v) => (
-                                    <option key={v.id} value={v.id}>
-                                        {v.vessel_name} ({v.vessel_type.replace('_', ' ')})
-                                    </option>
-                                ))}
-                            </select>
+                                required
+                                options={[
+                                    { value: '', label: '— pilih vessel —' },
+                                    ...vesselOptions.map((v) => ({
+                                        value: String(v.id),
+                                        label: `${v.vessel_name} (${v.vessel_type === 'lainnya' && v.vessel_type_custom ? v.vessel_type_custom : v.vessel_type.replaceAll('_', ' ')})`,
+                                    })),
+                                ]}
+                                onChange={(vesselId) => {
+                                    const vessel = vessels.find((item) => String(item.id) === vesselId);
+                                    setData('vessel_id', vesselId);
+                                    if (vessel?.vessel_type === 'kapal_penumpang') {
+                                        setData('activity_type', 'penumpang');
+                                        setData('tugboat_id', '');
+                                        setData('barge_id', '');
+                                    } else if (data.activity_type === 'penumpang') {
+                                        setData('activity_type', 'towing');
+                                    }
+                                    setData(
+                                        'tugboat_id',
+                                        vessel?.vessel_type === 'tugboat' ? vesselId : '',
+                                    );
+                                    setData(
+                                        'barge_id',
+                                        vessel?.vessel_type === 'tongkang' ? vesselId : '',
+                                    );
+                                }}
+                            />
                             <InputError message={errors.vessel_id} className="mt-1" />
                         </div>
                         <div>
                             <InputLabel value="Jenis Kegiatan *" />
-                            <select
+                            <SearchableSelect
                                 value={data.activity_type}
-                                onChange={(e) => setData('activity_type', e.target.value)}
-                                className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
-                            >
-                                {ACTIVITIES.map((a) => (
-                                    <option key={a.value} value={a.value}>
-                                        {a.label}
-                                    </option>
-                                ))}
-                            </select>
+                                required
+                                options={activityOptions.map(({ value, label }) => ({ value, label }))}
+                                onChange={(activity) => setData('activity_type', activity)}
+                                placeholder="— pilih kegiatan —"
+                            />
+                            <InputError message={errors.activity_type} className="mt-1" />
                         </div>
                     </div>
 
-                    {showCargo && (
+                    {!isPassengerVessel && (
                         <div className="mt-4 grid grid-cols-1 gap-4 border-t border-hairline pt-4 md:grid-cols-2">
-                            <div>
-                                <InputLabel value="Tugboat (penarik)" />
-                                <select
-                                    value={data.tugboat_id}
-                                    onChange={(e) => setData('tugboat_id', e.target.value)}
-                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
-                                >
-                                    <option value="">— pilih tugboat —</option>
-                                    {tugOptions.map((v) => (
-                                        <option key={v.id} value={v.id}>
-                                            {v.vessel_name}
-                                        </option>
-                                    ))}
-                                </select>
+                            <div className="md:col-span-2 grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div>
+                                    <InputLabel value="Tugboat (penarik)" />
+                                    <SearchableSelect
+                                        value={String(data.tugboat_id)}
+                                        options={[
+                                            { value: '', label: '— pilih tugboat —' },
+                                            ...tugOptions.map((v) => ({ value: String(v.id), label: v.vessel_name })),
+                                        ]}
+                                        onChange={(v) => setData('tugboat_id', v)}
+                                        disabled={selectedVessel?.vessel_type === 'tugboat'}
+                                    />
+                                </div>
+                                <div>
+                                    <InputLabel value="Tongkang (ditowel)" />
+                                    <SearchableSelect
+                                        value={String(data.barge_id)}
+                                        options={[
+                                            { value: '', label: '— pilih tongkang —' },
+                                            ...bargeOptions.map((v) => ({ value: String(v.id), label: v.vessel_name })),
+                                        ]}
+                                        onChange={(v) => setData('barge_id', v)}
+                                        disabled={selectedVessel?.vessel_type === 'tongkang'}
+                                    />
+                                </div>
                             </div>
-                            <div>
-                                <InputLabel value="Tongkang (ditowel)" />
-                                <select
-                                    value={data.barge_id}
-                                    onChange={(e) => setData('barge_id', e.target.value)}
-                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
-                                >
-                                    <option value="">— pilih tongkang —</option>
-                                    {bargeOptions.map((v) => (
-                                        <option key={v.id} value={v.id}>
-                                            {v.vessel_name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
+                            <div className="md:col-span-2">
                                 <InputLabel value="Jenis Muatan" />
-                                <select
-                                    value={data.commodity_type}
-                                    onChange={(e) => setData('commodity_type', e.target.value)}
-                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
-                                >
-                                    <option value="">— pilih muatan —</option>
-                                    {COMMODITIES.map(([k, v]) => (
-                                        <option key={k} value={k}>
-                                            {v}
-                                        </option>
-                                    ))}
-                                </select>
+                                <SearchableSelect
+                                    value={commoditySelection}
+                                    options={[
+                                        { value: '', label: '— pilih muatan —' },
+                                        ...COMMODITIES,
+                                    ]}
+                                    onChange={(value) => {
+                                        setData('commodity_is_custom', value === 'lainnya');
+                                        setData('commodity_type', value === 'lainnya' ? '' : value);
+                                    }}
+                                />
+                                {data.commodity_is_custom && (
+                                    <>
+                                        <TextInput
+                                            value={data.commodity_type === 'lainnya' ? '' : data.commodity_type}
+                                            onChange={(e) => setData('commodity_type', e.target.value)}
+                                            className="mt-2 block w-full"
+                                            placeholder="Masukkan jenis muatan"
+                                            maxLength={60}
+                                            required
+                                        />
+                                        <InputError message={errors.commodity_type} className="mt-1" />
+                                    </>
+                                )}
                                 <p className="mt-1 text-xs text-muted">
                                     Muatan batu bara menambah syarat dokumen (bukti timbang, uji mutu).
                                 </p>
                             </div>
                             <div>
                                 <InputLabel value="Berat Muatan (ton)" />
-                                <TextInput
-                                    type="number"
-                                    step="0.01"
+                                <NumericInput
+                                    decimalPlaces={2}
                                     value={data.weight_ton}
                                     onChange={(e) => setData('weight_ton', e.target.value)}
                                     className="mt-1 block w-full"
@@ -191,8 +228,7 @@ export default function VoyageForm({
                         <div className="mt-4 grid grid-cols-1 gap-4 border-t border-hairline pt-4 md:grid-cols-2">
                             <div>
                                 <InputLabel value="Kapasitas (penumpang)" />
-                                <TextInput
-                                    type="number"
+                                <NumericInput
                                     value={data.capacity}
                                     onChange={(e) => setData('capacity', e.target.value)}
                                     className="mt-1 block w-full"
@@ -200,8 +236,7 @@ export default function VoyageForm({
                             </div>
                             <div>
                                 <InputLabel value="Perkiraan Tiket Terjual" />
-                                <TextInput
-                                    type="number"
+                                <NumericInput
                                     value={data.tickets_sold}
                                     onChange={(e) => setData('tickets_sold', e.target.value)}
                                     className="mt-1 block w-full"
@@ -228,31 +263,50 @@ export default function VoyageForm({
                             </div>
                             <div>
                                 <InputLabel value="Sistem Pembayaran" />
-                                <select value={data.payment_terms} onChange={(e) => setData('payment_terms', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary">
-                                    <option value="">— pilih —</option>
-                                    <option value="dp_50_50">50% muat : 50% tiba POD</option>
-                                    <option value="dp_100">100% di muka</option>
-                                    <option value="custom">Custom</option>
-                                </select>
+                                <SearchableSelect
+                                    value={data.payment_terms}
+                                    options={[
+                                        { value: '', label: '— pilih —' },
+                                        { value: 'dp_50_50', label: '50% muat : 50% tiba POD' },
+                                        { value: 'dp_100', label: '100% di muka' },
+                                        { value: 'custom', label: 'Custom' },
+                                    ]}
+                                    onChange={(value) => setData('payment_terms', value)}
+                                />
+                                {data.payment_terms === 'custom' && (
+                                    <TextInput
+                                        value={data.payment_terms_note}
+                                        onChange={(e) => setData('payment_terms_note', e.target.value)}
+                                        className="mt-2 block w-full"
+                                        placeholder="Jelaskan sistem pembayaran"
+                                        maxLength={240}
+                                        required
+                                    />
+                                )}
+                                <InputError message={errors.payment_terms_note} className="mt-1" />
                             </div>
                             <div>
                                 <InputLabel value="Freight (Rp)" />
-                                <TextInput type="number" step="0.01" value={data.freight_rate} onChange={(e) => setData('freight_rate', e.target.value)} className="mt-1 block w-full" placeholder="mis. 125000" />
+                                <PriceInput value={data.freight_rate} onChange={(e) => setData('freight_rate', e.target.value)} className="mt-1 block w-full" placeholder="mis. 125.000" />
                             </div>
                             <div>
                                 <InputLabel value="Satuan Freight" />
-                                <select value={data.freight_unit} onChange={(e) => setData('freight_unit', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary">
-                                    <option value="MT">Per MT</option>
-                                    <option value="lumpsum">Lumpsum</option>
-                                </select>
+                                <SearchableSelect
+                                    value={data.freight_unit}
+                                    options={[
+                                        { value: 'MT', label: 'Per MT' },
+                                        { value: 'lumpsum', label: 'Lumpsum' },
+                                    ]}
+                                    onChange={(value) => setData('freight_unit', value)}
+                                />
                             </div>
                             <div>
                                 <InputLabel value="Laytime (hari)" />
-                                <TextInput type="number" value={data.laytime_days} onChange={(e) => setData('laytime_days', e.target.value)} className="mt-1 block w-full" />
+                                <NumericInput value={data.laytime_days} onChange={(e) => setData('laytime_days', e.target.value)} className="mt-1 block w-full" />
                             </div>
                             <div>
                                 <InputLabel value="Demurrage / hari (Rp)" />
-                                <TextInput type="number" step="0.01" value={data.demurrage_per_day} onChange={(e) => setData('demurrage_per_day', e.target.value)} className="mt-1 block w-full" />
+                                <PriceInput value={data.demurrage_per_day} onChange={(e) => setData('demurrage_per_day', e.target.value)} className="mt-1 block w-full" placeholder="mis. 25.000.000" />
                             </div>
                             <div>
                                 <InputLabel value="Jetty / Pelabuhan Muat" />
@@ -279,15 +333,15 @@ export default function VoyageForm({
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                         <div>
                             <InputLabel value="Jenis Rute *" />
-                            <select
+                            <SearchableSelect
                                 value={data.route_type}
-                                onChange={(e) => setData('route_type', e.target.value)}
-                                className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
-                            >
-                                <option value="laut">Laut</option>
-                                <option value="sungai">Sungai</option>
-                                <option value="kombinasi">Kombinasi</option>
-                            </select>
+                                options={[
+                                    { value: 'laut', label: 'Laut' },
+                                    { value: 'sungai', label: 'Sungai' },
+                                    { value: 'kombinasi', label: 'Kombinasi' },
+                                ]}
+                                onChange={(value) => setData('route_type', value)}
+                            />
                         </div>
                         <div>
                             <InputLabel value="Pelabuhan / Titik Berangkat *" />
@@ -340,18 +394,17 @@ export default function VoyageForm({
                         </div>
                         <div>
                             <InputLabel value="Customer" />
-                            <select
-                                value={data.customer_id}
-                                onChange={(e) => setData('customer_id', e.target.value)}
-                                className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
-                            >
-                                <option value="">— tanpa customer —</option>
-                                {customers.map((c) => (
-                                    <option key={c.id} value={c.id}>
-                                        {c.name}
-                                    </option>
-                                ))}
-                            </select>
+                            <SearchableSelect
+                                value={String(data.customer_id)}
+                                options={[
+                                    { value: '', label: '— tanpa customer —' },
+                                    ...customers.map((customer) => ({
+                                        value: String(customer.id),
+                                        label: customer.name,
+                                    })),
+                                ]}
+                                onChange={(value) => setData('customer_id', value)}
+                            />
                         </div>
                         <div>
                             <InputLabel value="No. Kontrak" />

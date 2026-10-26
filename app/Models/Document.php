@@ -29,7 +29,7 @@ class Document extends Model
 
     public function versions()
     {
-        return $this->hasMany(DocumentVersion::class)->orderByDesc('version_number');
+        return $this->hasMany(DocumentVersion::class)->orderByDesc('uploaded_at')->orderByDesc('id');
     }
 
     public function voyages()

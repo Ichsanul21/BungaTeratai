@@ -3,6 +3,7 @@ import Card from '@/Components/ui/Card';
 import ConfirmModal from '@/Components/ui/ConfirmModal';
 import EmptyState from '@/Components/ui/EmptyState';
 import Modal from '@/Components/Modal';
+import PriceInput from '@/Components/PriceInput';
 import PageHeader from '@/Components/ui/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -399,7 +400,7 @@ export default function HrIndex({
                                 {RANKS.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                             </select></div>
                         <div><label className="text-xs font-medium text-muted">Gaji Pokok *</label>
-                            <input type="number" value={crewForm.data.base_salary} onChange={(e) => crewForm.setData('base_salary', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                            <PriceInput value={crewForm.data.base_salary} onChange={(e) => crewForm.setData('base_salary', e.target.value)} className="mt-1 block w-full" /></div>
                         <div><label className="text-xs font-medium text-muted">Penempatan Awal</label>
                             <select value={crewForm.data.vessel_id} onChange={(e) => crewForm.setData('vessel_id', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
                                 <option value="">— belum —</option>
@@ -458,9 +459,9 @@ export default function HrIndex({
                         <div><label className="text-xs font-medium text-muted">Tanggal Masuk</label>
                             <input type="date" value={employeeForm.data.join_date} onChange={(e) => employeeForm.setData('join_date', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
                         <div><label className="text-xs font-medium text-muted">Gaji Pokok *</label>
-                            <input type="number" value={employeeForm.data.base_salary} onChange={(e) => employeeForm.setData('base_salary', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                            <PriceInput value={employeeForm.data.base_salary} onChange={(e) => employeeForm.setData('base_salary', e.target.value)} className="mt-1 block w-full" /></div>
                         <div><label className="text-xs font-medium text-muted">Tunjangan</label>
-                            <input type="number" value={employeeForm.data.allowances} onChange={(e) => employeeForm.setData('allowances', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                            <PriceInput value={employeeForm.data.allowances} onChange={(e) => employeeForm.setData('allowances', e.target.value)} className="mt-1 block w-full" /></div>
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
                         <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
@@ -495,7 +496,7 @@ export default function HrIndex({
                                 {RANKS.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                             </select></div>
                         <div><label className="text-xs font-medium text-muted">Gaji Pokok *</label>
-                            <input type="number" value={editCrewForm.data.base_salary} onChange={(e) => editCrewForm.setData('base_salary', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                            <PriceInput value={editCrewForm.data.base_salary} onChange={(e) => editCrewForm.setData('base_salary', e.target.value)} className="mt-1 block w-full" /></div>
                         <div><label className="text-xs font-medium text-muted">Status</label>
                             <select value={editCrewForm.data.status} onChange={(e) => editCrewForm.setData('status', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
                                 <option value="aktif">Aktif</option><option value="cuti">Cuti</option><option value="selesai">Selesai</option>
@@ -605,9 +606,9 @@ export default function HrIndex({
                         <div><label className="text-xs font-medium text-muted">Masuk</label>
                             <input type="date" value={editEmployeeForm.data.join_date} onChange={(e) => editEmployeeForm.setData('join_date', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
                         <div><label className="text-xs font-medium text-muted">Gaji Pokok *</label>
-                            <input type="number" value={editEmployeeForm.data.base_salary} onChange={(e) => editEmployeeForm.setData('base_salary', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                            <PriceInput value={editEmployeeForm.data.base_salary} onChange={(e) => editEmployeeForm.setData('base_salary', e.target.value)} className="mt-1 block w-full" /></div>
                         <div><label className="text-xs font-medium text-muted">Tunjangan</label>
-                            <input type="number" value={editEmployeeForm.data.allowances} onChange={(e) => editEmployeeForm.setData('allowances', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                            <PriceInput value={editEmployeeForm.data.allowances} onChange={(e) => editEmployeeForm.setData('allowances', e.target.value)} className="mt-1 block w-full" /></div>
                         <div><label className="text-xs font-medium text-muted">Status</label>
                             <select value={editEmployeeForm.data.status} onChange={(e) => editEmployeeForm.setData('status', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
                                 <option value="aktif">Aktif</option><option value="keluar">Keluar</option>

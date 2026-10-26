@@ -88,6 +88,73 @@ class BungaTerataiTest extends TestCase
         $this->assertDatabaseHas('vessels', ['vessel_name' => 'TB Uji Coba 99']);
     }
 
+    public function test_custom_vessel_type_is_validated_and_reloaded_for_edit(): void
+    {
+        $this->loginUser('ops@bungateratai.id');
+
+        $this->from('/armada/create')->post('/armada', [
+            'vessel_name' => 'Kapal Uji Jenis Lain',
+            'vessel_type' => 'lainnya',
+            'navigation_type' => 'laut',
+            'operational_status' => 'aktif',
+        ])->assertSessionHasErrors('vessel_type_custom');
+
+        $this->post('/armada', [
+            'vessel_name' => 'Kapal Uji Jenis Lain',
+            'vessel_type' => 'lainnya',
+            'vessel_type_custom' => 'Kapal Keruk',
+            'navigation_type' => 'laut',
+            'operational_status' => 'aktif',
+        ])->assertRedirect();
+
+        $vessel = \App\Models\Vessel::where('vessel_name', 'Kapal Uji Jenis Lain')->firstOrFail();
+        $this->assertDatabaseHas('vessels', [
+            'id' => $vessel->id,
+            'vessel_type' => 'lainnya',
+            'vessel_type_custom' => 'Kapal Keruk',
+        ]);
+        $this->get("/armada/{$vessel->id}/edit")
+            ->assertInertia(fn ($page) => $page
+                ->component('Fleet/Edit')
+                ->where('vessel.vessel_type_custom', 'Kapal Keruk'));
+    }
+
+    public function test_custom_commodity_is_required_and_saved_as_cargo_type(): void
+    {
+        $this->loginUser('ops@bungateratai.id');
+        $vessel = \App\Models\Vessel::where('vessel_name', 'TB Syukur 01')->firstOrFail();
+        $payload = [
+            'vessel_id' => $vessel->id,
+            'activity_type' => 'towing',
+            'route_type' => 'laut',
+            'origin' => 'Samarinda',
+            'destination' => 'Bontang',
+            'planned_departure' => now()->addDay()->startOfHour()->toDateTimeString(),
+            'person_in_charge' => 'Operator Uji',
+            'commodity_is_custom' => true,
+        ];
+
+        $this->from('/perjalanan/create')->post('/perjalanan', [
+            ...$payload,
+            'commodity_type' => '',
+        ])->assertSessionHasErrors('commodity_type');
+
+        $this->post('/perjalanan', [
+            ...$payload,
+            'commodity_type' => 'Pasir Silika',
+        ])->assertRedirect();
+
+        $voyage = \App\Models\Voyage::where('origin', 'Samarinda')
+            ->where('destination', 'Bontang')
+            ->where('person_in_charge', 'Operator Uji')
+            ->latest('id')
+            ->firstOrFail();
+        $this->assertDatabaseHas('voyage_cargo', [
+            'voyage_id' => $voyage->id,
+            'commodity_type' => 'Pasir Silika',
+        ]);
+    }
+
     public function test_document_upload_submit_verify_flow(): void
     {
         Storage::fake('local');
@@ -227,7 +294,6 @@ class BungaTerataiTest extends TestCase
         $this->post('/perjalanan', [
             'vessel_id' => $tug->id,
             'activity_type' => 'towing',
-            'tugboat_id' => $tug->id,
             'barge_id' => $barge->id,
             'route_type' => 'kombinasi',
             'origin' => 'Samarinda',
@@ -242,6 +308,11 @@ class BungaTerataiTest extends TestCase
             ->where('activity_type', 'towing')->latest('id')->firstOrFail();
         $this->assertSame('draft', $voyage->voyage_status);
         $this->assertSame('menunggu', $voyage->external_approval_status);
+        $this->assertDatabaseHas('vessel_relationships', [
+            'voyage_id' => $voyage->id,
+            'tugboat_id' => $tug->id,
+            'barge_id' => $barge->id,
+        ]);
 
         // Checklist dibuat otomatis & muatan batu bara menambah syarat kondisional
         $this->assertGreaterThan(5, $voyage->checklists()->count());
@@ -413,7 +484,7 @@ class BungaTerataiTest extends TestCase
             'route' => 'Samarinda → Muara Berau',
             'duration_hours' => 1,
             'liters' => 200,
-        ])->assertSessionHas('error');
+        ])->assertSessionHasErrors('explanation');
         $this->assertSame($before, \App\Models\FuelLog::count());
 
         // Dengan penjelasan → diterima sebagai tidak_normal
@@ -437,6 +508,39 @@ class BungaTerataiTest extends TestCase
             'duration_hours' => 1,
             'liters' => 95,
         ])->assertForbidden();
+    }
+
+    public function test_operations_manual_position_updates_vessel_and_history(): void
+    {
+        $this->loginUser('ops@bungateratai.id');
+        $vessel = \App\Models\Vessel::where('vessel_name', 'TB Syukur 01')->firstOrFail();
+        $before = \App\Models\VesselPosition::where('vessel_id', $vessel->id)->count();
+
+        $this->post('/operasional/posisi', [
+            'vessel_id' => $vessel->id,
+            'lat' => -0.501,
+            'lng' => 117.15,
+        ])->assertSessionHas('success');
+
+        $this->assertDatabaseHas('vessel_positions', [
+            'vessel_id' => $vessel->id,
+            'lat' => -0.501,
+            'lng' => 117.15,
+            'source' => 'manual',
+        ]);
+        $this->assertSame($before + 1, \App\Models\VesselPosition::where('vessel_id', $vessel->id)->count());
+        $this->assertDatabaseHas('vessels', [
+            'id' => $vessel->id,
+            'last_lat' => -0.501,
+            'last_lng' => 117.15,
+        ]);
+
+        $this->from('/operasional?tab=posisi')->post('/operasional/posisi', [
+            'vessel_id' => $vessel->id,
+            'lat' => 91,
+            'lng' => 117.15,
+        ])->assertSessionHasErrors('lat');
+        $this->assertSame($before + 1, \App\Models\VesselPosition::where('vessel_id', $vessel->id)->count());
     }
 
     public function test_service_selesai_cuts_inventory_stock(): void

@@ -202,6 +202,7 @@ export default function Dashboard({
     reminders,
     recentVoyages,
     recentActivity,
+    vesselPositions,
     filters,
     vesselTypes,
 }: PageProps<{
@@ -211,6 +212,7 @@ export default function Dashboard({
     reminders: Array<Record<string, any>>;
     recentVoyages: Array<Record<string, any>>;
     recentActivity: Array<Record<string, any>>;
+    vesselPositions: Array<Record<string, any>>;
     filters: { months: number; type: string };
     vesselTypes: string[];
 }>) {
@@ -514,6 +516,46 @@ export default function Dashboard({
                     <StatCard label="Perlu Tindak Lanjut" value={kpis.armada_tindak_lanjut} icon={FileWarning} tone="warning" sub="kelengkapan < 90%" />
                     <StatCard label="Sedang Ditinjau" value={kpis.armada_ditinjau} icon={BellRing} tone="info" sub="dokumen under review" />
                 </div>
+                <Card
+                    title="Posisi Terakhir Seluruh Kapal"
+                    description="Koordinat posisi terakhir yang tercatat; bukan pelacakan AIS/GPS live."
+                    className="mt-5"
+                    actions={
+                        <Link
+                            href="/operasional?tab=posisi"
+                            className="text-xs font-medium text-primary hover:underline"
+                        >
+                            Buka peta →
+                        </Link>
+                    }
+                >
+                    {vesselPositions.length === 0 ? (
+                        <EmptyState text="Belum ada kapal terdaftar." />
+                    ) : (
+                        <div className="max-h-64 overflow-y-auto">
+                            <ul className="divide-y divide-hairline">
+                                {vesselPositions.map((vessel) => (
+                                    <li key={vessel.id} className="flex flex-wrap items-center gap-3 py-2.5">
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block truncate text-sm font-medium text-ink">
+                                                {vessel.vessel_name}
+                                            </span>
+                                            <span className="block text-xs text-muted">
+                                                {vessel.last_lat !== null && vessel.last_lat !== undefined &&
+                                                vessel.last_lng !== null && vessel.last_lng !== undefined
+                                                    ? `${vessel.last_lat}, ${vessel.last_lng}`
+                                                    : 'Posisi belum tercatat'}
+                                            </span>
+                                        </span>
+                                        <span className="text-xs text-muted">
+                                            {formatDateTime(vessel.last_position_at)}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                </Card>
             </section>
 
             {/* ===== 02 · Perjalanan & Dokumen ===== */}
@@ -583,7 +625,7 @@ export default function Dashboard({
                     )}
                     <StatCard label="Piutang Outstanding" value={ringkasRupiah(kpis.piutang)} icon={Wallet} tone="warning" onClick={() => router.get('/keuangan?tab=piutang')} />
                     <StatCard label="Hutang Outstanding" value={ringkasRupiah(kpis.hutang)} icon={Receipt} tone="danger" onClick={() => router.get('/keuangan?tab=hutang')} />
-                    <StatCard label="Anomali BBM" value={kpis.anomali_bbm} icon={Fuel} tone="danger" sub="trip tidak normal" onClick={() => router.get('/operasional?tab=bbm')} />
+                    <StatCard label="Anomali BBM" value={kpis.anomali_bbm} icon={Fuel} tone="danger" sub="trip tidak normal" onClick={() => router.get('/operasional?tab=posisi')} />
                     <StatCard label="Perjalanan Selesai" value={kpis.voyage_selesai} icon={TrendingUp} tone="success" />
                 </div>
             </section>

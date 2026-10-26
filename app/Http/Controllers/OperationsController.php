@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\FuelLog;
 use App\Models\InventoryBalance;
 use App\Models\InventoryMovement;
 use App\Models\Service;
 use App\Models\ServiceItem;
 use App\Models\Vessel;
 use App\Models\VesselCondition;
+use App\Models\VesselPosition;
 use App\Models\Voyage;
 use App\Models\VoyageEvent;
 use App\Services\AuditService;
@@ -15,6 +17,7 @@ use App\Services\FuelAnalysisService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,6 +26,9 @@ class OperationsController extends Controller
     public function index(Request $request): Response
     {
         $tab = $request->string('tab')->toString() ?: 'posisi';
+        if (!in_array($tab, ['posisi', 'checklist', 'logs'], true)) {
+            $tab = 'posisi';
+        }
         $user = auth()->user();
         $canManage = $user?->can('operations.manage') ?? false;
 
@@ -44,13 +50,83 @@ class OperationsController extends Controller
 
     private function posisiProps(): array
     {
+        $activeStatuses = [
+            'planned', 'document_preparation', 'internal_review', 'awaiting_external_approval',
+            'ready_for_departure', 'departed', 'in_transit', 'delayed',
+        ];
         $vessels = Vessel::orderBy('vessel_name')->get([
-            'id', 'vessel_name', 'vessel_type', 'last_lat', 'last_lng', 'last_position_at', 'operational_status', 'base_location',
+            'id', 'vessel_name', 'vessel_type', 'fuel_baseline_lph', 'last_lat', 'last_lng', 'last_position_at',
+            'operational_status', 'base_location',
+        ]);
+        $vesselIds = $vessels->modelKeys();
+        $conditionsByVessel = VesselCondition::whereIn('vessel_id', $vesselIds)
+            ->where('id', function ($query) {
+                $query->select('latest.id')
+                    ->from('vessel_conditions as latest')
+                    ->whereColumn('latest.vessel_id', 'vessel_conditions.vessel_id')
+                    ->orderByDesc('latest.checked_at')
+                    ->orderByDesc('latest.id')
+                    ->limit(1);
+            })->get()->keyBy('vessel_id');
+        $fuelByVessel = FuelLog::whereIn('vessel_id', $vesselIds)
+                ->where('id', function ($query) {
+                $query->select('latest.id')
+                    ->from('fuel_logs as latest')
+                    ->whereColumn('latest.vessel_id', 'fuel_logs.vessel_id')
+                    ->orderByDesc('latest.trip_date')
+                    ->orderByDesc('latest.id')
+                    ->limit(1);
+            })->get()->keyBy('vessel_id');
+        $activeVoyages = Voyage::with('relationships')
+            ->whereIn('voyage_status', $activeStatuses)
+            ->where(function ($query) use ($vesselIds) {
+                $query->whereIn('vessel_id', $vesselIds)
+                    ->orWhereHas('relationships', function ($relationshipQuery) use ($vesselIds) {
+                        $relationshipQuery->whereIn('tugboat_id', $vesselIds)
+                            ->orWhereIn('barge_id', $vesselIds);
+                    });
+            })
+            ->orderByDesc('planned_departure')->orderByDesc('id')->get();
+        $voyagesByVessel = collect();
+        foreach ($activeVoyages as $voyage) {
+            $relatedVesselIds = collect([$voyage->vessel_id])
+                ->merge($voyage->relationships->flatMap(fn ($relationship) => [
+                    $relationship->tugboat_id,
+                    $relationship->barge_id,
+                ]))
+                ->filter()
+                ->unique();
+            foreach ($relatedVesselIds as $relatedVesselId) {
+                if (in_array($relatedVesselId, $vesselIds) && !$voyagesByVessel->has($relatedVesselId)) {
+                    $voyagesByVessel->put($relatedVesselId, $voyage);
+                }
+            }
+        }
+
+        $vessels = $vessels->map(fn ($vessel) => [
+            'id' => $vessel->id,
+            'vessel_name' => $vessel->vessel_name,
+            'vessel_type' => $vessel->vessel_type,
+            'vessel_type_custom' => $vessel->vessel_type_custom,
+            'fuel_baseline_lph' => $vessel->fuel_baseline_lph,
+            'last_lat' => $vessel->last_lat,
+            'last_lng' => $vessel->last_lng,
+            'last_position_at' => $vessel->last_position_at,
+            'operational_status' => $vessel->operational_status,
+            'base_location' => $vessel->base_location,
+            'condition' => $conditionsByVessel->get($vessel->id)?->only(['score', 'checked_at', 'checklist']),
+            'fuel' => $fuelByVessel->get($vessel->id)?->only([
+                'id', 'trip_date', 'route', 'liters', 'cost', 'duration_hours',
+                'analysis_status', 'analysis_diff_pct',
+            ]),
+            'voyage' => $voyagesByVessel->get($vessel->id)?->only([
+                'id', 'voyage_code', 'voyage_status', 'origin', 'destination',
+            ]),
         ]);
 
         return [
             'vessels' => $vessels,
-            'recentPositions' => \App\Models\VesselPosition::with('vessel')
+            'recentPositions' => VesselPosition::with('vessel')
                 ->orderByDesc('recorded_at')->limit(50)->get()
                 ->map(fn ($p) => [
                     'id' => $p->id,
@@ -62,6 +138,121 @@ class OperationsController extends Controller
                     'source' => $p->source,
                 ]),
         ];
+    }
+
+    public function storePosition(Request $request)
+    {
+        Gate::authorize('operations.manage');
+
+        $data = $request->validate([
+            'vessel_id' => ['required', 'exists:vessels,id'],
+            'lat' => ['required', 'numeric', 'between:-90,90'],
+            'lng' => ['required', 'numeric', 'between:-180,180'],
+        ]);
+
+        $vessel = Vessel::findOrFail($data['vessel_id']);
+        $recordedAt = now();
+        $before = $vessel->only(['last_lat', 'last_lng', 'last_position_at']);
+
+        DB::transaction(function () use ($vessel, $data, $recordedAt) {
+            VesselPosition::create([
+                'vessel_id' => $vessel->id,
+                'lat' => $data['lat'],
+                'lng' => $data['lng'],
+                'recorded_at' => $recordedAt,
+                'source' => 'manual',
+            ]);
+            $vessel->update([
+                'last_lat' => $data['lat'],
+                'last_lng' => $data['lng'],
+                'last_position_at' => $recordedAt,
+            ]);
+        });
+
+        AuditService::log(
+            'position_updated',
+            'vessel',
+            $vessel->id,
+            $before,
+            ['last_lat' => $data['lat'], 'last_lng' => $data['lng'], 'last_position_at' => $recordedAt],
+            "Posisi kapal diperbarui: {$vessel->vessel_name}",
+        );
+
+        return back()->with('success', 'Posisi kapal berhasil diperbarui.');
+    }
+
+    public function vesselHistory(Vessel $vessel)
+    {
+        return response()->json([
+            'conditions' => VesselCondition::with('user')
+                ->where('vessel_id', $vessel->id)
+                ->orderByDesc('checked_at')->orderByDesc('id')->get()
+                ->map(fn ($condition) => [
+                    'id' => $condition->id,
+                    'vessel_id' => $condition->vessel_id,
+                    'vessel_name' => $vessel->vessel_name,
+                    'checked_at' => $condition->checked_at,
+                    'score' => $condition->score,
+                    'notes' => $condition->notes,
+                    'checklist' => $condition->checklist,
+                    'checked_by_name' => $condition->user?->name,
+                ]),
+            'services' => Service::with('serviceItems.item')
+                ->where('vessel_id', $vessel->id)
+                ->orderByDesc('start_date')->orderByDesc('id')->get()
+                ->map(fn ($service) => [
+                    'id' => $service->id,
+                    'vessel_id' => $service->vessel_id,
+                    'vessel_name' => $vessel->vessel_name,
+                    'type' => $service->type,
+                    'title' => $service->title,
+                    'start_date' => $service->start_date,
+                    'end_date' => $service->end_date,
+                    'workshop' => $service->workshop,
+                    'cost' => $service->cost,
+                    'status' => $service->status,
+                    'notes' => $service->notes,
+                    'items' => $service->serviceItems->map(fn ($item) => [
+                        'item_id' => $item->item_id,
+                        'item_name' => $item->item?->name,
+                        'qty' => $item->qty,
+                    ]),
+                ]),
+            'logs' => FuelLog::where('vessel_id', $vessel->id)
+                ->orderByDesc('trip_date')->orderByDesc('id')->get()
+                ->map(fn ($fuel) => [
+                    'id' => $fuel->id,
+                    'vessel_id' => $fuel->vessel_id,
+                    'vessel_name' => $vessel->vessel_name,
+                    'trip_date' => $fuel->trip_date,
+                    'route' => $fuel->route,
+                    'cargo_type' => $fuel->cargo_type,
+                    'duration_hours' => $fuel->duration_hours,
+                    'distance_nm' => $fuel->distance_nm,
+                    'liters' => $fuel->liters,
+                    'cost' => $fuel->cost,
+                    'lph' => $fuel->duration_hours > 0 ? round($fuel->liters / $fuel->duration_hours, 2) : 0,
+                    'baseline_lph' => $fuel->baseline_lph_snapshot,
+                    'analysis_status' => $fuel->analysis_status,
+                    'analysis_diff_pct' => $fuel->analysis_diff_pct,
+                    'explanation_note' => $fuel->explanation_note,
+                    'weather_condition' => $fuel->weather_condition,
+                    'speed_knots' => $fuel->speed_knots,
+                    'delay_hours' => $fuel->delay_hours,
+                    'voyage_id' => $fuel->voyage_id,
+                ]),
+            'items' => \App\Models\InventoryItem::orderBy('name')->get(['id', 'sku', 'name', 'unit'])
+                ->map(fn ($item) => [
+                    'id' => $item->id,
+                    'sku' => $item->sku,
+                    'name' => $item->name,
+                    'unit' => $item->unit,
+                    'stok_kantor' => InventoryBalance::where('item_id', $item->id)
+                        ->where('location_type', 'kantor')->sum('qty'),
+                ]),
+            'voyages' => Voyage::where('vessel_id', $vessel->id)
+                ->orderByDesc('id')->get(['id', 'voyage_code', 'vessel_id']),
+        ]);
     }
 
     private function kondisiProps(): array
@@ -236,6 +427,8 @@ class OperationsController extends Controller
     {
         Gate::authorize('operations.manage');
 
+        $this->normalizeCurrencyInput($request, 'cost');
+
         $data = $request->validate([
             'vessel_id' => ['required', 'exists:vessels,id'],
             'type' => ['required', 'in:rutin,urgent,drydock,pemeriksaan'],
@@ -296,6 +489,8 @@ class OperationsController extends Controller
     {
         Gate::authorize('operations.manage');
 
+        $this->normalizeCurrencyInput($request, 'cost');
+
         $data = $request->validate([
             'vessel_id' => ['required', 'exists:vessels,id'],
             'voyage_id' => ['nullable', 'exists:voyages,id'],
@@ -322,9 +517,9 @@ class OperationsController extends Controller
         );
 
         if ($preview['status'] === 'tidak_normal' && empty($data['explanation'])) {
-            return back()
-                ->withInput()
-                ->with('error', 'Konsumsi TIDAK NORMAL ('.$preview['diff_pct'].'%) - catatan penjelasan wajib diisi.');
+            throw ValidationException::withMessages([
+                'explanation' => 'Konsumsi Tidak Normal ('.$preview['diff_pct'].'%) memerlukan catatan penjelasan.',
+            ]);
         }
 
         $analysis->record(
@@ -400,6 +595,8 @@ class OperationsController extends Controller
     {
         Gate::authorize('operations.manage');
 
+        $this->normalizeCurrencyInput($request, 'cost');
+
         $data = $request->validate([
             'vessel_id' => ['required', 'exists:vessels,id'],
             'type' => ['required', 'in:rutin,urgent,drydock,pemeriksaan'],
@@ -473,6 +670,8 @@ class OperationsController extends Controller
     public function updateFuel(Request $request, FuelLog $fuel)
     {
         Gate::authorize('operations.manage');
+
+        $this->normalizeCurrencyInput($request, 'cost');
 
         $data = $request->validate([
             'vessel_id' => ['required', 'exists:vessels,id'],
@@ -557,6 +756,23 @@ class OperationsController extends Controller
             'user_id' => auth()->id(),
             'notes' => $note,
         ]);
+    }
+
+    private function normalizeCurrencyInput(Request $request, string $field): void
+    {
+        if (! $request->filled($field) || ! is_string($request->input($field))) {
+            return;
+        }
+
+        $value = str_replace(' ', '', trim($request->input($field)));
+        if (str_contains($value, ',')) {
+            $value = str_replace('.', '', $value);
+            $value = str_replace(',', '.', $value);
+        } elseif (preg_match('/^\d{1,3}(?:\.\d{3})+$/', $value)) {
+            $value = str_replace('.', '', $value);
+        }
+
+        $request->merge([$field => $value]);
     }
 
     private function restoreStock(int $itemId, float $qty, string $note, Service $service): void

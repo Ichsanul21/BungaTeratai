@@ -121,7 +121,7 @@ export default function VoyagesIndex({
                     },
                     {
                         key: 'vessel_name',
-                        label: 'Kapal & Aktivitas',
+                        label: 'Vessel & Aktivitas',
                         render: (r: any) => (
                             <div>
                                 <p className="font-medium text-ink">{r.vessel_name}</p>

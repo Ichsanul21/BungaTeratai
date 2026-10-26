@@ -17,7 +17,6 @@ import {
     Search,
 } from 'lucide-react';
 import { FormEvent, useState } from 'react';
-import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 
 interface DocRow {
     id: number;
@@ -41,13 +40,11 @@ interface DocRow {
     endorsement_next_date?: string;
 }
 
-// Kelompok dokumen A-G: kode tetap dipakai sebagai nilai filter persis
-// seperti semula, sedangkan label dipecah dari hurufnya agar chip tampil
-// ringkas (huruf mono + nama kelompok).
+// Kelompok dokumen A-G untuk chip filter.
 const GROUPS: Array<{ code: string; label: string }> = [
     { code: '', label: 'Semua' },
     { code: 'A', label: 'Perusahaan' },
-    { code: 'B', label: 'Identitas Kapal' },
+    { code: 'B', label: 'Identitas Vessel' },
     { code: 'C', label: 'Sertifikat' },
     { code: 'D', label: 'Awak' },
     { code: 'E', label: 'Perjalanan' },
@@ -55,8 +52,7 @@ const GROUPS: Array<{ code: string; label: string }> = [
     { code: 'G', label: 'Laporan' },
 ];
 
-// Tab tampilan: kunci & urutan sama dengan TabNav lama, kini dipresentasikan
-// sebagai pil berikon agar konsisten dengan halaman notifikasi.
+// Tab tampilan register.
 const TABS = [
     { key: 'arsip', label: 'Arsip Semua', icon: FileStack },
     { key: 'terbitan', label: 'Terbitan', icon: FileCheck2 },
@@ -89,34 +85,20 @@ const VALIDITY_TEXT: Record<string, string> = {
     no_expiry: 'Tanpa Masa Berlaku',
 };
 
-// Ubin metrik masa berlaku di hero: angka global + proporsi terhadap total,
-// sekaligus filter cepat (klik menyaring, klik lagi melepas). Warna titik
-// dan batang memakai token yang sudah ada: ok, warn, danger, cream.
-const VALIDITY_TILES: Array<{ key: string; label: string; dot: string; bar: string }> = [
-    { key: 'normal', label: 'Normal', dot: 'bg-ok', bar: 'bg-ok' },
-    { key: 'expiring_soon', label: 'Segera Berakhir', dot: 'bg-warn', bar: 'bg-warn' },
-    { key: 'expired', label: 'Kedaluwarsa', dot: 'bg-danger', bar: 'bg-danger' },
-    { key: 'no_expiry', label: 'Tanpa Masa Berlaku', dot: 'bg-cream/50', bar: 'bg-cream/50' },
+// Ubin masa berlaku: metrik sekaligus filter cepat.
+const VALIDITY_TILES: Array<{ key: string; label: string; dot: string }> = [
+    { key: 'normal', label: 'Normal', dot: 'bg-ok' },
+    { key: 'expiring_soon', label: 'Segera Berakhir', dot: 'bg-warn' },
+    { key: 'expired', label: 'Kedaluwarsa', dot: 'bg-danger' },
+    { key: 'no_expiry', label: 'Tanpa Masa Berlaku', dot: 'bg-cream/50' },
 ];
 
-// Warna irisan donat komposisi pada ubin total. recharts hanya menerima
-// warna sebagai string literal, jadi nilai di bawah dipetakan PERSIS dari
-// token tailwind.config.js, mengikuti pola PIE_COLORS pada Dashboard,
-// agar grafik dan UI tetap satu sumber kebenaran warna.
-const PIE_WARNA: Record<string, string> = {
-    normal: '#2F8F68',              // token ok
-    expiring_soon: '#D99A2B',       // token warn
-    expired: '#C94C4C',             // token danger
-    no_expiry: 'rgba(239,227,211,0.5)', // token cream 50%, senada titik & batang ubin
-};
-
-// Tekstur grain halus untuk panel hero, senada dengan login, sidebar,
-// dashboard, dan halaman notifikasi.
+// Tekstur grain halus untuk panel hero.
 const GRAIN = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E")`;
 
 const EASE = 'cubic-bezier(0.22,1,0.36,1)';
 
-// Kelas bersama untuk kontrol saringan & kolom meja agar konsisten.
+// Kelas bersama kontrol saringan & kolom tabel.
 const SELECT_CLS =
     'h-9 cursor-pointer appearance-none rounded-lg border border-hairline bg-white ps-2.5 pe-8 text-sm text-ink transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20';
 const INPUT_CLS =
@@ -124,38 +106,6 @@ const INPUT_CLS =
 const TH_CLS =
     'px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-muted';
 const TD_CLS = 'px-4 py-3.5 align-middle';
-
-// Kartu rincian irisan donat komposisi: kartu gelap kaca (bukan kartu
-// putih seperti tooltip Dashboard) karena donatnya hidup di panel hero
-// burgundy. Kartu ini tidak lagi memakai Tooltip recharts yang menempel
-// mengikuti kursor: pada donat sekecil ini kursor selalu berada dekat
-// pusat sehingga kartunya justru menutupi angka total. Kini kartu
-// dirender manual di sisi luar donat oleh ubin total dan menerima entri
-// komposisi yang sedang disorot (label, count, warna, pct) lewat prop d.
-function KomposisiTip({ d }: { d: { label: string; count: number; warna: string; pct: number } }) {
-    return (
-        <div
-            style={{ animation: `bt-fade 0.18s ${EASE} both` }}
-            className="rounded-xl border border-white/15 bg-sidebar/95 px-3.5 py-2 shadow-[0_16px_40px_-18px_rgba(0,0,0,0.6)]"
-        >
-            <p className="flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-cream/60">
-                <span
-                    aria-hidden="true"
-                    className="h-1.5 w-1.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: d.warna }}
-                />
-                {d.label}
-            </p>
-            <p className="mt-1 text-sm font-semibold tabular-nums text-cream">
-                {formatNumber(d.count)}
-                <span className="ms-1 text-xs font-normal text-cream/60">dokumen</span>
-            </p>
-            <p className="mt-0.5 font-mono text-[11px] tabular-nums text-cream/60">
-                {d.pct}% dari total
-            </p>
-        </div>
-    );
-}
 
 export default function DocumentsIndex({
     documents,
@@ -188,11 +138,6 @@ export default function DocumentsIndex({
 }>) {
     const [search, setSearch] = useState(filters.search ?? '');
     const [letterOpen, setLetterOpen] = useState(false);
-    // Indeks irisan donat komposisi yang sedang disorot (null bila tidak
-    // ada). Pemicunya event mouse pada komponen Pie, pemakainya kartu
-    // rincian yang dirender di sisi luar donat, bukan tooltip yang
-    // mengikuti kursor.
-    const [irisanAktif, setIrisanAktif] = useState<number | null>(null);
     const letterForm = useForm({
         to: '', subject: '', body: '',
         date: new Date().toISOString().slice(0, 10),
@@ -202,25 +147,9 @@ export default function DocumentsIndex({
     const group = filters.group ?? '';
     const activeTab = tab ?? 'arsip';
     const activeValidity = filters.validity ?? '';
-    // Total seluruh dokumen: penjumlahan empat kategori masa berlaku.
-    // Angka ini tampil di pusat donat sekaligus menjadi penyebut
-    // persentase seluruh ubin hero, sehingga donat, kartu rincian, dan
-    // ubin masa berlaku selalu cocok dengan matematika yang sama.
-    const totalAll = VALIDITY_TILES.reduce((s, t) => s + (validityCounts[t.key] ?? 0), 0);
 
-    // Data donat komposisi untuk ubin total: satu entri per kategori masa
-    // berlaku, lengkap dengan persen yang dihitung di sini agar kartu
-    // rincian cukup membaca entri tanpa perlu closure ke totalAll.
-    const komposisi = VALIDITY_TILES.map((t) => {
-        const count = validityCounts[t.key] ?? 0;
-        return {
-            key: t.key,
-            label: t.label,
-            count,
-            warna: PIE_WARNA[t.key] ?? '#8A8580',
-            pct: totalAll > 0 ? Math.round((count / totalAll) * 100) : 0,
-        };
-    });
+    // Total seluruh dokumen: penjumlahan empat kategori masa berlaku.
+    const totalAll = VALIDITY_TILES.reduce((s, t) => s + (validityCounts[t.key] ?? 0), 0);
 
     // Jumlah filter aktif untuk chip "N filter aktif + Reset".
     const activeFilterCount = [
@@ -240,9 +169,7 @@ export default function DocumentsIndex({
         );
     };
 
-    // Ubin masa berlaku bekerja ganda: klik untuk menyaring, klik lagi
-    // saat aktif untuk melepas. Nilai select "Masa Berlaku" di panel
-    // saringan tetap sinkron karena keduanya membaca props yang sama.
+    // Klik ubin masa berlaku: saring, klik lagi untuk melepas.
     const toggleValidity = (key: string) => {
         setFilter('validity', activeValidity === key ? '' : key);
     };
@@ -277,10 +204,6 @@ export default function DocumentsIndex({
                     0%, 100% { opacity: 0.55; }
                     50% { opacity: 1; }
                 }
-                @keyframes bt-fade {
-                    0% { opacity: 0; transform: scale(0.97); }
-                    100% { opacity: 1; transform: scale(1); }
-                }
                 .bt-scroll { scrollbar-width: thin; scrollbar-color: rgba(28,27,26,0.22) transparent; }
                 .bt-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
                 .bt-scroll::-webkit-scrollbar-thumb { background: rgba(28,27,26,0.2); border-radius: 9999px; }
@@ -290,18 +213,12 @@ export default function DocumentsIndex({
                 }
             `}</style>
 
-            {/* ===== 00 · Pita register dokumen =====
-                Panel gelap burgundy-merah yang membawa identitas halaman
-                login, sidebar, dashboard, dan notifikasi ke Document
-                Center: aurora, grain, rim emas, watermark tumpukan berkas,
-                sapaan kontekstual, aksi utama, serta lima ubin ringkasan
-                (total dokumen dan empat masa berlaku). */}
+            {/* 00 · Hero: pita register dokumen */}
             <section
                 className="bt-anim relative mb-6 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-sidebar via-primary-hover to-primary shadow-[0_24px_60px_-24px_rgba(69,16,22,0.55)]"
                 style={{ animation: `bt-rise 0.55s ${EASE} both` }}
             >
-                {/* Kedalaman panel: cahaya merah kiri-atas, cahaya emas
-                    kanan-bawah, grain kertas, dan watermark ikon berkas. */}
+                {/* Kedalaman panel: aurora, grain, watermark. */}
                 <div
                     aria-hidden="true"
                     className="pointer-events-none absolute inset-0 overflow-hidden"
@@ -332,7 +249,7 @@ export default function DocumentsIndex({
                         className="absolute -right-10 -top-12 hidden select-none text-white/[0.05] xl:block"
                     />
                 </div>
-                {/* Rim emas tipis di tepi atas, tanda tangan antar halaman. */}
+                {/* Rim emas di tepi atas. */}
                 <div
                     aria-hidden="true"
                     className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent"
@@ -379,24 +296,10 @@ export default function DocumentsIndex({
                     )}
                 </div>
 
-                {/* Lima ubin ringkasan: ubin total menjadi jangkar
-                    perbandingan berupa donat komposisi (total di pusat,
-                    irisan per kategori masa berlaku, arahkan kursor ke
-                    irisan untuk kartu rincian di sisi luar donat),
-                    disusul empat ubin masa berlaku yang tetap berfungsi
-                    sebagai filter cepat (aktif ditandai bingkai emas). */}
+                {/* Lima ubin ringkasan: ubin total (metrik) + empat masa berlaku (filter cepat). */}
                 <div className="relative grid grid-cols-2 gap-3 border-t border-white/[0.08] p-6 pt-5 sm:gap-4 lg:grid-cols-5 lg:p-7 lg:pt-6">
-                    {/* Ubin jangkar: total seluruh dokumen di pusat donat
-                        komposisi empat masa berlaku. Arahkan kursor ke
-                        irisan donat untuk melihat jumlah dan persen kategori
-                        tersebut pada kartu yang muncul DI SISI LUAR donat,
-                        bukan menimpa donat, sehingga angka total di pusat
-                        selalu terlihat. Bukan tombol: murni metrik,
-                        penyaringan tetap di ubin masa berlaku dan panel
-                        saringan. z-30 mengangkat ubin saat kartu rincian
-                        melewati batas ubin: ke ubin sebelah pada grid lima
-                        kolom, ke baris ubin di bawahnya pada layar kecil. */}
-                    <div className="col-span-2 z-30 min-w-0 rounded-xl border border-gold/30 bg-gold/[0.08] p-4 backdrop-blur-sm lg:col-span-1">
+                    {/* Ubin total dokumen: isi di tengah kartu. */}
+                    <div className="col-span-2 flex min-w-0 flex-col rounded-xl border border-gold/30 bg-gold/[0.08] p-4 backdrop-blur-sm lg:col-span-1">
                         <p className="flex items-center gap-1.5 truncate font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-cream/60">
                             <span
                                 aria-hidden="true"
@@ -404,66 +307,13 @@ export default function DocumentsIndex({
                             />
                             Total Dokumen
                         </p>
-                        <div className="relative mt-2 h-[84px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    {/* Tanpa stroke irisan: irisan tipis tetap
-                                        utuh warnanya, mengikuti pola donat
-                                        status dokumen pada Dashboard. Tanpa
-                                        Tooltip recharts: pada donat sekecil
-                                        ini tooltip mengikuti kursor yang
-                                        selalu dekat pusat sehingga menutupi
-                                        angka total, jadi kartu rincian
-                                        dirender manual di sisi luar donat
-                                        lewat irisanAktif di bawah. */}
-                                    <Pie
-                                        data={komposisi}
-                                        dataKey="count"
-                                        nameKey="label"
-                                        innerRadius={26}
-                                        outerRadius={40}
-                                        paddingAngle={2.5}
-                                        startAngle={90}
-                                        endAngle={-270}
-                                        stroke="none"
-                                        onMouseEnter={(_: unknown, i: number) => setIrisanAktif(i)}
-                                        onMouseLeave={() => setIrisanAktif(null)}
-                                        onClick={(_: unknown, i: number) => setIrisanAktif(i)}
-                                    >
-                                        {komposisi.map((d) => (
-                                            <Cell key={d.key} fill={d.warna} />
-                                        ))}
-                                    </Pie>
-                                </PieChart>
-                            </ResponsiveContainer>
-                            {/* Angka total di pusat lubang donat; overlay
-                                diberi pointer-events-none agar hover irisan
-                                tetap sampai ke grafik. */}
-                            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                                <p className="text-lg font-semibold leading-tight tabular-nums tracking-tight text-gold">
-                                    {formatNumber(totalAll)}
-                                </p>
-                                <p className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-cream/50">
-                                    Total
-                                </p>
-                            </div>
-                            {/* Kartu rincian irisan: selalu DI SISI LUAR
-                                donat, tidak pernah menimpa donat, sehingga
-                                angka total di pusat tetap terlihat. Layar
-                                kecil: di bawah donat, sejajar tengah ubin.
-                                sm ke atas: di kanan donat, sejajar tengah
-                                vertikal; pada grid lima kolom kartu mengapung
-                                di atas ubin sebelah (itulah gunanya z-30 pada
-                                ubin). Kartu diberi pointer-events-none agar
-                                tidak menghalangi apa pun di bawahnya dan
-                                animasinya hanya opacity + scale halus di
-                                elemen kartu, terpisah dari kelas translate
-                                pembungkus posisinya. */}
-                            {irisanAktif !== null && (
-                                <div className="pointer-events-none absolute left-1/2 top-[calc(100%_+_10px)] z-20 -translate-x-1/2 sm:left-[calc(50%_+_50px)] sm:top-1/2 sm:translate-x-0 sm:-translate-y-1/2">
-                                    <KomposisiTip d={komposisi[irisanAktif]} />
-                                </div>
-                            )}
+                        <div className="mt-2 flex flex-1 flex-col items-center justify-center">
+                            <p className="text-4xl font-semibold leading-tight tabular-nums tracking-tight text-gold">
+                                {formatNumber(totalAll)}
+                            </p>
+                            <p className="mt-1 font-mono text-sm uppercase tracking-[0.14em] text-cream/50">
+                                Total
+                            </p>
                         </div>
                     </div>
                     {VALIDITY_TILES.map((t) => {
@@ -481,7 +331,7 @@ export default function DocumentsIndex({
                                         : 'Saring berdasarkan masa berlaku ini'
                                 }
                                 className={classNames(
-                                    'min-w-0 rounded-xl border p-4 text-left backdrop-blur-sm transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/50',
+                                    'flex min-w-0 flex-col rounded-xl border p-4 text-left backdrop-blur-sm transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/50',
                                     isActive
                                         ? 'border-gold/60 bg-gold/[0.14]'
                                         : 'border-white/[0.12] bg-white/[0.07] hover:border-white/25 hover:bg-white/[0.1]',
@@ -497,32 +347,23 @@ export default function DocumentsIndex({
                                     />
                                     {t.label}
                                 </p>
-                                <p className="mt-2 text-2xl font-semibold tabular-nums tracking-tight text-cream">
-                                    {formatNumber(count)}
-                                </p>
-                                <div
-                                    aria-hidden="true"
-                                    className="mt-2.5 h-1 overflow-hidden rounded-full bg-white/15"
-                                >
-                                    <div
-                                        className={classNames('h-full rounded-full', t.bar)}
-                                        style={{
-                                            width: `${Math.min(Math.max(pct, 0), 100)}%`,
-                                        }}
-                                    />
+                                <div className="mt-2 flex flex-1 flex-col justify-center">
+                                    <p className="text-4xl font-semibold leading-tight tabular-nums tracking-tight text-cream">
+                                        {formatNumber(count)}
+                                    </p>
+                                    <p className="mt-1 truncate text-sm text-cream/60">
+                                        {isActive
+                                            ? 'Filter aktif · klik untuk lepas'
+                                            : `${pct}% dari total`}
+                                    </p>
                                 </div>
-                                <p className="mt-2 truncate text-[11px] text-cream/60">
-                                    {isActive ? 'Filter aktif · klik untuk lepas' : `${pct}% dari total`}
-                                </p>
                             </button>
                         );
                     })}
                 </div>
             </section>
 
-            {/* ===== 01 · Tab tampilan =====
-                Pil berikon menggantikan TabNav underline: pilihan aktif
-                memakai merah utama dengan cahaya lembut, ikon berubah emas. */}
+            {/* 01 · Tab tampilan */}
             <nav
                 className="bt-anim bt-scroll mb-4 flex gap-1.5 overflow-x-auto pe-1"
                 style={{ animation: `bt-rise 0.45s ${EASE} 70ms both` }}
@@ -555,11 +396,7 @@ export default function DocumentsIndex({
                 })}
             </nav>
 
-            {/* ===== 02 · Panel saringan =====
-                Kelompok A-G, pencarian, dan seluruh dropdown digabung dalam
-                satu kartu agar semua alat penyaringan hidup di satu tempat.
-                Chip jumlah filter aktif + tombol Reset muncul hanya saat
-                ada saringan yang menyimpang dari bawaan. */}
+            {/* 02 · Panel saringan */}
             <div
                 className="bt-anim mb-5 rounded-2xl border border-hairline bg-white p-4 shadow-[0_18px_40px_-30px_rgba(28,27,26,0.35)]"
                 style={{ animation: `bt-rise 0.45s ${EASE} 110ms both` }}
@@ -644,7 +481,7 @@ export default function DocumentsIndex({
                         >
                             <option value="">Semua Pemilik</option>
                             <option value="company">Perusahaan</option>
-                            <option value="vessel">Kapal</option>
+                            <option value="vessel">Vessel</option>
                         </select>
                         <ChevronDown
                             size={14}
@@ -656,10 +493,10 @@ export default function DocumentsIndex({
                         <select
                             value={filters.vessel_id ?? ''}
                             onChange={(e) => setFilter('vessel_id', e.target.value)}
-                            aria-label="Saring kapal"
+                            aria-label="Saring vessel"
                             className={classNames(SELECT_CLS, 'w-44')}
                         >
-                            <option value="">Semua Kapal</option>
+                            <option value="">Semua Vessel</option>
                             {vessels.map((v) => (
                                 <option key={v.id} value={v.id}>
                                     {v.vessel_name}
@@ -720,9 +557,7 @@ export default function DocumentsIndex({
                 </form>
             </div>
 
-            {/* ===== 03 · Register =====
-                Meta hasil + legenda rel kiri di atas meja, meja dokumen
-                dengan rel penanda dokumen bermasalah, lalu navigasi halaman. */}
+            {/* 03 · Register: meja dokumen & navigasi */}
             <section className="bt-anim" style={{ animation: `bt-rise 0.45s ${EASE} 150ms both` }}>
                 {documents.data.length > 0 && (
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -787,10 +622,7 @@ export default function DocumentsIndex({
                                 </thead>
                                 <tbody className="divide-y divide-hairline">
                                     {documents.data.map((row) => {
-                                        // Rel kiri hanya dipasang pada dokumen
-                                        // bermasalah (kedaluwarsa / ≤ 30 hari)
-                                        // agar meja tetap tenang namun masalah
-                                        // langsung terlihat saat memindai.
+                                        // Rel kiri untuk dokumen bermasalah (kedaluwarsa / ≤ 30 hari).
                                         const rail =
                                             row.validity === 'expired'
                                                 ? 'before:bg-primary'
@@ -855,7 +687,7 @@ export default function DocumentsIndex({
                                                             ? 'Perusahaan'
                                                             : row.owner_type === 'crew'
                                                               ? 'ABK'
-                                                              : 'Kapal'}
+                                                              : 'Vessel'}
                                                     </span>
                                                 </td>
                                                 <td className={TD_CLS}>
@@ -918,10 +750,10 @@ export default function DocumentsIndex({
                                                 <td className="px-4 py-3.5 text-right align-middle">
                                                     <Link
                                                         href={`/dokumen/${row.id}`}
-                                                        className="inline-flex items-center gap-1 whitespace-nowrap text-sm font-medium text-primary transition-colors duration-150 hover:underline"
+                                                        className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg border border-primary/25 bg-primary-tint/60 px-2.5 py-1 text-xs font-semibold text-primary transition-colors duration-150 hover:border-primary/50 hover:bg-primary-tint"
                                                     >
                                                         Detail
-                                                        <ChevronRight size={14} aria-hidden="true" />
+                                                        <ChevronRight size={13} />
                                                     </Link>
                                                 </td>
                                             </tr>
@@ -979,11 +811,7 @@ export default function DocumentsIndex({
                 )}
             </section>
 
-            {/* ===== Modal: Terbit Surat Umum =====
-                Kepala modal memakai strip gelap + rim emas agar konsisten
-                dengan hero; badan formulir memakai gaya input aplikasi
-                (border-hairline + fokus merah), menggantikan border-gray-300
-                bawaan yang berada di luar palet. */}
+            {/* Modal: terbitkan surat umum */}
             <Modal show={letterOpen} onClose={() => setLetterOpen(false)} maxWidth="lg">
                 <form
                     onSubmit={(e) => {
@@ -997,18 +825,15 @@ export default function DocumentsIndex({
                         });
                     }}
                 >
-                    <div className="relative overflow-hidden bg-gradient-to-br from-sidebar to-primary px-6 py-5">
-                        <div
-                            aria-hidden="true"
-                            className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent"
-                        />
-                        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-cream/60">
+                    {/* Header modal biasa. */}
+                    <div className="border-b border-hairline px-6 py-5">
+                        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted">
                             Surat Keluar
                         </p>
-                        <h2 className="mt-1 text-lg font-semibold tracking-tight text-cream">
+                        <h2 className="mt-1 text-lg font-semibold tracking-tight text-ink">
                             Terbitkan Surat Umum
                         </h2>
-                        <p className="mt-1.5 text-xs leading-relaxed text-cream/70">
+                        <p className="mt-1.5 text-xs leading-relaxed text-muted">
                             Nomor surat dibuat otomatis mengikuti pola{' '}
                             {'{seq}/BT/{bulan romawi}/{tahun}'}. PDF berkop PT Bunga Teratai
                             diarsipkan otomatis ke register.

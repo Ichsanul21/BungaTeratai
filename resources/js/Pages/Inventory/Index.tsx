@@ -2,7 +2,9 @@ import Badge, { type BadgeTone } from '@/Components/ui/Badge';
 import Card from '@/Components/ui/Card';
 import ConfirmModal from '@/Components/ui/ConfirmModal';
 import Modal from '@/Components/Modal';
+import NumericInput from '@/Components/NumericInput';
 import PageHeader from '@/Components/ui/PageHeader';
+import PriceInput from '@/Components/PriceInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TabNav from '@/Components/ui/TabNav';
@@ -160,7 +162,7 @@ export default function InventoryIndex({
                                 <li key={i.id} className="flex justify-between rounded-lg bg-warn/5 px-3 py-2 text-sm">
                                     <span className="text-ink">{i.sku} · {i.name}</span>
                                     <span className="font-semibold text-warn">
-                                        {formatNumber(i.qty, 0)} / min {formatNumber(i.min_stock, 0)} {i.unit}
+                                        {formatNumber(i.qty, 2)} / min {formatNumber(i.min_stock, 2)} {i.unit}
                                     </span>
                                 </li>
                             ))}
@@ -228,10 +230,10 @@ export default function InventoryIndex({
                                     <td className="px-3 py-2 text-muted">{CAT_LABELS[i.category] ?? i.category}</td>
                                     <td className="px-3 py-2 tabular-nums">{formatRupiah(i.unit_price)}</td>
                                     <td className={classNames('px-3 py-2 font-semibold tabular-nums', i.qty < i.min_stock ? 'text-warn' : 'text-ink')}>
-                                        {formatNumber(i.qty, 0)} {i.unit}
+                                        {formatNumber(i.qty, 2)} {i.unit}
                                     </td>
                                     <td className="px-3 py-2 tabular-nums text-muted">{formatRupiah(i.nilai)}</td>
-                                    <td className="px-3 py-2 tabular-nums text-muted">{formatNumber(i.min_stock, 0)}</td>
+                                    <td className="px-3 py-2 tabular-nums text-muted">{formatNumber(i.min_stock, 2)}</td>
                                     <td className="px-3 py-2">
                                         <div className="flex gap-1">
                                             {i.is_consumable && <Badge tone="info">Habis Pakai</Badge>}
@@ -283,7 +285,7 @@ export default function InventoryIndex({
                     {movements.map((m) => (
                         <li key={m.id} className="flex items-center justify-between py-2">
                             <div>
-                                <p className="text-ink">{m.item_name} — <span className="capitalize font-medium">{m.type}</span> {formatNumber(m.qty, 0)}</p>
+                                <p className="text-ink">{m.item_name} — <span className="capitalize font-medium">{m.type}</span> {formatNumber(m.qty, 2)}</p>
                                 <p className="text-xs text-muted">
                                     {m.from_location ?? '—'} → {m.to_location ?? '—'} · {formatDate(m.movement_date)} · {m.user_name ?? '—'}
                                     {m.ref_type === 'service' ? ' · servis' : ''}
@@ -319,11 +321,11 @@ export default function InventoryIndex({
                         <div><label className="text-xs font-medium text-muted">Satuan</label>
                             <input value={itemForm.data.unit} onChange={(e) => itemForm.setData('unit', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
                         <div><label className="text-xs font-medium text-muted">Harga Satuan</label>
-                            <input type="number" step="0.01" value={itemForm.data.unit_price} onChange={(e) => itemForm.setData('unit_price', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                            <PriceInput value={itemForm.data.unit_price} onChange={(e) => itemForm.setData('unit_price', e.target.value)} className="mt-1 block w-full" /></div>
                         <div><label className="text-xs font-medium text-muted">Stok Minimum</label>
-                            <input type="number" value={itemForm.data.min_stock} onChange={(e) => itemForm.setData('min_stock', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                            <NumericInput value={itemForm.data.min_stock} onChange={(e) => itemForm.setData('min_stock', e.target.value)} className="mt-1 block w-full" /></div>
                         <div><label className="text-xs font-medium text-muted">Stok Awal (kantor)</label>
-                            <input type="number" value={itemForm.data.stok_awal} onChange={(e) => itemForm.setData('stok_awal', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                            <NumericInput value={itemForm.data.stok_awal} onChange={(e) => itemForm.setData('stok_awal', e.target.value)} className="mt-1 block w-full" /></div>
                         <div className="flex flex-col justify-end gap-2 pb-1">
                             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={itemForm.data.is_consumable} onChange={(e) => itemForm.setData('is_consumable', e.target.checked)} className="rounded border-gray-300 text-primary focus:ring-primary" /> Habis pakai</label>
                             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={itemForm.data.is_perishable} onChange={(e) => itemForm.setData('is_perishable', e.target.checked)} className="rounded border-gray-300 text-primary focus:ring-primary" /> Ada masa berlaku (batch)</label>
@@ -354,7 +356,7 @@ export default function InventoryIndex({
                                     <option value="penyesuaian">Penyesuaian</option>
                                 </select></div>
                             <div><label className="text-xs font-medium text-muted">Qty *</label>
-                                <input type="number" step="0.01" value={movementForm.data.qty} onChange={(e) => movementForm.setData('qty', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                                <NumericInput decimalPlaces={2} value={movementForm.data.qty} onChange={(e) => movementForm.setData('qty', e.target.value)} className="mt-1 block w-full" /></div>
                         </div>
                         {['keluar', 'transfer', 'penyesuaian'].includes(movementForm.data.type) && (
                             <div className="grid grid-cols-2 gap-3">
@@ -410,9 +412,9 @@ export default function InventoryIndex({
                         <div><label className="text-xs font-medium text-muted">Satuan</label>
                             <input value={editItemForm.data.unit} onChange={(e) => editItemForm.setData('unit', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
                         <div><label className="text-xs font-medium text-muted">Harga Satuan</label>
-                            <input type="number" step="0.01" value={editItemForm.data.unit_price} onChange={(e) => editItemForm.setData('unit_price', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                            <PriceInput value={editItemForm.data.unit_price} onChange={(e) => editItemForm.setData('unit_price', e.target.value)} className="mt-1 block w-full" /></div>
                         <div><label className="text-xs font-medium text-muted">Stok Minimum</label>
-                            <input type="number" value={editItemForm.data.min_stock} onChange={(e) => editItemForm.setData('min_stock', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                            <NumericInput value={editItemForm.data.min_stock} onChange={(e) => editItemForm.setData('min_stock', e.target.value)} className="mt-1 block w-full" /></div>
                         <div className="flex flex-col justify-end gap-2 pb-1">
                             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={editItemForm.data.is_consumable} onChange={(e) => editItemForm.setData('is_consumable', e.target.checked)} className="rounded border-gray-300 text-primary focus:ring-primary" /> Habis pakai</label>
                             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={editItemForm.data.is_perishable} onChange={(e) => editItemForm.setData('is_perishable', e.target.checked)} className="rounded border-gray-300 text-primary focus:ring-primary" /> Ada masa berlaku (batch)</label>
@@ -451,7 +453,7 @@ export default function InventoryIndex({
                             <div><label className="text-xs font-medium text-muted">No. Batch *</label>
                                 <input value={batchForm.data.batch_no} onChange={(e) => batchForm.setData('batch_no', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
                             <div><label className="text-xs font-medium text-muted">Qty *</label>
-                                <input type="number" step="0.01" value={batchForm.data.qty} onChange={(e) => batchForm.setData('qty', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                                <NumericInput decimalPlaces={2} value={batchForm.data.qty} onChange={(e) => batchForm.setData('qty', e.target.value)} className="mt-1 block w-full" /></div>
                             <div><label className="text-xs font-medium text-muted">Kadaluarsa</label>
                                 <input type="date" value={batchForm.data.expires_at} onChange={(e) => batchForm.setData('expires_at', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
                         </div>
@@ -471,7 +473,7 @@ export default function InventoryIndex({
                         <div><label className="text-xs font-medium text-muted">No. Batch *</label>
                             <input value={editBatchForm.data.batch_no} onChange={(e) => editBatchForm.setData('batch_no', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
                         <div><label className="text-xs font-medium text-muted">Qty *</label>
-                            <input type="number" step="0.01" value={editBatchForm.data.qty} onChange={(e) => editBatchForm.setData('qty', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                            <NumericInput decimalPlaces={2} value={editBatchForm.data.qty} onChange={(e) => editBatchForm.setData('qty', e.target.value)} className="mt-1 block w-full" /></div>
                         <div><label className="text-xs font-medium text-muted">Kadaluarsa</label>
                             <input type="date" value={editBatchForm.data.expires_at} onChange={(e) => editBatchForm.setData('expires_at', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
                     </div>

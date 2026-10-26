@@ -4,8 +4,11 @@ import ConfirmModal from '@/Components/ui/ConfirmModal';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import Modal from '@/Components/Modal';
+import NumericInput from '@/Components/NumericInput';
 import PageHeader from '@/Components/ui/PageHeader';
+import PriceInput from '@/Components/PriceInput';
 import PrimaryButton from '@/Components/PrimaryButton';
+import SearchableSelect from '@/Components/SearchableSelect';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TabNav from '@/Components/ui/TabNav';
 import TextInput from '@/Components/TextInput';
@@ -25,6 +28,8 @@ const ROLE_LABELS: Record<string, string> = {
     finance: 'Finance',
     auditor: 'Auditor',
 };
+
+const SUPPLIER_CATEGORIES = ['bengkel', 'sparepart', 'operator_lain', 'pemerintah'];
 
 export default function SettingsIndex({
     tab,
@@ -64,7 +69,9 @@ export default function SettingsIndex({
     const userForm = useForm({ name: '', email: '', password: '', role: 'ship_ops' });
     const editUserForm = useForm({ name: '', email: '', password: '', role: 'ship_ops' });
     const editCustomerForm = useForm({ name: '', npwp: '', address: '', phone: '', notes: '' });
-    const editSupplierForm = useForm({ name: '', category: '', address: '', phone: '', notes: '' });
+    const editSupplierForm = useForm({
+        name: '', category: '', category_is_custom: false, address: '', phone: '', notes: '',
+    });
     const editCatalogForm = useForm({ name: '', kind: 'pendapatan', default_price: '' });
     const editCategoryForm = useForm({ name: '', group_code: 'A', sort: '0' });
     const addCategoryForm = useForm({ code: '', name: '', group_code: 'A', sort: '' });
@@ -86,7 +93,7 @@ export default function SettingsIndex({
     });
     const reminderForm = useForm({ reminder_days: reminderDays ?? '30,14,7,0' });
     const customerForm = useForm({ name: '', phone: '', notes: '' });
-    const supplierForm = useForm({ name: '', category: '', phone: '' });
+    const supplierForm = useForm({ name: '', category: '', category_is_custom: false, phone: '' });
     const catalogForm = useForm({ name: '', kind: 'pendapatan', default_price: '' });
 
     const submitUser = (e: FormEvent) => {
@@ -229,9 +236,12 @@ export default function SettingsIndex({
                                 </div>
                                 <div>
                                     <InputLabel value="Role *" />
-                                    <select value={userForm.data.role} onChange={(e) => userForm.setData('role', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary">
-                                        {(roles ?? []).map((r: any) => <option key={r.slug} value={r.slug}>{r.name}</option>)}
-                                    </select>
+                                    <SearchableSelect
+                                        value={userForm.data.role}
+                                        options={(roles ?? []).map((r: any) => ({ value: r.slug, label: r.name }))}
+                                        onChange={(value) => userForm.setData('role', value)}
+                                        required
+                                    />
                                 </div>
                                 <PrimaryButton disabled={userForm.processing}>Buat Pengguna</PrimaryButton>
                             </form>
@@ -469,10 +479,32 @@ export default function SettingsIndex({
                     <Card title="Supplier">
                         <form onSubmit={submitSupplier} className="mb-4 flex gap-2">
                             <input value={supplierForm.data.name} onChange={(e) => supplierForm.setData('name', e.target.value)} placeholder="Nama supplier baru" className="h-9 flex-1 rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
-                            <select value={supplierForm.data.category} onChange={(e) => supplierForm.setData('category', e.target.value)} className="h-9 rounded-md border-gray-300 text-xs shadow-sm focus:border-primary focus:ring-primary">
-                                <option value="">kategori…</option>
-                                {['bengkel', 'sparepart', 'operator_lain', 'pemerintah', 'lainnya'].map((k) => <option key={k} value={k}>{k}</option>)}
-                            </select>
+                            <div className="w-40 shrink-0">
+                                <SearchableSelect
+                                    value={supplierForm.data.category_is_custom ? 'lainnya' : supplierForm.data.category}
+                                    options={[
+                                        { value: '', label: 'kategori…' },
+                                        ...SUPPLIER_CATEGORIES.map((value) => ({ value, label: value })),
+                                        { value: 'lainnya', label: 'Lainnya' },
+                                    ]}
+                                    onChange={(value) => {
+                                        supplierForm.setData('category_is_custom', value === 'lainnya');
+                                        supplierForm.setData('category', value === 'lainnya' ? '' : value);
+                                    }}
+                                    className="h-9"
+                                />
+                                {supplierForm.data.category_is_custom && (
+                                    <input
+                                        value={supplierForm.data.category}
+                                        onChange={(e) => supplierForm.setData('category', e.target.value)}
+                                        placeholder="Kategori lainnya"
+                                        maxLength={60}
+                                        required
+                                        className="mt-1 h-9 w-40 rounded-md border-gray-300 text-xs shadow-sm focus:border-primary focus:ring-primary"
+                                    />
+                                )}
+                                <InputError message={supplierForm.errors.category} className="mt-1" />
+                            </div>
                             <PrimaryButton disabled={supplierForm.processing || !supplierForm.data.name}><Plus size={14} /></PrimaryButton>
                         </form>
                         <ul className="max-h-72 space-y-1 overflow-y-auto text-sm">
@@ -485,7 +517,15 @@ export default function SettingsIndex({
                                             type="button"
                                             onClick={() => {
                                                 setEditSupplier(s);
-                                                editSupplierForm.setData({ name: s.name, category: s.category ?? '', address: s.address ?? '', phone: s.phone ?? '', notes: s.notes ?? '' });
+                                                editSupplierForm.setData({
+                                                    name: s.name,
+                                                    category: s.category ?? '',
+                                                    category_is_custom: Boolean(s.category) &&
+                                                        (s.category === 'lainnya' || !SUPPLIER_CATEGORIES.includes(s.category)),
+                                                    address: s.address ?? '',
+                                                    phone: s.phone ?? '',
+                                                    notes: s.notes ?? '',
+                                                });
                                                 setModal('editSupplier');
                                             }}
                                             className="text-primary hover:underline"
@@ -509,11 +549,16 @@ export default function SettingsIndex({
                             <form onSubmit={submitCatalog} className="mb-4 space-y-2">
                                 <input value={catalogForm.data.name} onChange={(e) => catalogForm.setData('name', e.target.value)} placeholder="Nama katalog" className="h-9 w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
                                 <div className="flex gap-2">
-                                    <select value={catalogForm.data.kind} onChange={(e) => catalogForm.setData('kind', e.target.value)} className="h-9 flex-1 rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary">
-                                        <option value="pendapatan">Pendapatan</option>
-                                        <option value="biaya">Biaya</option>
-                                    </select>
-                                    <input type="number" value={catalogForm.data.default_price} onChange={(e) => catalogForm.setData('default_price', e.target.value)} placeholder="Harga" className="h-9 w-32 rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
+                                    <SearchableSelect
+                                        value={catalogForm.data.kind}
+                                        options={[
+                                            { value: 'pendapatan', label: 'Pendapatan' },
+                                            { value: 'biaya', label: 'Biaya' },
+                                        ]}
+                                        onChange={(value) => catalogForm.setData('kind', value)}
+                                        className="flex-1"
+                                    />
+                                    <PriceInput value={catalogForm.data.default_price} onChange={(e) => catalogForm.setData('default_price', e.target.value)} placeholder="Harga" className="h-9 w-32 rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
                                     <PrimaryButton disabled={catalogForm.processing || !catalogForm.data.name}><Plus size={14} /></PrimaryButton>
                                 </div>
                             </form>
@@ -569,9 +614,12 @@ export default function SettingsIndex({
                         <div><label className="text-xs font-medium text-muted">Email *</label>
                             <input value={editUserForm.data.email} onChange={(e) => editUserForm.setData('email', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
                         <div><label className="text-xs font-medium text-muted">Role *</label>
-                            <select value={editUserForm.data.role} onChange={(e) => editUserForm.setData('role', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                {(roles ?? []).map((r: any) => <option key={r.slug} value={r.slug}>{r.name}</option>)}
-                            </select></div>
+                            <SearchableSelect
+                                value={editUserForm.data.role}
+                                options={(roles ?? []).map((r: any) => ({ value: r.slug, label: r.name }))}
+                                onChange={(value) => editUserForm.setData('role', value)}
+                                required
+                            /></div>
                         <div><label className="text-xs font-medium text-muted">Password Baru (opsional, min 8)</label>
                             <input type="password" value={editUserForm.data.password} onChange={(e) => editUserForm.setData('password', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
                     </div>
@@ -611,10 +659,38 @@ export default function SettingsIndex({
                         <div><label className="text-xs font-medium text-muted">Nama *</label>
                             <input value={editSupplierForm.data.name} onChange={(e) => editSupplierForm.setData('name', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
                         <div><label className="text-xs font-medium text-muted">Kategori</label>
-                            <select value={editSupplierForm.data.category} onChange={(e) => editSupplierForm.setData('category', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                <option value="">—</option>
-                                {['bengkel', 'sparepart', 'operator_lain', 'pemerintah', 'lainnya'].map((k) => <option key={k} value={k}>{k}</option>)}
-                            </select></div>
+                            <SearchableSelect
+                                value={editSupplierForm.data.category_is_custom ? 'lainnya' : editSupplierForm.data.category}
+                                options={[
+                                    { value: '', label: '—' },
+                                    ...SUPPLIER_CATEGORIES.map((value) => ({
+                                        value,
+                                        label: value,
+                                    })),
+                                    { value: 'lainnya', label: 'Lainnya' },
+                                ]}
+                                onChange={(value) => {
+                                    editSupplierForm.setData('category_is_custom', value === 'lainnya');
+                                    editSupplierForm.setData(
+                                        'category',
+                                        value === 'lainnya' ? '' : value,
+                                    );
+                                }}
+                            /></div>
+                        {editSupplierForm.data.category_is_custom && (
+                            <div>
+                                <label className="text-xs font-medium text-muted">Kategori Lainnya</label>
+                                <input
+                                    value={editSupplierForm.data.category === 'lainnya' ? '' : editSupplierForm.data.category}
+                                    onChange={(e) => editSupplierForm.setData('category', e.target.value)}
+                                    placeholder="Masukkan kategori"
+                                    maxLength={60}
+                                    required={editSupplierForm.data.category !== 'lainnya'}
+                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                />
+                                <InputError message={editSupplierForm.errors.category} className="mt-1" />
+                            </div>
+                        )}
                         <div><label className="text-xs font-medium text-muted">Telepon</label>
                             <input value={editSupplierForm.data.phone} onChange={(e) => editSupplierForm.setData('phone', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
                     </div>
@@ -634,11 +710,16 @@ export default function SettingsIndex({
                             <input value={editCatalogForm.data.name} onChange={(e) => editCatalogForm.setData('name', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
                         <div className="grid grid-cols-2 gap-3">
                             <div><label className="text-xs font-medium text-muted">Jenis</label>
-                                <select value={editCatalogForm.data.kind} onChange={(e) => editCatalogForm.setData('kind', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                    <option value="pendapatan">Pendapatan</option><option value="biaya">Biaya</option>
-                                </select></div>
+                                <SearchableSelect
+                                    value={editCatalogForm.data.kind}
+                                    options={[
+                                        { value: 'pendapatan', label: 'Pendapatan' },
+                                        { value: 'biaya', label: 'Biaya' },
+                                    ]}
+                                    onChange={(value) => editCatalogForm.setData('kind', value)}
+                                /></div>
                             <div><label className="text-xs font-medium text-muted">Harga Default *</label>
-                                <input type="number" step="0.01" value={editCatalogForm.data.default_price} onChange={(e) => editCatalogForm.setData('default_price', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                                <PriceInput value={editCatalogForm.data.default_price} onChange={(e) => editCatalogForm.setData('default_price', e.target.value)} className="mt-1 block w-full" /></div>
                         </div>
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
@@ -657,11 +738,16 @@ export default function SettingsIndex({
                             <input value={editCategoryForm.data.name} onChange={(e) => editCategoryForm.setData('name', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
                         <div className="grid grid-cols-2 gap-3">
                             <div><label className="text-xs font-medium text-muted">Kelompok</label>
-                                <select value={editCategoryForm.data.group_code} onChange={(e) => editCategoryForm.setData('group_code', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                    {['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((g) => <option key={g} value={g}>{g}</option>)}
-                                </select></div>
+                                <SearchableSelect
+                                    value={editCategoryForm.data.group_code}
+                                    options={['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((value) => ({
+                                        value,
+                                        label: value,
+                                    }))}
+                                    onChange={(value) => editCategoryForm.setData('group_code', value)}
+                                /></div>
                             <div><label className="text-xs font-medium text-muted">Urutan</label>
-                                <input type="number" value={editCategoryForm.data.sort} onChange={(e) => editCategoryForm.setData('sort', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                                <NumericInput value={editCategoryForm.data.sort} onChange={(e) => editCategoryForm.setData('sort', e.target.value)} className="mt-1 block w-full" /></div>
                         </div>
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
@@ -682,11 +768,16 @@ export default function SettingsIndex({
                             <input value={addCategoryForm.data.name} onChange={(e) => addCategoryForm.setData('name', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
                         <div className="grid grid-cols-2 gap-3">
                             <div><label className="text-xs font-medium text-muted">Kelompok</label>
-                                <select value={addCategoryForm.data.group_code} onChange={(e) => addCategoryForm.setData('group_code', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                    {['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((g) => <option key={g} value={g}>{g}</option>)}
-                                </select></div>
+                                <SearchableSelect
+                                    value={addCategoryForm.data.group_code}
+                                    options={['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((value) => ({
+                                        value,
+                                        label: value,
+                                    }))}
+                                    onChange={(value) => addCategoryForm.setData('group_code', value)}
+                                /></div>
                             <div><label className="text-xs font-medium text-muted">Urutan</label>
-                                <input type="number" value={addCategoryForm.data.sort} onChange={(e) => addCategoryForm.setData('sort', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                                <NumericInput value={addCategoryForm.data.sort} onChange={(e) => addCategoryForm.setData('sort', e.target.value)} className="mt-1 block w-full" /></div>
                         </div>
                     </div>
                     <div className="mt-5 flex justify-end gap-3">

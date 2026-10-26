@@ -29,7 +29,10 @@ class DocumentController extends Controller
         $tab = $request->string('tab')->toString() ?: 'arsip';
 
         $query = Document::with(['category'])
-            ->orderByDesc('updated_at');
+            ->withMax('versions', 'uploaded_at')
+            ->orderByDesc('versions_max_uploaded_at')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
 
         // Sub-tab arsip terpadu: arsip(semua aktif) | terbitan | unggahan | expiring
         match ($tab) {
@@ -223,7 +226,7 @@ class DocumentController extends Controller
     {
         $this->authorize('view', $document);
 
-        $document->load(['category', 'versions' => fn ($q) => $q->orderByDesc('version_number'), 'voyages']);
+        $document->load(['category', 'versions' => fn ($q) => $q->orderByDesc('uploaded_at')->orderByDesc('id'), 'voyages']);
 
         $user = auth()->user();
 
@@ -588,6 +591,7 @@ class DocumentController extends Controller
             'validity' => $reminder->validity($doc->expiry_date?->toDateString(), $doc->has_expiry),
             'days_left' => $reminder->daysUntil($doc->expiry_date?->toDateString()),
             'responsible_person' => $doc->responsible_person,
+            'created_at' => $doc->created_at?->toDateTimeString(),
             'updated_at' => $doc->updated_at?->toDateTimeString(),
         ];
     }

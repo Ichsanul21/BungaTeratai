@@ -40,6 +40,7 @@ class FleetController extends Controller
                 'id' => $vessel->id,
                 'vessel_name' => $vessel->vessel_name,
                 'vessel_type' => $vessel->vessel_type,
+                'vessel_type_custom' => $vessel->vessel_type_custom,
                 'navigation_type' => $vessel->navigation_type,
                 'registration_number' => $vessel->registration_number,
                 'year_built' => $vessel->year_built,
@@ -85,6 +86,7 @@ class FleetController extends Controller
         $data = $request->validate([
             'vessel_name' => ['required', 'string', 'max:120'],
             'vessel_type' => ['required', 'in:tugboat,tongkang,kapal_penumpang,lainnya'],
+            'vessel_type_custom' => ['nullable', 'required_if:vessel_type,lainnya', 'string', 'max:60'],
             'navigation_type' => ['required', 'in:laut,sungai_danau,penyeberangan'],
             'registration_number' => ['nullable', 'string', 'max:60'],
             'imo' => ['nullable', 'string', 'max:20'],
@@ -106,6 +108,9 @@ class FleetController extends Controller
             'base_location' => ['nullable', 'string', 'max:120'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
+        if ($data['vessel_type'] !== 'lainnya') {
+            $data['vessel_type_custom'] = null;
+        }
 
         $vessel = Vessel::create($data);
 
@@ -133,6 +138,7 @@ class FleetController extends Controller
                 'id' => $vessel->id,
                 'vessel_name' => $vessel->vessel_name,
                 'vessel_type' => $vessel->vessel_type,
+                'vessel_type_custom' => $vessel->vessel_type_custom,
                 'navigation_type' => $vessel->navigation_type,
                 'registration_number' => $vessel->registration_number,
                 'imo' => $vessel->imo,
@@ -160,7 +166,7 @@ class FleetController extends Controller
                 'created_at' => $vessel->created_at?->toDateString(),
             ],
             'completeness' => $calc,
-            'documents' => $vessel->documents()->with('category')->latest()->get()->map([$this, 'mapDocument']),
+            'documents' => $vessel->documents()->with('category')->orderByDesc('created_at')->orderByDesc('id')->get()->map([$this, 'mapDocument']),
             'voyages' => Voyage::where('vessel_id', $vessel->id)
                 ->orWhereHas('relationships', fn ($q) => $q->where('tugboat_id', $vessel->id)->orWhere('barge_id', $vessel->id))
                 ->latest()->limit(10)->get()->map(fn ($v) => [
@@ -237,6 +243,14 @@ class FleetController extends Controller
         $data = $request->validate([
             'vessel_name' => ['required', 'string', 'max:120'],
             'vessel_type' => ['required', 'in:tugboat,tongkang,kapal_penumpang,lainnya'],
+            'vessel_type_custom' => [
+                'nullable',
+                ...($vessel->vessel_type === 'lainnya' && blank($vessel->vessel_type_custom)
+                    ? []
+                    : ['required_if:vessel_type,lainnya']),
+                'string',
+                'max:60',
+            ],
             'navigation_type' => ['required', 'in:laut,sungai_danau,penyeberangan'],
             'registration_number' => ['nullable', 'string', 'max:60'],
             'imo' => ['nullable', 'string', 'max:20'],
@@ -258,6 +272,9 @@ class FleetController extends Controller
             'base_location' => ['nullable', 'string', 'max:120'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
+        if ($data['vessel_type'] !== 'lainnya') {
+            $data['vessel_type_custom'] = null;
+        }
 
         $before = $vessel->only(array_keys($data));
         $vessel->update($data);
@@ -280,6 +297,7 @@ class FleetController extends Controller
             'has_expiry' => $doc->has_expiry,
             'expiry_date' => $doc->expiry_date?->toDateString(),
             'verification_status' => $doc->verification_status,
+            'created_at' => $doc->created_at?->toDateTimeString(),
             'updated_at' => $doc->updated_at?->toDateTimeString(),
         ];
     }

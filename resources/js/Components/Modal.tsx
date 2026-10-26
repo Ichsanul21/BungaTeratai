@@ -10,11 +10,15 @@ export default function Modal({
     children,
     show = false,
     maxWidth = '2xl',
+    fullScreen = false,
+    stacked = false,
     closeable = true,
     onClose = () => {},
 }: PropsWithChildren<{
     show: boolean;
     maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+    fullScreen?: boolean;
+    stacked?: boolean;
     closeable?: boolean;
     onClose: CallableFunction;
 }>) {
@@ -37,7 +41,7 @@ export default function Modal({
             <Dialog
                 as="div"
                 id="modal"
-                className="fixed inset-0 z-50 flex transform items-center overflow-y-auto px-4 py-6 transition-all sm:px-0"
+                className={`fixed inset-0 ${stacked ? 'z-[1100]' : 'z-[1000]'} flex transform items-center overflow-y-auto px-2 py-2 transition-all sm:px-4 sm:py-4`}
                 onClose={close}
             >
                 <TransitionChild
@@ -48,7 +52,7 @@ export default function Modal({
                     leaveFrom="opacity-100"
                     leaveTo="opacity-0"
                 >
-                    <div className="absolute inset-0 bg-gray-500/75" />
+                    <div className={`absolute inset-0 ${stacked ? 'z-[1100]' : 'z-[1000]'} bg-gray-500/75`} />
                 </TransitionChild>
 
                 <TransitionChild
@@ -60,7 +64,11 @@ export default function Modal({
                     leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
                 >
                     <DialogPanel
-                        className={`mb-6 transform overflow-hidden rounded-lg bg-white shadow-xl transition-all sm:mx-auto sm:w-full ${maxWidthClass}`}
+                        className={`relative ${stacked ? 'z-[1101]' : 'z-[1001]'} mb-0 transform overflow-hidden bg-white shadow-xl transition-all sm:mx-auto sm:w-full ${
+                            fullScreen
+                                ? 'h-[calc(100dvh-1rem)] max-w-none rounded-lg sm:h-[calc(100dvh-2rem)]'
+                                : `rounded-lg ${maxWidthClass}`
+                        }`}
                     >
                         {children}
                     </DialogPanel>

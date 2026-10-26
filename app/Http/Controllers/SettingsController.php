@@ -17,6 +17,7 @@ use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -155,8 +156,10 @@ class SettingsController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:160'],
             'category' => ['nullable', 'string', 'max:60'],
+            'category_is_custom' => ['nullable', 'boolean'],
             'phone' => ['nullable', 'string', 'max:40'],
         ]);
+        $data = $this->normalizeSupplierCategory($data);
 
         Supplier::create($data);
 
@@ -276,15 +279,30 @@ class SettingsController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:160'],
             'category' => ['nullable', 'string', 'max:60'],
+            'category_is_custom' => ['nullable', 'boolean'],
             'address' => ['nullable', 'string', 'max:240'],
             'phone' => ['nullable', 'string', 'max:40'],
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
+        $data = $this->normalizeSupplierCategory($data);
 
         $before = $supplier->only(['name', 'category', 'phone']);
         $supplier->update($data);
 
         return back()->with('success', "Supplier {$supplier->name} diperbarui.");
+    }
+
+    private function normalizeSupplierCategory(array $data): array
+    {
+        if (($data['category_is_custom'] ?? false) && blank($data['category'])) {
+            throw ValidationException::withMessages([
+                'category' => 'Kategori lainnya wajib diisi.',
+            ]);
+        }
+
+        unset($data['category_is_custom']);
+
+        return $data;
     }
 
     public function deleteSupplier(Supplier $supplier)

@@ -103,7 +103,7 @@ export default function ReportsIndex({
                             {k.replace(/_/g, ' ')}
                         </p>
                         <p className="mt-1 text-xl font-semibold tabular-nums text-ink">
-                            {k === 'liter' ? formatNumber(v as number, 0) + ' L'
+                            {k === 'liter' ? formatNumber(v as number, 2) + ' L'
                                 : k === 'biaya' || k === 'servis_biaya' || k === 'pendapatan' || k === 'kas_total'
                                     ? formatRupiah(v as number)
                                     : formatNumber(v as number)}
@@ -196,7 +196,7 @@ export default function ReportsIndex({
                                     <td className="px-3 py-2 font-medium text-ink">{r.vessel_name}</td>
                                     <td className="px-3 py-2 text-muted">{r.route}</td>
                                     <td className="px-3 py-2 tabular-nums">{r.duration_hours} jam</td>
-                                    <td className="px-3 py-2 tabular-nums">{formatNumber(r.liters, 0)} L</td>
+                                    <td className="px-3 py-2 tabular-nums">{formatNumber(r.liters, 2)} L</td>
                                     <td className="px-3 py-2 tabular-nums">{formatNumber(r.lph, 1)}</td>
                                     <td className="px-3 py-2 tabular-nums">{formatRupiah(r.cost)}</td>
                                     <td className="px-3 py-2">
