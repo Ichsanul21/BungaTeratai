@@ -146,7 +146,8 @@ export default function FinanceIndex({
 
     const invoiceForm = useForm({
         customer_id: '', voyage_id: '', issue_date: new Date().toISOString().slice(0, 10),
-        due_date: '', pph23: false, notes: '',
+        due_date: '', pph23: false, fp_number: '', invoice_kind: 'umum', pph_rate: '',
+        notes: '',
         items: [{ description: 'Jasa Towing (Penarikan)', qty: '1', price: '15000000' }],
     });
     const payForm = useForm({ amount: '', bank_fee: '', cash_account_id: '', date: new Date().toISOString().slice(0, 10), method: 'transfer', cheque_number: '' });
@@ -1269,7 +1270,31 @@ export default function FinanceIndex({
                         <input type="checkbox" checked={invoiceForm.data.pph23} onChange={(e) => invoiceForm.setData('pph23', e.target.checked)} className="rounded border-gray-300 text-primary focus:ring-primary" />
                         Potong PPh 23 jasa (2%)
                     </label>
-                    <p className="mt-2 text-xs text-muted">PPN 11% dihitung otomatis. Total tagihan = subtotal + PPN − PPh 23.</p>
+                    <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        <div>
+                            <label className="text-xs font-medium text-muted">Tahap Invoice</label>
+                            <select value={invoiceForm.data.invoice_kind} onChange={(e) => invoiceForm.setData('invoice_kind', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
+                                <option value="umum">Umum</option>
+                                <option value="dp">Charter — DP</option>
+                                <option value="pelunasan">Charter — Pelunasan</option>
+                                <option value="dp100">Charter — DP 100%</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-muted">Tarif PPh (khusus; kosongkan = 2%)</label>
+                            <select value={invoiceForm.data.pph_rate} onChange={(e) => invoiceForm.setData('pph_rate', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
+                                <option value="">— ikuti checkbox PPh 23 —</option>
+                                <option value="0.012">1,2% (charter — materi klien)</option>
+                                <option value="0.02">2% (jasa reguler)</option>
+                                <option value="0.005">0,5%</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-muted">No. Faktur Pajak</label>
+                            <input value={invoiceForm.data.fp_number} onChange={(e) => invoiceForm.setData('fp_number', e.target.value)} placeholder="010.045-777.197.2026" className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                        </div>
+                    </div>
+                    <p className="mt-2 text-xs text-muted">PPN 11% dihitung otomatis. Total tagihan = subtotal + PPN − PPh. FP hanya dicatat nomornya + file diunggah — sistem tidak menerbitkan Faktur Pajak (legalitas DJP).</p>
                     <div className="mt-5 flex justify-end gap-3">
                         <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
                         <PrimaryButton disabled={invoiceForm.processing}>Simpan Invoice</PrimaryButton>

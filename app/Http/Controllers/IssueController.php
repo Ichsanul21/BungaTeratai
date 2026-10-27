@@ -123,4 +123,70 @@ class IssueController extends Controller
     {
         return Excel::download(new OutstandingExport, 'OUTSTANDING '.now()->format('Y-m-d').'.xlsx');
     }
+
+    // ---------- PDF CREWING (materi CREWING) ----------
+
+    /** Surat Pemberhentian Awak Kapal (MUTASI OFF). */
+    public function crewOffLetter(\App\Models\CrewMovement $movement)
+    {
+        Gate::authorize('menu.hr');
+
+        $result = $this->generator->generateCrewMutasiOff($movement);
+
+        return Storage::disk('local')->download(
+            $result['path'],
+            preg_replace('/[^A-Za-z0-9._-]+/', '_', 'Mutasi OFF '.($movement->no_surat ?? 'X')).'.pdf'
+        );
+    }
+
+    /** Surat Permohonan Sijil ON/OFF ke Kesyahbandaran Kelas I Samarinda. */
+    public function sijil(\App\Models\SijilRequest $sijil)
+    {
+        Gate::authorize('menu.hr');
+
+        $result = $this->generator->generateSijilRequest($sijil);
+
+        return Storage::disk('local')->download(
+            $result['path'],
+            preg_replace('/[^A-Za-z0-9._-]+/', '_', 'Permohonan Sijil '.strtoupper($sijil->kind).' '.($sijil->no_surat ?? 'X')).'.pdf'
+        );
+    }
+
+    /** Surat Kadet ON (Prala) / OFF (selesai PK). */
+    public function kadetLetter(Request $request, \App\Models\CrewMovement $movement)
+    {
+        Gate::authorize('menu.hr');
+
+        $kind = $request->string('kind')->toString() ?: 'on';
+        abort_unless(in_array($kind, ['on', 'off'], true), 404);
+        abort_unless(in_array($movement->type, ['kadet_on', 'kadet_off'], true), 422, 'Gerakan bukan kadet.');
+
+        $result = $this->generator->generateKadetLetter($movement, $kind);
+
+        return Storage::disk('local')->download(
+            $result['path'],
+            preg_replace('/[^A-Za-z0-9._-]+/', '_', 'Kadet '.strtoupper($kind).' '.($movement->no_surat ?? 'X')).'.pdf'
+        );
+    }
+
+    /** Surat Kuasa PKL (H. Syarif). */
+    public function kuasaPkl(Request $request)
+    {
+        Gate::authorize('menu.hr');
+
+        $data = $request->validate([
+            'vessel_name' => ['required', 'string', 'max:120'],
+            'vessel_id' => ['nullable', 'exists:vessels,id'],
+            'crew_name' => ['required', 'string', 'max:120'],
+            'attorney' => ['nullable', 'string', 'max:120'],
+            'date' => ['nullable', 'date'],
+        ]);
+
+        $result = $this->generator->generateKuasaPkl($data);
+
+        return Storage::disk('local')->download(
+            $result['path'],
+            preg_replace('/[^A-Za-z0-9._-]+/', '_', 'Kuasa PKL '.($result['document']->document_number ?? '')).'.pdf'
+        );
+    }
 }

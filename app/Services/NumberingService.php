@@ -37,7 +37,9 @@ class NumberingService
         $number = strtr($pattern, [
             '{seq}' => $this->pad($seq),
             '{seq_raw}' => (string) $seq,
+            '{seq4}' => str_pad((string) $seq, 4, '0', STR_PAD_LEFT),
             '{tahun}' => (string) $now->year,
+            '{tahun2}' => $now->format('y'),
             '{bulan}' => $now->format('m'),
             '{bulan_romawi}' => $romanMonths[(int) $now->format('n')],
             '{kode}' => $template->code,

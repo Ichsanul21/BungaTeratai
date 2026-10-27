@@ -49,8 +49,8 @@
                 <td style="text-align:left; padding-left:14px; vertical-align:middle;">
                     <h1>PT BUNGA TERATAI</h1>
                     <div class="sub">
-                        Jl. Nahkoda No. 35, Samarinda Ilir, Kota Samarinda, Kalimantan Timur 75113<br>
-                        Telepon: +62 812 3456 7890 &nbsp;|&nbsp; Email: bungateratai@gmail.com
+                        {{ $lh['address'] ?? 'Jl. Mulawarman No. 23, Samarinda, Kalimantan Timur' }}<br>
+                        Telepon: {{ $lh['phone'] ?? '(0541) 731034' }} &nbsp;|&nbsp; Email: {{ $lh['email'] ?? 'adm.teratai@gmail.com' }}
                     </div>
                 </td>
             </tr>

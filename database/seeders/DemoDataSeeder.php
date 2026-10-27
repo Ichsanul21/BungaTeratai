@@ -46,6 +46,8 @@ class DemoDataSeeder extends Seeder
         $this->seedSpal104();
         $this->seedClientPurchases();
         $this->seedSptArchive();
+        $this->seedOutstanding();
+        $this->seedDokumenKapal();
         app(\App\Services\ReminderService::class)->sync();
     }
 
@@ -92,10 +94,10 @@ class DemoDataSeeder extends Seeder
         Company::firstOrCreate(['company_name' => 'PT Bunga Teratai'], [
             'business_license_reference' => 'NIB-DEMO-001123',
             'npwp' => '00.000.000.0-000.000',
-            'address' => 'Jl. Nakhoda No. 35, Samarinda Ilir',
+            'address' => 'Jl. Mulawarman No. 23, Samarinda, Kalimantan Timur',
             'city' => 'Samarinda',
             'phone' => '(0541) 731034',
-            'email' => 'demo@bungateratai.id',
+            'email' => 'adm.teratai@gmail.com',
         ]);
 
         $settings = [
@@ -266,8 +268,9 @@ class DemoDataSeeder extends Seeder
     }
 
     /**
-     * 12 kapal demo — target spek §7: 8 siap / 3 tindak lanjut / 1 ditinjau.
-     * KM Prince Soya = data publik; sisanya fiktif. Semua = DEMO DATA.
+     * 39 kapal sesuai materi klien: 18 TB + 18 BG (GT dari Master Tracker)
+     * + KM Prince Soya + KM Etam Bahari + KM Tata Armada 01 (Dokumen_Kapal).
+     * Nama & GT = asli; tahun/LOA/mesin = demo (materi tidak memuatnya).
      */
     private function seedFleet(): void
     {
@@ -275,20 +278,47 @@ class DemoDataSeeder extends Seeder
             return;
         }
 
+        // [nama, tipe, navigasi, imo, mmsi, callsign, tahun, loa, beam, gt, dwt, kapasitas, satuan, mesin, bbm, baseline, pemilik, lokasi, status, catatan]
         $vessels = [
-            // [nama, tipe, navigasi, imo, mmsi, callsign, tahun, loa, beam, gt, dwt, kapasitas, satuan, mesin, bbm, baseline, pemilik, lokasi, status, catatan]
-            ['KM Prince Soya', 'kapal_penumpang', 'laut', '9110157', '525200166', 'PNSR', 1995, 95.70, 15.02, 1566, 763, 1800, 'penumpang', 'MAN B&W 8L32/40', 'MDO', 300, 'PT Bunga Teratai', 'Pelabuhan Samarinda', 'aktif', 'Ro-Ro penumpang. Insiden kebakaran dek 1 Agustus 2026 (tanpa korban jiwa) — DEMO DATA.'],
-            ['TB Syukur 01', 'tugboat', 'laut', null, '525201001', 'PKSA1', 2012, 24.50, 7.20, 165, 90, null, null, '2 × Cummins KTA38', 'Diesel', 95, 'PT Bunga Teratai', 'Sungai Kunjang, Samarinda', 'aktif', null],
-            ['BG Syukur 03', 'tongkang', 'laut', null, '525201002', 'PKSB8', 2010, 60.00, 14.00, 850, 1600, 1500, 'ton', '— (ditowel)', '—', null, 'PT Bunga Teratai', 'Sungai Kunjang, Samarinda', 'aktif', 'Tongkang muatan umum.'],
-            ['TB Syukur 03', 'tugboat', 'laut', null, '525201003', 'PKSC2', 2016, 26.00, 8.00, 210, 120, null, null, '2 × CAT 3512B', 'Diesel', 110, 'PT Bunga Teratai', 'Pelabuhan Samarinda', 'aktif', null],
+            ['KM Prince Soya', 'kapal_penumpang', 'laut', '9110157', '525200166', 'PNSR', 1995, 95.70, 15.02, 3655, 763, 1800, 'penumpang', 'MAN B&W 8L32/40', 'MDO', 300, 'PT Bunga Teratai', 'Pelabuhan Samarinda', 'aktif', 'Ro-Ro penumpang (GRT 3655 per Crew List klien). Insiden kebakaran dek 1 Agustus 2026 — DEMO DATA.'],
+            ['TB Syukur 01', 'tugboat', 'laut', null, '525201001', 'PKSA1', 2012, 24.50, 7.20, 198, 90, null, null, '2 × Cummins KTA38', 'Diesel', 95, 'PT Bunga Teratai', 'Sungai Kunjang, Samarinda', 'aktif', null],
+            ['BG Syukur 03', 'tongkang', 'laut', null, '525201002', 'PKSB8', 2010, 60.00, 14.00, 3100, 4350, 4350, 'ton', '— (ditowel)', '—', null, 'PT Bunga Teratai', 'Sungai Kunjang, Samarinda', 'aktif', 'Tongkang muatan umum (GT 3100 per Master Tracker).'],
+            ['TB Syukur 03', 'tugboat', 'laut', null, '525201003', 'PKSC2', 2016, 26.00, 8.00, 250, 120, null, null, '2 × CAT 3512B', 'Diesel', 110, 'PT Bunga Teratai', 'Pelabuhan Samarinda', 'aktif', null],
             ['KM Etam Bahari', 'kapal_penumpang', 'sungai_danau', null, '525201004', 'PKSD4', 2014, 42.00, 9.00, 320, 120, 320, 'penumpang', '2 × Mitsubishi S6R', 'Diesel', 160, 'PT Bunga Teratai', 'Dermaga Tenggarong', 'aktif', 'Pelayaran sungai Mahakam.'],
-            ['KM Pesisir Raya', 'kapal_penumpang', 'laut', null, '525201005', 'PKSE5', 2008, 72.00, 13.00, 980, 450, 950, 'penumpang', '2 × MAN 6L16/24', 'MDO', 280, 'PT Bunga Teratai', 'Pelabuhan Samarinda', 'aktif', null],
-            ['TB Syukur 23', 'tugboat', 'sungai_danau', null, '525201006', 'PKSF6', 2018, 19.80, 6.50, 130, 60, null, null, '2 × Yanmar 6EY', 'Diesel', 85, 'PT Bunga Teratai', 'Sungai Mahakam', 'aktif', null],
-            ['TB Syukur 23I', 'tugboat', 'sungai_danau', null, '525201007', 'PKSG7', 2019, 19.80, 6.50, 130, 60, null, null, '2 × Yanmar 6EY', 'Diesel', 88, 'PT Bunga Teratai', 'Sungai Mahakam', 'aktif', null],
-            ['BG Syukur 06', 'tongkang', 'sungai_danau', null, '525201008', 'PKSH8', 2015, 45.00, 11.00, 520, 900, 900, 'ton', '— (ditowel)', '—', null, 'PT Bunga Teratai', 'Loa Buah, Samarinda', 'aktif', null],
-            ['BG Syukur 07', 'tongkang', 'laut', null, '525201009', 'PKSI9', 2011, 70.00, 15.00, 980, 1800, 1800, 'ton', '— (ditowel)', '—', null, 'PT Bunga Teratai', 'Sungai Kunjang, Samarinda', 'aktif', null],
-            ['TB Syukur 58', 'tugboat', 'laut', null, '525201010', 'PKSJ0', 2013, 22.00, 7.00, 150, 80, null, null, '2 × Mitsubishi S6A3', 'Diesel', 100, 'PT Bunga Teratai', 'Galangan, Samarinda', 'dalam_perbaikan', 'Sedang perbaikan mesin utama.'],
-            ['KM Sungai Kunjang', 'kapal_penumpang', 'penyeberangan', null, '525201011', 'PKSK1', 2020, 36.00, 9.50, 240, 80, 250, 'penumpang', '2 × Yamaha Marine (diesel)', 'Diesel', 140, 'PT Bunga Teratai', 'Dermaga Sungai Kunjang', 'aktif', 'Penyeberangan sungai.'],
+            ['TB Syukur 11', 'tugboat', 'laut', null, '525201012', 'PKSL2', 2011, 25.50, 7.60, 246, 110, null, null, '2 × CAT C18', 'Diesel', 100, 'PT Bunga Teratai', 'Pelabuhan Samarinda', 'aktif', null],
+            ['TB Syukur 23', 'tugboat', 'sungai_danau', null, '525201006', 'PKSF6', 2018, 19.80, 6.50, 196, 60, null, null, '2 × Yanmar 6EY', 'Diesel', 85, 'PT Bunga Teratai', 'Sungai Mahakam', 'aktif', null],
+            ['TB Syukur 30', 'tugboat', 'laut', null, '525201013', 'PKSM3', 2014, 23.00, 7.00, 187, 95, null, null, '2 × Cummins KTA38', 'Diesel', 95, 'PT Bunga Teratai', 'Pelabuhan Samarinda', 'aktif', null],
+            ['TB Syukur 32', 'tugboat', 'laut', null, '525201014', 'PKSN4', 2013, 26.50, 8.20, 263, 130, null, null, '2 × CAT 3512B', 'Diesel', 110, 'PT Bunga Teratai', 'Pelabuhan Samarinda', 'aktif', null],
+            ['TB Syukur 36', 'tugboat', 'laut', null, '525201015', 'PKSO5', 2016, 27.00, 8.40, 278, 135, null, null, '2 × CAT 3512B', 'Diesel', 112, 'PT Bunga Teratai', 'Pelabuhan Samarinda', 'aktif', null],
+            ['TB Syukur 45', 'tugboat', 'laut', null, '525201016', 'PKSP6', 2012, 24.00, 7.40, 260, 120, null, null, '2 × Mitsubishi S6A3', 'Diesel', 105, 'PT Bunga Teratai', 'Pelabuhan Samarinda', 'aktif', null],
+            ['TB Syukur 51', 'tugboat', 'laut', null, '525201017', 'PKSQ7', 2015, 24.20, 7.40, 260, 120, null, null, '2 × Mitsubishi S6A3', 'Diesel', 105, 'PT Bunga Teratai', 'Pelabuhan Samarinda', 'aktif', null],
+            ['TB Syukur 52', 'tugboat', 'laut', null, '525201018', 'PKSR8', 2017, 26.00, 8.00, 264, 125, null, null, '2 × CAT 3512B', 'Diesel', 110, 'PT Bunga Teratai', 'Pelabuhan Samarinda', 'aktif', null],
+            ['TB Syukur 54', 'tugboat', 'laut', null, '525201019', 'PKSS9', 2018, 25.80, 8.00, 261, 122, null, null, '2 × CAT 3512B', 'Diesel', 108, 'PT Bunga Teratai', 'Pelabuhan Samarinda', 'aktif', null],
+            ['TB Syukur 56', 'tugboat', 'laut', null, '525201020', 'PKST0', 2016, 25.90, 8.10, 262, 124, null, null, '2 × CAT 3512B', 'Diesel', 108, 'PT Bunga Teratai', 'Pelabuhan Samarinda', 'aktif', null],
+            ['TB Syukur 58', 'tugboat', 'laut', null, '525201010', 'PKSJ0', 2013, 22.00, 7.00, 260, 80, null, null, '2 × Mitsubishi S6A3', 'Diesel', 100, 'PT Bunga Teratai', 'Galangan, Samarinda', 'dalam_perbaikan', 'Sedang perbaikan mesin utama.'],
+            ['TB Syukur 62', 'tugboat', 'laut', null, '525201021', 'PKSU1', 2019, 27.50, 8.50, 285, 140, null, null, '2 × CAT C32', 'Diesel', 118, 'PT Bunga Teratai', 'Pelabuhan Samarinda', 'aktif', null],
+            ['TB Syukur 70', 'tugboat', 'laut', null, '525201022', 'PKSV2', 2012, 23.50, 7.20, 232, 100, null, null, '2 × Cummins KTA38', 'Diesel', 96, 'PT Bunga Teratai', 'Pelabuhan Samarinda', 'aktif', null],
+            ['TB Syukur 75', 'tugboat', 'laut', null, '525201023', 'PKSW3', 2015, 26.80, 8.30, 274, 132, null, null, '2 × CAT 3512B', 'Diesel', 112, 'PT Bunga Teratai', 'Pelabuhan Samarinda', 'aktif', null],
+            ['TB Syukur 78', 'tugboat', 'laut', null, '525201024', 'PKSX4', 2015, 26.90, 8.30, 274, 132, null, null, '2 × CAT 3512B', 'Diesel', 112, 'PT Bunga Teratai', 'Pelabuhan Samarinda', 'aktif', null],
+            ['TB Syukur 82', 'tugboat', 'laut', null, '525201025', 'PKSY5', 2013, 24.80, 7.60, 231, 105, null, null, '2 × Yanmar 6EY', 'Diesel', 98, 'PT Bunga Teratai', 'Pelabuhan Samarinda', 'aktif', null],
+            ['BG Syukur 06', 'tongkang', 'sungai_danau', null, '525201008', 'PKSH8', 2015, 62.00, 14.50, 3103, 4350, 4350, 'ton', '— (ditowel)', '—', null, 'PT Bunga Teratai', 'Loa Buah, Samarinda', 'aktif', null],
+            ['BG Syukur 07', 'tongkang', 'laut', null, '525201009', 'PKSI9', 2011, 65.00, 15.00, 3107, 4350, 4350, 'ton', '— (ditowel)', '—', null, 'PT Bunga Teratai', 'Sungai Kunjang, Samarinda', 'aktif', null],
+            ['BG Syukur 09', 'tongkang', 'laut', null, '525201026', 'PKSZ6', 2012, 62.00, 14.50, 3103, 4350, 4350, 'ton', '— (ditowel)', '—', null, 'PT Bunga Teratai', 'Sungai Kunjang, Samarinda', 'aktif', null],
+            ['BG Syukur 29', 'tongkang', 'laut', null, '525201027', 'PKSA7', 2014, 63.00, 14.60, 3107, 4350, 4350, 'ton', '— (ditowel)', '—', null, 'PT Bunga Teratai', 'Sungai Kunjang, Samarinda', 'aktif', null],
+            ['BG Syukur 37', 'tongkang', 'laut', null, '525201028', 'PKSB9', 2014, 63.00, 14.60, 3107, 4350, 4350, 'ton', '— (ditowel)', '—', null, 'PT Bunga Teratai', 'Sungai Kunjang, Samarinda', 'aktif', null],
+            ['BG Syukur 47', 'tongkang', 'laut', null, '525201029', 'PKSC0', 2013, 66.00, 15.20, 3173, 4450, 4450, 'ton', '— (ditowel)', '—', null, 'PT Bunga Teratai', 'Sungai Kunjang, Samarinda', 'aktif', null],
+            ['BG Syukur 49', 'tongkang', 'laut', null, '525201030', 'PKSD1', 2016, 68.00, 15.50, 3379, 4750, 4750, 'ton', '— (ditowel)', '—', null, 'PT Bunga Teratai', 'Sungai Kunjang, Samarinda', 'aktif', null],
+            ['BG Syukur 53', 'tongkang', 'laut', null, '525201031', 'PKSE2', 2015, 64.00, 14.80, 3117, 4350, 4350, 'ton', '— (ditowel)', '—', null, 'PT Bunga Teratai', 'Sungai Kunjang, Samarinda', 'aktif', null],
+            ['BG Syukur 55', 'tongkang', 'laut', null, '525201032', 'PKSF3', 2013, 66.00, 15.20, 3173, 4450, 4450, 'ton', '— (ditowel)', '—', null, 'PT Bunga Teratai', 'Sungai Kunjang, Samarinda', 'aktif', null],
+            ['BG Syukur 57', 'tongkang', 'laut', null, '525201033', 'PKSG4', 2013, 66.00, 15.20, 3173, 4450, 4450, 'ton', '— (ditowel)', '—', null, 'PT Bunga Teratai', 'Sungai Kunjang, Samarinda', 'aktif', null],
+            ['BG Syukur 59', 'tongkang', 'laut', null, '525201034', 'PKSH5', 2015, 64.00, 14.80, 3117, 4350, 4350, 'ton', '— (ditowel)', '—', null, 'PT Bunga Teratai', 'Sungai Kunjang, Samarinda', 'aktif', null],
+            ['BG Syukur 61', 'tongkang', 'laut', null, '525201035', 'PKSJ6', 2015, 64.00, 14.80, 3117, 4350, 4350, 'ton', '— (ditowel)', '—', null, 'PT Bunga Teratai', 'Sungai Kunjang, Samarinda', 'aktif', null],
+            ['BG Syukur 71', 'tongkang', 'laut', null, '525201036', 'PKSK7', 2012, 61.00, 14.30, 3099, 4350, 4350, 'ton', '— (ditowel)', '—', null, 'PT Bunga Teratai', 'Sungai Kunjang, Samarinda', 'aktif', null],
+            ['BG Syukur 73', 'tongkang', 'laut', null, '525201037', 'PKSL8', 2012, 61.00, 14.30, 3099, 4350, 4350, 'ton', '— (ditowel)', '—', null, 'PT Bunga Teratai', 'Sungai Kunjang, Samarinda', 'aktif', null],
+            ['BG Syukur 80', 'tongkang', 'laut', null, '525201038', 'PKSM9', 2017, 67.00, 15.30, 3178, 4450, 4450, 'ton', '— (ditowel)', '—', null, 'PT Bunga Teratai', 'Sungai Kunjang, Samarinda', 'aktif', 'Belum ada berkas fisik di Dokumen_Kapal.'],
+            ['BG Syukur 81', 'tongkang', 'laut', null, '525201039', 'PKSN0', 2017, 69.00, 15.60, 3204, 4500, 4500, 'ton', '— (ditowel)', '—', null, 'PT Bunga Teratai', 'Sungai Kunjang, Samarinda', 'aktif', null],
+            ['BG Syukur 115', 'tongkang', 'laut', null, '525201040', 'PKSP1', 2016, 62.00, 14.50, 3103, 4350, 4350, 'ton', '— (ditowel)', '—', null, 'PT Bunga Teratai', 'Sungai Kunjang, Samarinda', 'aktif', null],
+            ['KM Tata Armada 01', 'tugboat', 'laut', null, '525201041', 'PKSQ2', 2015, 24.00, 7.30, 260, 115, null, null, '2 × CAT C18', 'Diesel', 100, 'PT Tata Armada Bersama', 'Pelabuhan Samarinda', 'aktif', 'Kapal milik PT Tata Armada Bersama (SIUPAL pada materi Dokumen_Kapal), dioperasikan PT Bunga Teratai.'],
         ];
 
         foreach ($vessels as $v) {
@@ -387,18 +417,19 @@ class DemoDataSeeder extends Seeder
         ];
 
         $skipFor = [
-            // 3 kapal tindak lanjut: requirement yang sengaja TIDAK dibuat
-            'BG Syukur 06' => ['C_DRYDOCK', 'C_PEMERIKSAAN_TAHUNAN', 'B_CEK_FISIK', 'D_MEDICAL', 'D_BST', 'C_RADIO'],
-            'BG Syukur 07' => ['C_SKL', 'C_DRYDOCK', 'B_STKB', 'D_SKK', 'C_RADIO', 'D_MEDICAL', 'B_CEK_FISIK'],
-            'TB Syukur 58' => ['C_PEMERIKSAAN_TAHUNAN', 'B_SHIP_PARTICULARS', 'D_BST', 'C_FIRE', 'D_MEDICAL'],
+            // Kapal tindak lanjut: requirement sengaja TIDAK dibuat (<90%)
+            'BG Syukur 80' => ['C_DRYDOCK', 'C_PEMERIKSAAN_TAHUNAN', 'B_CEK_FISIK', 'D_MEDICAL', 'D_BST', 'C_RADIO', 'D_SKK'],
+            'TB Syukur 11' => ['C_DRYDOCK', 'C_PEMERIKSAAN_TAHUNAN', 'B_CEK_FISIK', 'D_MEDICAL', 'D_BST', 'B_STKB'],
+            'BG Syukur 29' => ['C_DRYDOCK', 'B_CEK_FISIK', 'D_MEDICAL', 'D_BST', 'C_RADIO', 'B_STKB'],
+            'TB Syukur 51' => ['C_DRYDOCK', 'B_CEK_FISIK', 'D_MEDICAL', 'D_BST', 'C_RADIO', 'B_STKB'],
         ];
 
         // 1 kapal ditinjau: semua dokumen ada, 1 berstatus under_review
-        $underReviewVessel = 'KM Sungai Kunjang';
+        $underReviewVessel = 'TB Syukur 30';
 
         $expiringSoonDocs = [
             ['KM Prince Soya', 'C_RADIO'], ['TB Syukur 01', 'C_SKL'],
-            ['KM Etam Bahari', 'C_PEMERIKSAAN_TAHUNAN'], ['KM Pesisir Raya', 'B_CEK_FISIK'],
+            ['KM Etam Bahari', 'C_PEMERIKSAAN_TAHUNAN'], ['BG Syukur 06', 'B_CEK_FISIK'],
             ['TB Syukur 03', 'D_MEDICAL'],
         ];
         $expiredDocs = [
@@ -556,81 +587,323 @@ class DemoDataSeeder extends Seeder
         }
     }
 
+    /**
+     * Crew dari materi CREWING: 366 ABK nyata (Data Crew) + roster detail per
+     * kapal (Crew List) + register OFF + kadet Prala + sertifikat buku pelaut/ANT
+     * + gaji persis tabel gAJI + kantor (H. Syarif, H. Ariyanto, Capt Azwar).
+     */
     private function seedHr(): void
     {
         if (\App\Models\Crew::count() > 0) {
             return;
         }
 
-        $ranks = ['nakhoda', 'chief_engineer', 'mualim', 'mualim_2', 'juru_mudi', 'kelasi', 'oiler', 'juru_masak', 'abk'];
-        $names = [
-            'H. Rusdiansyah', 'Ir. Marwan Hakim', 'Syaifuddin', 'Agus Salim', 'M. Arifin',
-            'Dedi Kurniawan', 'Rahmat Hidayat', 'Joko Prasetyo', 'Muslimin', 'Ansar',
-            'Hendrik Tampubolon', 'Muhammad Fauzi', 'Iwan Setiawan', 'Slamet Riyadi', 'Yusuf Ali',
-            'Abdul Rahman', 'Ismail Marzuki', 'Tarmizi', 'Burhanuddin', 'Nasrullah',
+        $gaji = require __DIR__.'/data/gaji.php';
+        $salaryBySlug = [];
+        foreach ($gaji['salary'] as $label => $amount) {
+            $salaryBySlug[\App\Enums\CrewRank::fromLabel($label)] = (int) $amount;
+        }
+
+        $antMap = [
+            'ANT IV M' => 'ant_iv_m', 'ANT V M' => 'ant_iv_m', 'ANT IV' => 'ant_iv',
+            'ANT III M' => 'ant_iii_m', 'ANT III' => 'ant_iii',
+            'ATT IV M' => 'att_iv_m', 'ATT IV' => 'att_iv',
+            'ATT III M' => 'att_iii_m', 'ATT III' => 'att_iii',
         ];
 
-        $vessels = \App\Models\Vessel::where('vessel_type', '!=', 'tongkang')->get();
-        foreach ($names as $i => $name) {
-            $rank = $ranks[$i % count($ranks)];
-            $crew = \App\Models\Crew::create([
-                'name' => $name,
-                'nik' => '6471'.mt_rand(1000000000, 9999999999),
-                'birth_place' => ['Samarinda', 'Balikpapan', 'Tenggarong', 'Bontang', 'Penajam'][mt_rand(0, 4)],
-                'birth_date' => now()->subYears(mt_rand(22, 52))->toDateString(),
-                'gender' => 'L',
-                'phone' => '08'.mt_rand(1100000000, 9999999999),
-                'npwp' => mt_rand(0, 1) ? sprintf('9%d.%03d.%03d.000-%03d', mt_rand(100, 999), mt_rand(100, 999), mt_rand(100, 999), mt_rand(100, 999)) : null,
-                'rank' => $rank,
-                'base_salary' => match ($rank) {
-                    'nakhoda' => 8500000, 'chief_engineer' => 7500000, 'mualim', 'mualim_2' => 5500000,
-                    default => mt_rand(2800000, 4200000),
-                },
-                'status' => 'aktif',
-            ]);
-            // typo di match — perbaiki manual
-            $crew->update(['base_salary' => match ($rank) {
-                'nakhoda' => 8500000,
-                'chief_engineer' => 7500000,
-                'mualim', 'mualim_2' => 5500000,
-                default => mt_rand(2800000, 4200000),
-            }]);
+        $byName = [];
+        $byKode = [];
+        $kodeUsed = [];
 
-            if ($i < count($vessels) * 2) {
-                $vessel = $vessels[$i % count($vessels)];
-                \App\Models\CrewAssignment::create([
+        foreach (require __DIR__.'/data/crews.php' as $c) {
+            $rank = \App\Enums\CrewRank::fromLabel($c['rank_label']);
+            $vesselId = $this->resolveVesselId($c['vessel']);
+            $kode = $c['kode_nik'] ?? null;
+            if ($kode !== null) {
+                if (isset($kodeUsed[$kode])) {
+                    $kodeUsed[$kode]++;
+                    $kode = $kode.'-'.$kodeUsed[$kode];
+                } else {
+                    $kodeUsed[$kode] = 1;
+                }
+            }
+
+            $crew = \App\Models\Crew::create([
+                'kode_nik' => $kode,
+                'name' => $c['name'],
+                'name_ktp' => $c['name_ktp'],
+                'nik' => $c['nik'],
+                'birth_place' => $c['birth_place'],
+                'birth_date' => $c['birth_date'],
+                'religion' => $c['religion'],
+                'mother_name' => $c['mother_name'],
+                'bank_account' => $c['bank_account'],
+                'address' => $c['address'],
+                'npwp' => $c['npwp'],
+                'seafarer_code' => $c['seafarer_code'],
+                'sccw' => $c['sccw'],
+                'stcw_reference' => $c['stcw'],
+                'no_ijazah' => $c['no_ijazah'],
+                'no_pkl' => $c['no_pkl'],
+                'no_surat_mutasi' => $c['no_surat_mutasi'],
+                'is_blacklist' => $c['blacklist'],
+                'joined_on' => $c['join_date'],
+                'rank' => $rank,
+                'base_salary' => $salaryBySlug[$rank] ?? 3800000,
+                'status' => $vesselId ? 'aktif' : 'selesai',
+            ]);
+
+            $byName[mb_strtolower($c['name'])] = $crew;
+            if ($c['kode_nik']) {
+                $byKode[$c['kode_nik']] = $crew;
+            }
+
+            if ($c['buku_no']) {
+                \App\Models\CrewCertificate::create([
                     'crew_id' => $crew->id,
-                    'vessel_id' => $vessel->id,
-                    'role' => $rank,
-                    'start_date' => now()->subMonths(mt_rand(1, 18))->toDateString(),
-                    'status' => 'aktif',
+                    'cert_type' => 'buku_pelaut',
+                    'number' => $c['buku_no'],
+                    'issued_at' => null,
+                    'has_expiry' => $c['buku_exp'] !== null,
+                    'expiry_date' => $c['buku_exp'],
+                ]);
+            }
+            $sccwKey = mb_strtoupper(trim((string) $c['sccw']));
+            if ($c['sccw'] !== null && isset($antMap[$sccwKey])) {
+                \App\Models\CrewCertificate::create([
+                    'crew_id' => $crew->id,
+                    'cert_type' => $antMap[$sccwKey],
+                    'number' => $c['seafarer_code'],
+                    'issued_at' => null,
+                    'has_expiry' => false,
+                    'expiry_date' => null,
                 ]);
             }
 
-            // Sertifikat: sebagian expired / expiring
-            $certs = [
-                ['SKK', now()->addYears(mt_rand(1, 5)), now()->subYears(1)],
-                ['medical_fitness', now()->addMonths(mt_rand(1, 20)), now()->subMonths(6)],
-                ['BST', null, now()->subYears(3)],
-            ];
-            foreach ($certs as [$type, $expiry, $issued]) {
-                $useExpiry = $type !== 'BST';
-                if (! $useExpiry && mt_rand(0, 1)) {
-                    continue;
+            if ($vesselId) {
+                \App\Models\CrewAssignment::create([
+                    'crew_id' => $crew->id,
+                    'vessel_id' => $vesselId,
+                    'role' => $c['rank_label'] ?? (\App\Enums\CrewRank::tryFrom($rank)?->label() ?? $rank),
+                    'start_date' => $c['join_date'] ?? now()->subYear()->toDateString(),
+                    'status' => 'aktif',
+                ]);
+            }
+        }
+
+        // Overlay roster detail per kapal (Crew List: buku pelaut, PKL, ANT, sign-on)
+        foreach (require __DIR__.'/data/ship_roster.php' as $vesselName => $rows) {
+            $vesselId = $this->resolveVesselId($vesselName);
+            if (! $vesselId) {
+                continue;
+            }
+            foreach ($rows as $r) {
+                $key = mb_strtolower(trim($r['name']));
+                $rank = \App\Enums\CrewRank::fromLabel($r['rank_label']);
+                $crew = $byName[$key] ?? null;
+                if (! $crew) {
+                    $crew = \App\Models\Crew::create([
+                        'name' => trim($r['name']),
+                        'rank' => $rank,
+                        'base_salary' => $salaryBySlug[$rank] ?? 3800000,
+                        'seafarer_code' => $r['seafarer_code'],
+                        'no_pkl' => $r['no_pkl'],
+                        'sccw' => $r['sccw'],
+                        'joined_on' => $r['sign_on'],
+                        'status' => 'aktif',
+                    ]);
+                    $byName[$key] = $crew;
+                } else {
+                    $crew->update([
+                        'seafarer_code' => $r['seafarer_code'] ?? $crew->seafarer_code,
+                        'no_pkl' => $r['no_pkl'] ?? $crew->no_pkl,
+                        'sccw' => $r['sccw'] ?? $crew->sccw,
+                        'stcw_reference' => $r['stcw'] ?? $crew->stcw_reference,
+                    ]);
                 }
-                $days = mt_rand(-40, 400);
+
+                if ($r['buku_no']) {
+                    $hasBook = $crew->certificates()
+                        ->where('cert_type', 'buku_pelaut')
+                        ->where('number', $r['buku_no'])
+                        ->exists();
+                    if (! $hasBook) {
+                        \App\Models\CrewCertificate::create([
+                            'crew_id' => $crew->id,
+                            'cert_type' => 'buku_pelaut',
+                            'number' => $r['buku_no'],
+                            'has_expiry' => $r['buku_exp'] !== null,
+                            'expiry_date' => $r['buku_exp'],
+                        ]);
+                    }
+                }
+
+                // Penempatan aktif dgn sign-on sesuai materi
+                $crew->assignments()->where('status', 'aktif')->get()->each(function ($a) {
+                    $a->update(['status' => 'berakhir', 'end_date' => now()->toDateString()]);
+                });
+                \App\Models\CrewAssignment::create([
+                    'crew_id' => $crew->id,
+                    'vessel_id' => $vesselId,
+                    'role' => $r['rank_label'],
+                    'start_date' => $r['sign_on'] ?? now()->subMonths(6)->toDateString(),
+                    'status' => 'aktif',
+                ]);
+                $crew->update(['status' => 'aktif']);
+            }
+        }
+
+        // Register OFF klien -> gerakan historis sign_off (dgn no surat BT-OFF)
+        foreach (require __DIR__.'/data/crew_off.php' as $o) {
+            if (! $o['off_date']) {
+                continue;
+            }
+            $crew = null;
+            if ($o['nik'] && isset($byKode[$o['nik']])) {
+                $crew = $byKode[$o['nik']];
+            }
+            if (! $crew && isset($byName[mb_strtolower($o['name'])])) {
+                $crew = $byName[mb_strtolower($o['name'])];
+            }
+            if (! $crew) {
+                continue;
+            }
+            $reason = \App\Enums\CrewOffReason::fromLabel($o['reason']);
+            $active = $crew->assignments()->where('status', 'aktif')->latest('id')->first();
+
+            \App\Models\CrewMovement::create([
+                'crew_id' => $crew->id,
+                'vessel_id' => $active?->vessel_id,
+                'type' => \App\Enums\CrewMovementType::SignOff->value,
+                'role' => \App\Enums\CrewRank::tryFrom($crew->rank)?->label() ?? $crew->rank,
+                'movement_date' => $o['off_date'],
+                'reason' => $reason,
+                'no_surat' => $o['letter_no'],
+                'notes' => 'Tercatat dari register OFF klien.',
+            ]);
+        }
+
+        $letters = require __DIR__.'/data/crew_letters.php';
+
+        // Contoh Surat Pemberhentian (MUTASI OFF) 0105/BT-OFF/X/2026 — Fransiskho K.A Lumape
+        $mutOff = $letters['mutasi_off_sample'] ?? null;
+        if ($mutOff && ! empty($mutOff['name'])) {
+            $crew = null;
+            if (! empty($mutOff['nip']) && isset($byKode[$mutOff['nip']])) {
+                $crew = $byKode[$mutOff['nip']];
+            }
+            if (! $crew && isset($byName[mb_strtolower($mutOff['name'])])) {
+                $crew = $byName[mb_strtolower($mutOff['name'])];
+            }
+            if ($crew) {
+                $vesselId = $this->resolveVesselId($mutOff['vessel'] ?? null);
+                \App\Models\CrewMovement::create([
+                    'crew_id' => $crew->id,
+                    'vessel_id' => $vesselId,
+                    'type' => \App\Enums\CrewMovementType::SignOff->value,
+                    'role' => \App\Enums\CrewRank::tryFrom($crew->rank)?->label() ?? $crew->rank,
+                    'movement_date' => '2026-10-15',
+                    'reason' => \App\Enums\CrewOffReason::SelesaiKontrak->value,
+                    'no_surat' => $mutOff['letter_no'],
+                    'notes' => 'Surat pemberhentian contoh dari materi MUT OFF.',
+                ]);
+            }
+        }
+
+        // Contoh Surat Permohonan Sijil ON 0547/AG/BT-ADM/X/2026 (TB Syukur 62)
+        $sijil = $letters['sijil_on_sample'] ?? null;
+        $tb62 = $this->resolveVesselId('TB Syukur 62');
+        if ($sijil && $tb62 && ! empty($sijil['crew'])) {
+            $ids = [];
+            foreach ($sijil['crew'] as $row) {
+                $key = mb_strtolower($row['name']);
+                $crew = $byName[$key] ?? null;
+                if (! $crew) {
+                    $rank = \App\Enums\CrewRank::fromLabel($row['rank_label']);
+                    $crew = \App\Models\Crew::create([
+                        'name' => $row['name'],
+                        'rank' => $rank,
+                        'base_salary' => $salaryBySlug[$rank] ?? 3800000,
+                        'status' => 'aktif',
+                    ]);
+                    $byName[$key] = $crew;
+                }
+                \App\Models\CrewAssignment::create([
+                    'crew_id' => $crew->id,
+                    'vessel_id' => $tb62,
+                    'role' => $crew->rank,
+                    'start_date' => '2026-10-20',
+                    'status' => 'aktif',
+                ]);
+                $crew->update(['status' => 'aktif']);
+                $ids[] = $crew->id;
+            }
+            \App\Models\SijilRequest::create([
+                'no_surat' => $sijil['letter_no'] ?? null,
+                'letter_date' => '2026-10-20',
+                'kind' => 'on',
+                'vessel_id' => $tb62,
+                'crew_ids' => $ids,
+                'signed_by' => 'Capt Azwar Saputra',
+                'status' => 'terbit',
+                'notes' => 'Contoh surat dari materi CREWING (S. PERMOHONAN ON).',
+            ]);
+        }
+
+        // Kadet Prala (Format crew ON OFF kadet)
+        foreach (require __DIR__.'/data/kadets.php' as $k) {
+            $rank = \App\Enums\CrewRank::fromLabel($k['rank_label']);
+            $vesselId = $this->resolveVesselId($k['vessel']);
+            $active = $k['pkl_date'] !== null && $vesselId !== null && $k['pkl_date'] >= '2026-01-01';
+
+            $crew = \App\Models\Crew::create([
+                'name' => $k['name'],
+                'birth_place' => $k['birth_place'],
+                'birth_date' => $k['birth_date'],
+                'address' => $k['address'],
+                'seafarer_code' => $k['seafarer_code'],
+                'school_origin' => $k['school'],
+                'nit' => $k['nit'],
+                'joined_on' => $k['pkl_date'],
+                'rank' => $rank,
+                'base_salary' => 0, // kadet prala — tanpa gaji pokok
+                'status' => $active ? 'aktif' : 'selesai',
+            ]);
+
+            if ($k['buku_no']) {
                 \App\Models\CrewCertificate::create([
                     'crew_id' => $crew->id,
-                    'cert_type' => $type,
-                    'number' => strtoupper($type).'-'.mt_rand(10000, 99999),
-                    'issued_at' => $issued->toDateString(),
-                    'has_expiry' => $useExpiry,
-                    'expiry_date' => $useExpiry ? now()->addDays($days)->toDateString() : null,
+                    'cert_type' => 'buku_pelaut',
+                    'number' => $k['buku_no'],
+                    'has_expiry' => $k['buku_exp'] !== null,
+                    'expiry_date' => $k['buku_exp'],
+                ]);
+            }
+            if ($active) {
+                \App\Models\CrewAssignment::create([
+                    'crew_id' => $crew->id,
+                    'vessel_id' => $vesselId,
+                    'role' => (\App\Enums\CrewRank::tryFrom($rank)?->label() ?? $rank),
+                    'start_date' => $k['pkl_date'],
+                    'status' => 'aktif',
+                ]);
+            }
+            if ($k['pkl_date']) {
+                \App\Models\CrewMovement::create([
+                    'crew_id' => $crew->id,
+                    'vessel_id' => $vesselId,
+                    'type' => \App\Enums\CrewMovementType::KadetOn->value,
+                    'role' => (\App\Enums\CrewRank::tryFrom($rank)?->label() ?? $rank),
+                    'movement_date' => $k['pkl_date'],
+                    'notes' => 'Tercatat dari register kadet klien (Prala).',
                 ]);
             }
         }
 
         $offices = [
+            ['H. Syarif', 'Direktur Utama', 'Direksi'],
+            ['H. Ariyanto', 'Kepala Operasional', 'Operasional'],
+            ['Capt. Azwar Saputra', 'Nakhoda Senior', 'Operasional'],
             ['Hj. Siti Aminah', 'Direktur Utama', 'Direksi'],
             ['Drs. Halim Kusuma', 'Direktur Operasional', 'Operasional'],
             ['Rina Kartika', 'Staf Dokumen', 'Operasional'],
@@ -649,6 +922,9 @@ class DemoDataSeeder extends Seeder
         ];
 
         foreach ($offices as [$name, $position, $dept]) {
+            if (\App\Models\OfficeEmployee::where('name', $name)->exists()) {
+                continue;
+            }
             \App\Models\OfficeEmployee::create([
                 'name' => $name,
                 'nik' => '6471'.mt_rand(1000000000, 9999999999),
@@ -761,7 +1037,7 @@ class DemoDataSeeder extends Seeder
             ['internal_review', 'TB Syukur 01', 'BG Syukur 03', 'Bontang', 'batu_bara', 1500, 2],
             ['internal_review', 'TB Syukur 03', 'BG Syukur 07', 'Balikpapan', 'batu_bara', 1800, 3],
             ['awaiting_external_approval', 'TB Syukur 23', 'BG Syukur 06', 'Tanjung Redeb', 'sawit', 900, 4],
-            ['document_preparation', 'TB Syukur 23I', 'BG Syukur 03', 'Sangatta', 'batu_bara', 1600, 5],
+            ['document_preparation', 'TB Syukur 11', 'BG Syukur 03', 'Sangatta', 'batu_bara', 1600, 5],
             // 2 aktif non-review (siap/berangkat/dalam pelayaran)
             ['in_transit', 'TB Syukur 01', 'BG Syukur 07', 'Taboneo', 'batu_bara', 1400, -2],
             ['departed', 'TB Syukur 03', 'BG Syukur 06', 'Marunda', 'semen', 1200, -1],
@@ -769,7 +1045,7 @@ class DemoDataSeeder extends Seeder
             ['completed', 'TB Syukur 01', 'BG Syukur 03', 'Bontang', 'batu_bara', 1500, -30],
             ['completed', 'TB Syukur 03', 'BG Syukur 07', 'Balikpapan', 'batu_bara', 1700, -45],
             ['completed', 'TB Syukur 23', 'BG Syukur 06', 'Tanjung Harapan', 'batu_bara', 1100, -60],
-            ['completed', 'TB Syukur 23I', 'BG Syukur 03', 'Sangatta', 'curah_lain', 800, -75],
+            ['completed', 'TB Syukur 11', 'BG Syukur 03', 'Sangatta', 'curah_lain', 800, -75],
             // 1 delayed + 1 cancelled (variasi status)
             ['delayed', 'TB Syukur 01', 'BG Syukur 03', 'Bontang', 'batu_bara', 1300, 1],
             ['cancelled', 'TB Syukur 03', 'BG Syukur 07', 'Penajam', 'semen', 700, -5],
@@ -882,7 +1158,9 @@ class DemoDataSeeder extends Seeder
                         array_search($target, $order, true) - array_search('ready_for_departure', $order, true) + 1,
                     );
                     foreach ($rest as $s) {
-                        $workflow->transition($voyage, $s);
+                        $workflow->transition($voyage, $s, $s === 'ready_for_departure'
+                            ? 'Override kesiapan awak (seed — roster diverifikasi dari materi klien).'
+                            : null);
                     }
                 }
             } else {
@@ -972,7 +1250,9 @@ class DemoDataSeeder extends Seeder
                     ]);
                     continue;
                 }
-                $workflow->transition($voyage, $s);
+                $workflow->transition($voyage, $s, $s === 'ready_for_departure'
+                    ? 'Override kesiapan awak (seed — roster penumpang diverifikasi).'
+                    : null);
             }
 
             $voyage->update(['boarded' => min($tickets, $cap), 'landed' => $target === 'completed' ? min($tickets, $cap) : null, 'cancelled' => max(0, $cap - $tickets - 50)]);
@@ -1175,28 +1455,46 @@ class DemoDataSeeder extends Seeder
             }
         }
 
-        // Bills: assist kolong jembatan + operasional (6 bulan)
-        $supplierAssist = \App\Models\Supplier::where('name', 'like', '%Pemandu%')->first()
-            ?? \App\Models\Supplier::first();
+        // Bills: 16 assist nyata (materi assist klien) + tagihan jasa keagenan/CO + operasional
+        $supplierAssist = \App\Models\Supplier::firstOrCreate(['name' => 'KOPERASI KARTIKA'], [
+            'category' => 'lainnya',
+            'address' => 'Samarinda, Kalimantan Timur',
+            'phone' => '0541-'.mt_rand(200000, 999999),
+            'notes' => 'DEMO DATA — pemandu & assist Jetty Senyiur (materi assist klien).',
+        ]);
+        $supplierCo = \App\Models\Supplier::firstOrCreate(['name' => 'PELINDO & JASA PELABUHAN'], [
+            'category' => 'lainnya',
+            'address' => 'Samarinda, Kalimantan Timur',
+            'phone' => '0541-'.mt_rand(200000, 999999),
+            'notes' => 'DEMO DATA — jasa pelabuhan/keagenan (materi INVOICE CO + Pelindo Jembatan).',
+        ]);
         $supplierSparepart = \App\Models\Supplier::where('category', 'sparepart')->first();
         $supplierBengkel = \App\Models\Supplier::where('category', 'bengkel')->first();
 
         $billSpecs = [];
-        for ($i = 0; $i < 16; $i++) {
-            $billSpecs[] = ['assist', $supplierAssist, mt_rand(25, 80) * 100000, 'Jasa Assist Kolong Jembatan'];
+        foreach (array_slice(require __DIR__.'/data/assist.php', 0, 16) as $a) {
+            $issue = $a['date'] ? \Carbon\Carbon::parse($a['date']) : now()->subMonths(3);
+            $desc = 'Jasa Assist/Tambat/Pandu — '.$a['vessel'].($a['port'] ? ' ('.$a['port'].')' : '').($a['spal'] ? ' | SPAL '.$a['spal'] : '');
+            $billSpecs[] = ['assist', $supplierAssist, $a['amount'], $desc, $issue, true];
+        }
+        // Tagihan jasa keagenan/NOTA DEBET dari materi INVOICE CO (beban, outstanding)
+        foreach (require __DIR__.'/data/invoice_co.php' as $co) {
+            $issue = $co['date'] ? \Carbon\Carbon::parse($co['date']) : now()->subMonths(6);
+            $desc = 'Jasa keagenan/NOTA DEBET CO-'.($co['no'] ?? '').($co['pair'] ? ' ('.$co['pair'].')' : '');
+            $billSpecs[] = ['lainnya', $supplierCo, (float) ($co['total'] ?? 0), $desc, $issue, false];
         }
         for ($i = 0; $i < 6; $i++) {
-            $billSpecs[] = ['sparepart', $supplierSparepart, mt_rand(2, 30) * 500000, 'Pengadaan sparepart'];
+            $billSpecs[] = ['sparepart', $supplierSparepart, mt_rand(2, 30) * 500000, 'Pengadaan sparepart', null, true];
         }
-        $billSpecs[] = ['drydock', $supplierBengkel, 78500000, 'Drydock BG Syukur 07'];
-        $billSpecs[] = ['bbm', \App\Models\Supplier::where('category', 'lainnya')->first() ?? \App\Models\Supplier::first(), 45000000, 'Pengadaan BBM solar marine'];
-        $billSpecs[] = ['sewa', \App\Models\Supplier::where('category', 'lainnya')->first() ?? \App\Models\Supplier::first(), 25000000, 'Sewa pangkalan 3 bulan'];
+        $billSpecs[] = ['drydock', $supplierBengkel, 78500000, 'Drydock BG Syukur 07', null, true];
+        $billSpecs[] = ['bbm', \App\Models\Supplier::where('category', 'lainnya')->first() ?? \App\Models\Supplier::first(), 45000000, 'Pengadaan BBM solar marine', null, true];
+        $billSpecs[] = ['sewa', \App\Models\Supplier::where('category', 'lainnya')->first() ?? \App\Models\Supplier::first(), 25000000, 'Sewa pangkalan 3 bulan', null, true];
 
-        foreach ($billSpecs as $i => [$category, $supplier, $amount, $desc]) {
+        foreach ($billSpecs as $i => [$category, $supplier, $amount, $desc, $issueDate, $allowRandomPay]) {
             if (! $supplier) {
                 continue;
             }
-            $issue = now()->subMonths(mt_rand(0, 5))->subDays(mt_rand(0, 25));
+            $issue = $issueDate ?? now()->subMonths(mt_rand(0, 5))->subDays(mt_rand(0, 25));
             $ppn = round($amount * 0.11);
             $total = $amount + $ppn;
             $voyage = $completedVoyages->isNotEmpty() && $category === 'assist' ? $completedVoyages->random() : null;
@@ -1244,7 +1542,7 @@ class DemoDataSeeder extends Seeder
                 'status' => 'menunggu',
             ]);
 
-            if (mt_rand(0, 9) < 6) {
+            if ($allowRandomPay && mt_rand(0, 9) < 6) {
                 $cash = \App\Models\CashAccount::where('type', 'bank')->inRandomOrder()->first()
                     ?? \App\Models\CashAccount::first();
                 $payDate = $issue->copy()->addDays(mt_rand(5, 30));
@@ -1613,7 +1911,7 @@ class DemoDataSeeder extends Seeder
         }
     }
 
-    /** 10 master template dokumen terbit + arsip (pola nomor sesuai materi klien). */
+    /** 16 master template dokumen terbit + arsip (pola nomor sesuai materi klien — SPAL/Invoice/Keagenan/PO/Crewing). */
     private function seedDocumentTemplates(): void
     {
         if (\App\Models\DocumentTemplate::count() > 0) {
@@ -1622,7 +1920,7 @@ class DemoDataSeeder extends Seeder
 
         $templates = [
             ['SPAL', 'Surat Perjanjian Angkutan Laut', 'kontrak', 'spal', '{seq_raw}/{kode_penyewa}/FC/{kode_kapal}/{bulan_romawi}/{tahun}', 'ARS/SPAL/{tahun}/{seq}', false],
-            ['INV_CHARTER', 'Invoice Charter (DP/Pelunasan)', 'invoice', 'invoice_charter', '{seq_raw}/INV-CHTR/{bulan_romawi}/{tahun}', 'ARS/INV/{tahun}/{seq}', false],
+            ['INV_CHARTER', 'Invoice Charter (DP/Pelunasan)', 'invoice', 'invoice_charter', '{seq_raw}/{kode_penyewa}/{kode_kapal}/{bulan_romawi}/{tahun2}', 'ARS/INV/{tahun}/{seq}', false],
             ['KEAGENAN', 'Surat Penunjukan Keagenan', 'surat', 'keagenan', '{seq_raw}/{kode_penyewa}/AG/{bulan_romawi}/{tahun}', 'ARS/AGT/{tahun}/{seq}', false],
             ['PO', 'Purchase Order', 'po', 'po', '{seq}/PO-BT/TB/{bulan_romawi}/{tahun}', 'ARS/PO/{tahun}/{seq}', false],
             ['LAPORAN_EXPIRY', 'Monthly Document Expiry Report', 'laporan', 'monthly_report', 'LAP-EXP/{bulan_romawi}/{tahun}', null, false],
@@ -1631,6 +1929,13 @@ class DemoDataSeeder extends Seeder
             ['REKAP_NOTA', 'Rekap Nota', 'laporan', 'rekap_nota', 'RN/{bulan_romawi}/{tahun}', null, false],
             ['OUTSTANDING', 'Rencana Pembayaran Outstanding', 'laporan', 'outstanding', 'OUT/{bulan_romawi}/{tahun}', null, false],
             ['SURAT_UMUM', 'Surat Umum (Kop PT Bunga Teratai)', 'surat', 'generic_letter', '{seq}/BT/{bulan_romawi}/{tahun}', 'ARS/SU/{tahun}/{seq}', true],
+            // Crewing (materi CREWING) — counter diinit dari nomor materi terakhir
+            ['OFF_CREW', 'Surat Pemberhentian Awak Kapal (Mutasi OFF)', 'surat', 'surat_crew', '{seq4}/BT-OFF/{bulan_romawi}/{tahun}', 'ARS/OFF/{tahun}/{seq}', false],
+            ['SIJIL_ON', 'Permohonan Sijil ON/OFF Kesyahbandaran', 'surat', 'surat_crew', '{seq4}/AG/BT-ADM/{bulan_romawi}/{tahun}', 'ARS/AGT/{tahun}/{seq}', false],
+            ['MUTASI_CREW', 'Surat Mutasi Awak Kapal', 'surat', 'surat_crew', '{seq_raw}/BT-MI/{bulan_romawi}/{tahun}', 'ARS/MI/{tahun}/{seq}', false],
+            ['KADET_ON', 'Surat Pengangkatan Taruna (Prala)', 'surat', 'surat_crew', '{seq4}/BT-KDT/{bulan_romawi}/{tahun}', 'ARS/KDT/{tahun}/{seq}', false],
+            ['KADET_OFF', 'Mutasi OFF Kadet (Selesai PK)', 'surat', 'surat_crew', '{seq4}/BT-KDT-OFF/{bulan_romawi}/{tahun}', 'ARS/KDT/{tahun}/{seq}', false],
+            ['KUASA_PKL', 'Surat Kuasa PKL', 'surat', 'surat_crew', '{seq}/BT/SK-TB.{kode_kapal}/{bulan}/{tahun}', 'ARS/SK/{tahun}/{seq}', false],
         ];
 
         foreach ($templates as [$code, $name, $kategori, $layout, $pattern, $archive, $generic]) {
@@ -1642,7 +1947,20 @@ class DemoDataSeeder extends Seeder
                 'numbering_pattern' => $pattern,
                 'archive_pattern' => $archive,
                 'seq_scope' => 'tahunan',
-                'seq_last' => match ($code) { 'SPAL' => 104, 'KEAGENAN' => 44, 'PO' => 362, 'SURAT_UMUM' => 50, default => 0 },
+                'seq_last' => match ($code) {
+                    'SPAL' => 104,
+                    'KEAGENAN' => 44,
+                    'PO' => 362,
+                    'SURAT_UMUM' => 50,
+                    'INV_CHARTER' => 211,
+                    'OFF_CREW' => 107,
+                    'SIJIL_ON' => 547,
+                    'MUTASI_CREW' => 70,
+                    'KADET_ON' => 29,
+                    'KADET_OFF' => 25,
+                    'KUASA_PKL' => 9,
+                    default => 0,
+                },
                 'archive_seq_last' => 0,
                 'enabled' => true,
                 'is_generic_letter' => $generic,
@@ -1658,8 +1976,9 @@ class DemoDataSeeder extends Seeder
     }
 
     /**
-     * Dokumen tracker klien: nama kode A1–K1 + tanggal expiry serial Excel + endorsement.
-     * Angka target readiness tidak berubah (expiry baru hanya utk dokumen yang masih jauh).
+     * Overlay dokumen tracker klien PER KAPAL dari data/tracker.php (540 entri,
+     * 36 kapal): nama kode A1–K1, expiry serial Excel, endorsement last/next asli.
+     * Guard: dokumen expiring ≤30 hari (target sintetis) tidak ditimpa.
      */
     private function seedTrackerDocuments(): void
     {
@@ -1667,76 +1986,85 @@ class DemoDataSeeder extends Seeder
             return;
         }
 
-        $serialToDate = function (?int $serial): ?string {
-            if (! $serial) {
+        $trackerData = require __DIR__.'/data/tracker.php';
+
+        $serialToDate = function ($serial): ?string {
+            if (! is_numeric($serial)) {
                 return null;
             }
 
-            return date('Y-m-d', ($serial - 25569) * 86400);
+            return date('Y-m-d', ((float) $serial - 25569) * 86400);
         };
 
-        // requirement_code => [nama klien (TB), serial expiry, serial endorsement]
+        // requirement_code => kode dokumen di Master Tracker (tugboat)
         $tbMap = [
-            'B_SURAT_UKUR' => ['A1 | Surat Ukur International', null, null],               // Permanent
-            'B_STKB' => ['A2 | Surat Laut', null, 46570],                                   // Permanent + endorsement
-            'C_PEMERIKSAAN_TAHUNAN' => ['B1 | Sertifikat Keselamatan Konstruksi', 46950, null],
-            'C_RADIO' => ['B3 | Sertifikat Keselamatan Radio', 47050, null],
-            'C_SKL' => ['C1 | Sertifikat Biro Klasifikasi Lambung', 46419, 46430],
-            'C_FIRE' => ['D3 | Sertifikat Pemadam Api', 47120, null],
-            'D_BST' => ['D1 | Certificate Liferaft', 47030, null],
-            'D_MEDICAL' => ['D2 | Certificate Hydrostatic', 46980, null],
-            'B_CALLSIGN' => ['I1 | Izin Stasiun Radio Kapal Laut', 47338, null],
-            'D_SKK' => ['J1 | Dispensasi Perwira / SK Perwira', null, null],
-            'C_DRYDOCK' => ['K1 | Deratting Certificate / Kesehatan Kapal', 47200, null],
+            'B_SURAT_UKUR' => 'A1',
+            'B_STKB' => 'A2',
+            'C_PEMERIKSAAN_TAHUNAN' => 'B1',
+            'C_RADIO' => 'B3',
+            'C_SKL' => 'C1',
+            'C_FIRE' => 'D3',
+            'D_BST' => 'D1',
+            'D_MEDICAL' => 'D2',
+            'B_CALLSIGN' => 'I1',
+            'D_SKK' => 'J1',
+            'C_DRYDOCK' => 'K1',
         ];
-        // Daftar BG (B2 IMDG, C1 Hull, C2 Load Line — endorsement)
+        // tongkang: B2 IMDG, C1 Hull, C2 Load Line, D1 Polis/WRC, F1 Anti Teritip
         $bgMap = [
-            'B_SURAT_UKUR' => ['A1 | Surat Ukur International', null, null],
-            'B_STKB' => ['A2 | Surat Laut', null, 46428],
-            'C_PEMERIKSAAN_TAHUNAN' => ['B1 | Sertifikat Keselamatan Konstruksi', 46800, null],
-            'C_FIRE' => ['B2 | Sertifikat IMDG', 46750, null],
-            'C_SKL' => ['C1 | Sertifikat Biro Klasifikasi Hull Lambung', 46669, 46254],
-            'C_DRYDOCK' => ['C2 | Sertifikat Biro Klasifikasi Garis Muat (Load Line)', 46700, 46850],
-            'D_BST' => ['D1 | Polis Asuransi Pengangkatan Kerangka Kapal / WRC', 46483, null],
-            'D_MEDICAL' => ['D2 | Sertifikat WRC', 46483, null],
-            'D_SKK' => ['F1 | Sertifikat Nasional Sistem Anti Teritip', 46800, null],
+            'B_SURAT_UKUR' => 'A1',
+            'B_STKB' => 'A2',
+            'C_PEMERIKSAAN_TAHUNAN' => 'B1',
+            'C_FIRE' => 'B2',
+            'C_SKL' => 'C1',
+            'C_DRYDOCK' => 'C2',
+            'D_BST' => 'D1',
+            'D_MEDICAL' => 'D2',
+            'D_SKK' => 'F1',
         ];
 
-        foreach (\App\Models\Vessel::whereIn('vessel_type', ['tugboat', 'tongkang'])->get() as $k => $vessel) {
+        foreach (\App\Models\Vessel::whereIn('vessel_type', ['tugboat', 'tongkang'])->get() as $vessel) {
+            if (! isset($trackerData[$vessel->vessel_name])) {
+                continue;
+            }
+            $entries = [];
+            foreach ($trackerData[$vessel->vessel_name] as $entry) {
+                $entries[$entry['code']] = $entry;
+            }
             $map = $vessel->vessel_type === 'tugboat' ? $tbMap : $bgMap;
             $docs = \App\Models\Document::where('owner_type', 'vessel')
                 ->where('owner_id', $vessel->id)
                 ->get()
                 ->keyBy('requirement_code');
 
-            foreach ($map as $code => [$name, $expirySerial, $endorseSerial]) {
-                $doc = $docs->get($code);
-                if (! $doc) {
+            foreach ($map as $reqCode => $trackerCode) {
+                $doc = $docs->get($reqCode);
+                if (! $doc || ! isset($entries[$trackerCode])) {
                     continue;
                 }
+                $entry = $entries[$trackerCode];
+                $updates = ['document_name' => $entry['name'].' — '.$vessel->vessel_name];
 
-                $expiryDate = $serialToDate($expirySerial);
-                $updates = ['document_name' => $name.' — '.$vessel->vessel_name];
-
-                // Permanent
-                if ($expiryDate === null && $expirySerial === null && in_array($code, ['B_SURAT_UKUR', 'B_STKB', 'D_SKK'], true)) {
+                if (($entry['exp'] ?? null) === 'Permanent') {
+                    // A1 Surat Ukur & A2 Surat Laut permanen (A2 diendorse tahunan)
                     $updates['has_expiry'] = false;
                     $updates['expiry_date'] = null;
-                } elseif ($expiryDate !== null) {
-                    // Hanya ganti bila dokumen belum termasuk target expiring/expiring-safe
+                } elseif (is_numeric($entry['exp'] ?? null)) {
+                    $expiryDate = $serialToDate($entry['exp']);
                     $currentDays = $doc->has_expiry && $doc->expiry_date
                         ? (int) now()->startOfDay()->diffInDays($doc->expiry_date, false)
                         : null;
+                    // Jangan timpa dokumen expiring ≤30 hari / sudah expired (target sintetis)
                     if ($currentDays === null || $currentDays > 30) {
                         $updates['has_expiry'] = true;
                         $updates['expiry_date'] = $expiryDate;
                     }
                 }
 
-                if ($endorseSerial !== null) {
+                if (! empty($entry['ne']) && is_numeric($entry['ne'])) {
                     $updates['has_endorsement'] = true;
-                    $updates['endorsement_next_date'] = $serialToDate($endorseSerial) ?? now()->addMonths(14)->toDateString();
-                    $updates['endorsement_last_date'] = now()->subMonths(10)->toDateString();
+                    $updates['endorsement_next_date'] = $serialToDate($entry['ne']);
+                    $updates['endorsement_last_date'] = $serialToDate($entry['le'] ?? null);
                 }
 
                 $doc->update($updates);
@@ -1763,7 +2091,8 @@ class DemoDataSeeder extends Seeder
             ['npwp' => '01.352.876.4-092.000', 'address' => 'Jl. Pluit Indah Raya No. 168 Blok B-G, Penjaringan, Jakarta Utara', 'phone' => '021-6680000', 'email' => 'agency@sinarlautmaritim.com', 'notes' => 'Penyewa charter SPAL 104 (DEMO dari materi klien).'],
         );
 
-        $departAt = now()->subDays(20)->startOfHour();
+        // Tanggal tetap sesuai materi: SPAL 28-Sep-2026, berangkat 29-Sep-2026
+        $departAt = \Carbon\Carbon::parse('2026-09-29 08:00');
         $voyage = \App\Models\Voyage::create([
             'voyage_code' => 'VYG-2026-0104',
             'vessel_id' => \App\Models\Vessel::where('vessel_name', 'TB Syukur 23')->value('id'),
@@ -1784,7 +2113,7 @@ class DemoDataSeeder extends Seeder
             'notes' => 'DEMO DATA dari materi klien: SPAL 104 Sinar Laut Maritim — Silica sand 7.500 MT.',
             // Charter fields
             'spal_number' => '104/BT-SLM/FC/S.2303/IX/2026',
-            'spal_date' => now()->subDays(22)->toDateString(),
+            'spal_date' => '2026-09-28',
             'payment_terms' => 'dp_50_50',
             'payment_terms_note' => '50% dibayar pada saat muat; 50% dibayar pada saat kapal tiba POD sebelum bongkar',
             'freight_rate' => 125000,
@@ -1795,8 +2124,8 @@ class DemoDataSeeder extends Seeder
             'jetty_discharge' => 'Jetty Conch Manado, Lolak',
             'shipper' => 'PT. Anabella Energy Indonesia',
             'consignee' => 'PT. Conch North Sulawesi Cement',
-            'dsr_mt' => 7500,
-            'dsr_date' => $departAt->copy()->addDays(5)->toDateString(),
+            'dsr_mt' => 7539.27,
+            'dsr_date' => '2026-10-04',
             'charter_stage' => 'closing',
         ]);
 
@@ -1838,7 +2167,7 @@ class DemoDataSeeder extends Seeder
             ['E_INSTRUKSI', 'SHIP INSTRUCTION — Sinar Laut Maritim'],
             ['E_KONTRAK', 'SPAL 104/BT-SLM/FC/S.2303/IX/2026 (materai & ttd)'],
             ['E_MANIFEST', 'Manifest Silica Sand 7.500 MT'],
-            ['F_LAPORAN_BERANGKAT', 'DSR Nakhoda — 7.500 MT (Lolak, Manado)'],
+            ['F_LAPORAN_BERANGKAT', 'DSR Nakhoda — 7.539,27 MT (Lolak, Manado)'],
         ] as [$code, $name]) {
             $req = \App\Models\DocumentRequirement::where('code', $code)->first();
             $cat = \App\Models\DocumentCategory::where('group_code', $req?->group_code)->first();
@@ -1865,16 +2194,16 @@ class DemoDataSeeder extends Seeder
             }
         }
 
-        // Invoice 197 (DP 50%) & 211 (Pelunasan) — PPh 1.2%, PPN 11%
+        // Invoice 197 (DP 50%) & 211 (Pelunasan) — nomor & nominal persis INVOICE.xlsx
         foreach ([
-            ['197', 'dp', $departAt->copy()->subDay(), 468750000, 5],
-            ['211', 'pelunasan', $departAt->copy()->addDays(6), 468750000, 6],
+            ['197', 'dp', \Carbon\Carbon::parse('2026-10-01'), 468750000, 5],
+            ['211', 'pelunasan', \Carbon\Carbon::parse('2026-10-16'), 473658750, 6],
         ] as [$invNo, $kind, $date, $amount, $dd]) {
             $ppn = round($amount * 0.11);
             $pph = round($amount * 0.012);
             $total = $amount + $ppn - $pph;
             $invoice = \App\Models\Invoice::create([
-                'number' => $invNo.'/INV-BT/S.23-03',
+                'number' => $invNo.'/BT-SLM/S.23/X/26',
                 'customer_id' => $customer->id,
                 'voyage_id' => $voyage->id,
                 'issue_date' => $date->toDateString(),
@@ -1890,12 +2219,12 @@ class DemoDataSeeder extends Seeder
                 'fp_number' => '010.045-777.'.$invNo.'.2026',
                 'created_by' => $finance?->id,
                 'notes' => $kind === 'pelunasan'
-                    ? 'Pelunasan 50% sisa — lampir DSR 7.500 MT (DEMO).'
+                    ? 'Pelunasan 50% sisa — lampir DSR 7.539,27 MT (DEMO).'
                     : 'DP 50% saat kapal tiba jetty muat (DEMO).',
             ]);
             \App\Models\InvoiceItem::create([
                 'invoice_id' => $invoice->id,
-                'description' => ($kind === 'pelunasan' ? 'Pelunasan' : 'Down Payment').' Freight Charter Contract — Silica sand 7.500 MT x Rp. 125.000 (Samarinda → Jetty Conch Manado, Lolak)',
+                'description' => ($kind === 'pelunasan' ? 'Pelunasan (DSR 7.539,27 MT x Rp. 125.000 = Rp 942.408.750 - DP Rp 468.750.000)' : 'Down Payment 50% - Silica sand 7.500 MT x Rp. 125.000').' (Samarinda → Jetty Conch Manado, Lolak)',
                 'qty' => 1,
                 'price' => $amount,
                 'amount' => $amount,
@@ -1919,15 +2248,15 @@ class DemoDataSeeder extends Seeder
             ]);
         }
 
-        // Penunjukan keagenan 040 (muat, Kutai Lama) & 044 (bongkar, Lolak)
+        // Penunjukan keagenan 040 (muat, Kutai Lama) & 044 (bongkar, Bolaang Mangondow) — persis dokumen klien
         foreach ([
-            ['040', 'muat', 'Kutai Lama', 'PT. Sinar Laut Maritim', now()->subDays(21), 'TB Syukur 23'],
-            ['044', 'bongkar', 'Lolak, Manado', 'PT. Tujuh Tunas Satu Samudera', now()->subDays(16), 'BG Syukur 03'],
-        ] as [$no, $portType, $portName, $agent, $date, $kapal]) {
+            ['muat', 'Kutai Lama', 'PT. Sinar Laut Maritim', '2026-09-30', 'TB Syukur 23', '040/BT-SLM/AG/IX/2026'],
+            ['bongkar', 'Bolaang Mangondow', 'PT. Tujuh Tunas Satu Samudera', '2026-10-15', 'BG Syukur 03', '044/BT-TTSS/AG/X/2026'],
+        ] as [$portType, $portName, $agent, $date, $kapal, $letterNo]) {
             $agency = \App\Models\AgencyAppointment::create([
                 'voyage_id' => $voyage->id,
-                'letter_no' => $no.'/BT-SLM/AG/S.2303/IX/2026',
-                'letter_date' => $date->toDateString(),
+                'letter_no' => $letterNo,
+                'letter_date' => $date,
                 'port_type' => $portType,
                 'port_name' => $portName,
                 'agent_name' => $agent,
@@ -1945,8 +2274,8 @@ class DemoDataSeeder extends Seeder
                 'owner_id' => $voyage->vessel_id,
                 'source_type' => 'terbitan',
                 'template_id' => \App\Models\DocumentTemplate::where('code', 'KEAGENAN')->value('id'),
-                'period' => $date->format('Y-m'),
-                'issue_date' => $date->toDateString(),
+                'period' => substr($date, 0, 7),
+                'issue_date' => $date,
                 'has_expiry' => false,
                 'verification_status' => 'verified',
                 'uploaded_by' => $ops->id,
@@ -1954,7 +2283,7 @@ class DemoDataSeeder extends Seeder
             $voyage->documents()->attach($doc->id);
         }
 
-        $workflow->transition($voyage, 'ready_for_departure');
+        $workflow->transition($voyage, 'ready_for_departure', 'Override kesiapan awak (seed — roster SPAL 104 diverifikasi dari materi klien).');
         $workflow->transition($voyage->fresh(), 'departed');
         $workflow->transition($voyage->fresh(), 'in_transit');
         $workflow->transition($voyage->fresh(), 'arrived');
@@ -1982,64 +2311,70 @@ class DemoDataSeeder extends Seeder
         $journal = app(\App\Services\JournalService::class);
         $ops = User::where('email', 'ops@bungateratai.id')->first() ?? User::first();
 
-        $toko = [
-            ['CV GEMBIRA', 'sparepart'],
-            ['VERITAS MARINE SAFETY', 'lainnya'],
-            ['ANUGERAH LUBRINDO RAYA', 'lainnya'],
-            ['DELTA ARTHA NUSA', 'sparepart'],
-            ['MASEBA TEKNIK', 'bengkel'],
-            ['NAWASENA MARINE SAFETY', 'lainnya'],
-        ];
-        foreach ($toko as [$name, $cat]) {
+        // 29 toko master dari materi REKAP NOTA + TIGA BERLIAN (dari PO 003)
+        $rekapToko = require __DIR__.'/data/rekap_toko.php';
+        foreach ($rekapToko as $tokoName) {
+            $name = $tokoName === 'DELTA ARTA NUSA' ? 'DELTA ARTHA NUSA' : $tokoName;
+            $cat = 'lainnya';
+            if (stripos($name, 'MASEBA') !== false) {
+                $cat = 'bengkel';
+            } elseif (preg_match('/GEMBIRA|FILTER|SUBUR|ANUGERAH|DELTA ARTHA/i', $name)) {
+                $cat = 'sparepart';
+            }
             \App\Models\Supplier::firstOrCreate(['name' => $name], [
                 'category' => $cat,
                 'address' => 'Samarinda, Kalimantan Timur',
                 'phone' => '0541-'.mt_rand(200000, 999999),
-                'notes' => 'DEMO DATA — toko dari materi Outstanding/PO klien.',
+                'notes' => 'DEMO DATA — toko materi REKAP NOTA klien.',
             ]);
         }
+        \App\Models\Supplier::firstOrCreate(['name' => 'TIGA BERLIAN'], [
+            'category' => 'sparepart',
+            'address' => 'Samarinda, Kalimantan Timur',
+            'phone' => '0541-'.mt_rand(200000, 999999),
+            'notes' => 'DEMO DATA — supplier PO 003 materi klien.',
+        ]);
 
-        $poSpecs = [
-            [1, 'CV GEMBIRA', 'TB Syukur 58', 'ENGINE', [['Air Accu', '1 DUS', 1, 120000], ['Air Cooler', '40 Liter', 40, 7000], ['Oli Hidralic SAE 10', '50 Liter', 50, 40000]]],
-            [2, 'VERITAS MARINE SAFETY', 'TB Syukur 32', 'DECK', [['EPIRB GPS (EXP)', '1 UNIT', 1, 18500000]]],
-            [3, 'TIGA BERLIAN', 'TB Syukur 32', 'DECK', [['Rumah Lampu Sorot 500W', '1 PCS', 1, 2400000]]],
-            [4, 'ANUGERAH LUBRINDO RAYA', 'TB Syukur 54', 'ENGINE', [['Oli Mesin SAE 40 (drum)', '55 LITER', 55, 1250000]]],
-            [5, 'DELTA ARTHA NUSA', 'TB Syukur 01', 'ENGINE', [['Filter Oli Mesin', '4 PCS', 4, 350000], ['Filter Udara', '4 PCS', 4, 275000]]],
-            [6, 'MASEBA TEKNIK', 'BG Syukur 06', 'DECK', [['Jasa Perbaikan Pompa Hidraulik', '1 LS', 1, 8750000]]],
-            [7, 'NAWASENA MARINE SAFETY', 'TB Syukur 23', 'DECK', [['Life Jacket Dewasa', '6 PCS', 6, 385000]]],
-            [8, 'CV GEMBIRA', 'TB Syukur 54', 'ENGINE', [['Racor Filter ME', '6 PCS', 6, 485000]]],
-        ];
+        // 8 PO persis materi (sheet 001-58 .. 008-30): nomor, tgl, supplier, unit, item
+        $pos = require __DIR__.'/data/pos.php';
+        $billSeq = 99; // 0100+ — tidak bentrok dgn BILL-2026-00xx dari seedFinanceHistory
 
-        foreach ($poSpecs as $idx => [$seq, $tokoName, $unit, $dept, $items]) {
-            $supplier = \App\Models\Supplier::where('name', $tokoName)->first()
-                ?? \App\Models\Supplier::where('name', 'CV GEMBIRA')->first()
-                ?? \App\Models\Supplier::first();
-            $vesselId = \App\Models\Vessel::where('vessel_name', $unit)->value('id');
-            $orderDate = now()->subMonths(mt_rand(1, 5))->subDays(mt_rand(0, 25));
-            $romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+        foreach ($pos as $poKey => $p) {
+            $supplier = \App\Models\Supplier::where('name', trim($p['supplier']))->first()
+                ?? \App\Models\Supplier::firstOrCreate(['name' => trim($p['supplier'])], [
+                    'category' => 'lainnya',
+                    'address' => 'Samarinda, Kalimantan Timur',
+                    'phone' => '0541-'.mt_rand(200000, 999999),
+                    'notes' => 'DEMO DATA — toko dari materi PO TB SYUKUR 2026.',
+                ]);
+            $vesselId = $this->resolveVesselId($p['vessel']);
+            $orderDate = $p['date'] ? \Carbon\Carbon::parse($p['date']) : now()->subMonths(3);
+            $isPaid = $poKey === '001-58';
 
             $po = \App\Models\PurchaseOrder::create([
-                'po_number' => sprintf('%03d/PO-BT/TB/%s/%d', $seq, $romanMonths[(int) $orderDate->format('n') - 1], $orderDate->year),
+                'po_number' => $p['number'],
                 'order_date' => $orderDate->toDateString(),
                 'supplier_id' => $supplier->id,
                 'vessel_id' => $vesselId,
-                'dept' => $dept,
+                'dept' => $p['dept'] ?? 'ENGINE',
                 'status' => 'diterima',
                 'subtotal' => 0,
-                'notes' => 'DEMO DATA — PO dari materi klien PO TB SYUKUR 2026.',
+                'notes' => 'DEMO DATA — PO dari materi klien PO TB SYUKUR 2026 (sheet '.$p['sheet'].').',
                 'created_by' => $ops?->id,
             ]);
 
             $subtotal = 0;
-            foreach ($items as [$name, $unitName, $qty, $price]) {
-                $amount = $qty * $price;
+            foreach ($p['items'] as $item) {
+                $price = (float) ($item['price'] ?? 0);
+                $qty = (float) ($item['qty'] ?? 1);
+                $amount = $item['amount'] !== null ? (float) $item['amount'] : round($price * $qty);
                 $subtotal += $amount;
                 \App\Models\PoItem::create([
                     'po_id' => $po->id,
-                    'item_name' => $name,
-                    'item_code' => strtoupper(substr(md5($name), 0, 8)),
+                    'item_name' => $item['name'],
+                    'item_code' => strtoupper(substr(md5($item['name']), 0, 8)),
                     'qty' => $qty,
-                    'unit' => str_contains($unitName, 'Liter') ? 'liter' : (str_contains($unitName, 'PCS') || str_contains($unitName, 'UNIT') ? 'pcs' : 'unit'),
+                    'unit' => mb_strtolower($item['unit'] ?? 'pcs') ?: 'pcs',
                     'price' => $price,
                     'amount' => $amount,
                 ]);
@@ -2053,14 +2388,16 @@ class DemoDataSeeder extends Seeder
                 // PDF gagal tidak menggagalkan seed
             }
 
-            // 3 PO pertama → Bill (2 outstanding + 1 lunas dgn cek/BG)
-            if ($idx < 3) {
+            // Bill dari PO — hanya subtotal > 0 (materi 002–004 belum diisi harganya);
+            // PO 001 lunas dgn cek/BG (materi Outstanding), sisanya outstanding.
+            if ($subtotal > 0) {
                 $ppn = round($subtotal * 0.11);
                 $total = $subtotal + $ppn;
                 $due = $orderDate->copy()->addDays(21);
-                $paid = $idx === 0; // PO pertama lunas (cek/BG)
+                $paid = $isPaid;
+                $billSeq++;
                 $bill = \App\Models\Bill::create([
-                    'number' => sprintf('BILL-%d-%04d', $orderDate->year, 40 + $idx + 1),
+                    'number' => sprintf('BILL-%d-%04d', 2026, $billSeq),
                     'supplier_id' => $supplier->id,
                     'category' => 'sparepart',
                     'issue_date' => $orderDate->toDateString(),
@@ -2088,7 +2425,7 @@ class DemoDataSeeder extends Seeder
                 \App\Models\PaymentSchedule::create([
                     'ref_type' => 'bill', 'ref_id' => $bill->id,
                     'due_date' => $due->toDateString(), 'amount' => $total,
-                    'description' => "Bayar bill {$bill->number} — {$tokoName} (PO {$po->po_number})",
+                    'description' => "Bayar bill {$bill->number} — ".trim($p['supplier'])." (PO {$po->po_number})",
                     'status' => $paid ? 'lunas' : 'menunggu',
                     'paid_at' => $paid ? $due->toDateString() : null,
                 ]);
@@ -2116,7 +2453,7 @@ class DemoDataSeeder extends Seeder
             }
         }
 
-        // Rencana pembayaran outstanding tambahan (dari Excel OUTSTANDING: Delta Artha Nusa dgn no cek)
+        // Nota Delta Artha Nusa (dari materi REKAP NOTA: total 12.690.963)
         $delta = \App\Models\Supplier::where('name', 'DELTA ARTHA NUSA')->first();
         if ($delta) {
             $cash = \App\Models\CashAccount::where('type', 'bank')->first();
@@ -2128,14 +2465,14 @@ class DemoDataSeeder extends Seeder
                 'issue_date' => now()->subDays(40)->toDateString(),
                 'due_date' => now()->addDays(10)->toDateString(),
                 'status' => 'partial',
-                'subtotal' => 11433480,
-                'ppn_amount' => 1257483,
+                'subtotal' => 11433300,
+                'ppn_amount' => 1257663,
                 'total' => $amount,
                 'paid_amount' => 4000000,
-                'notes' => 'DEMO DATA — nota Delta Artha Nusa (lihat Excel OUTSTANDING).',
+                'notes' => 'DEMO DATA — nota Delta Artha Nusa Rp 12.690.963 (materi REKAP NOTA klien).',
             ]);
             $journal->post(
-                [['account' => '5100', 'debit' => 11433480], ['account' => '1200', 'debit' => 1257483], ['account' => '2100', 'credit' => $amount]],
+                [['account' => '5100', 'debit' => 11433300], ['account' => '1200', 'debit' => 1257663], ['account' => '2100', 'credit' => $amount]],
                 'Bill BILL-2026-0901 Delta Artha Nusa (DEMO)', 'bill', $bill->id, now()->subDays(40)->toDateString(),
             );
             \App\Models\PaymentSchedule::create([
@@ -2165,7 +2502,7 @@ class DemoDataSeeder extends Seeder
         }
     }
 
-    /** Arsip SPT Unifikasi (6 bulan, nama file asli dari materi klien). */
+    /** Arsip SPT Unifikasi — SEMUA 30 file asli (folder Jan–Jun materi klien). */
     private function seedSptArchive(): void
     {
         if (\App\Models\Document::where('document_name', 'like', '%SPT_Unifikasi%')->count() > 0) {
@@ -2173,34 +2510,170 @@ class DemoDataSeeder extends Seeder
         }
 
         $uploader = User::where('email', 'finance@bungateratai.id')->first() ?? User::first();
-        $files = [
-            'M_01-DOC001_SPT_Unifikasi_BPU_250023EJ8 BUNGA TERATAI.pdf' => now()->subMonths(9),
-            'BUNGA TERATAI M_01-DOC001_SPT_Unifikasi_BPU_2500QUTC0.pdf' => now()->subMonths(8),
-            'M_01-DOC001_SPT_Unifikasi_BPU_2501A3M6L Bunga Teratai.pdf' => now()->subMonths(7),
-            'M_01-DOC001_SPT_Unifikasi_BPU_2501UF8DS Bunga Teratai.pdf' => now()->subMonths(6),
-            'M_01-DOC001_SPT_Unifikasi_BPU_2502JF99N Bunga Teratai.pdf' => now()->subMonths(5),
-            'M_01-DOC001_SPT_Unifikasi_BPU_250393VD9 Bunga Teratai.pdf' => now()->subMonths(4),
-        ];
+        $sptByMonth = require __DIR__.'/data/spt.php';
 
         $category = \App\Models\DocumentCategory::where('code', 'G3')->first()
             ?? \App\Models\DocumentCategory::where('group_code', 'G')->first();
 
-        foreach ($files as $name => $issued) {
-            \App\Models\Document::create([
-                'document_name' => $name,
-                'category_id' => $category?->id,
-                'document_number' => substr($name, -15),
-                'owner_type' => 'company',
-                'source_type' => 'unggahan',
-                'period' => $issued->format('Y-m'),
-                'issue_date' => $issued->toDateString(),
-                'has_expiry' => false,
-                'verification_status' => 'verified',
-                'uploaded_by' => $uploader->id,
-                'responsible_person' => 'Staf Keuangan',
-                'archive_location' => 'Arsip Pajak — folder per bulan (DEMO dari nama file klien)',
-                'notes' => 'Arsip SPT Unifikasi bulanan hasil cetak DJP — DEMO DATA.',
+        foreach ($sptByMonth as $month => $files) {
+            $issued = \Carbon\Carbon::create(2026, (int) $month, 1);
+            foreach ($files as $name) {
+                $number = null;
+                if (preg_match('/(BPU[_ ]\w+)/', $name, $m)) {
+                    $number = str_replace('_', ' ', $m[1]);
+                }
+                \App\Models\Document::create([
+                    'document_name' => $name,
+                    'category_id' => $category?->id,
+                    'document_number' => $number,
+                    'owner_type' => 'company',
+                    'source_type' => 'unggahan',
+                    'period' => $issued->format('Y-m'),
+                    'issue_date' => $issued->toDateString(),
+                    'has_expiry' => false,
+                    'verification_status' => 'verified',
+                    'uploaded_by' => $uploader->id,
+                    'responsible_person' => 'Staf Keuangan',
+                    'archive_location' => 'Arsip Pajak — folder per bulan (DEMO dari nama file klien)',
+                    'notes' => 'Arsip SPT Unifikasi bulanan hasil cetak DJP — DEMO DATA.',
+                ]);
+            }
+        }
+    }
+
+    /** Rencana pembayaran Outstanding per bulan/toko (materi OUTSTANDING.xlsx). */
+    private function seedOutstanding(): void
+    {
+        if (\App\Models\PaymentSchedule::where('description', 'like', 'Outstanding %')->exists()) {
+            return;
+        }
+
+        $rows = require __DIR__.'/data/outstanding.php';
+        $bulanNum = ['Januari' => 1, 'Februari' => 2, 'Maret' => 3, 'April' => 4, 'Mei' => 5, 'Juni' => 6,
+            'Juli' => 7, 'Agustus' => 8, 'September' => 9, 'Oktober' => 10, 'November' => 11, 'Desember' => 12];
+
+        foreach ($rows as $row) {
+            if (! $row['amount'] || $row['amount'] <= 0) {
+                continue;
+            }
+            $firstWord = explode(' ', trim($row['month']))[0] ?? '';
+            $monthNo = $bulanNum[$firstWord] ?? 12;
+            $due = \Carbon\Carbon::create(2026, $monthNo, 1)->endOfMonth();
+            \App\Models\PaymentSchedule::create([
+                'ref_type' => 'manual',
+                'ref_id' => null,
+                'due_date' => $due->toDateString(),
+                'amount' => $row['amount'],
+                'description' => 'Outstanding '.trim($row['toko']).' — '.$row['month'].($row['cek'] ? ' (cek '.$row['cek'].')' : ''),
+                'status' => $row['lunas'] ? 'lunas' : 'menunggu',
+                'paid_at' => $row['lunas'] ? $due->toDateString() : null,
             ]);
         }
+    }
+
+    /**
+     * Metadata scan Dokumen_Kapal (646 file / 20 folder pair materi klien).
+     * File TIDAK disalin — hanya record Document (unggahan, expiry dari nama file).
+     */
+    private function seedDokumenKapal(): void
+    {
+        if (\App\Models\Document::where('archive_location', 'like', 'Dokumen_Kapal%')->exists()) {
+            return;
+        }
+
+        $uploader = User::where('email', 'dokumen@bungateratai.id')->first() ?? User::first();
+        $folders = require __DIR__.'/data/dokumen_kapal.php';
+
+        // keyword (urut, first-match) -> kode kategori dokumen
+        $catMap = [
+            'SURAT UKUR' => 'B2', 'SURAT LAUT' => 'B1', 'GROSS' => 'B1', 'SPEK' => 'B1', 'CALL SIGN' => 'B1',
+            'KONTRUKSI' => 'C1', 'KONSTRUKSI' => 'C1', 'BKI KLASS' => 'C1', 'BKI LAMBUNG' => 'C1',
+            'BKI MESIN' => 'C1', 'GARIS MUAT' => 'C1',
+            'PERLENGKAPAN' => 'C2', 'RADIO' => 'C2', 'SNPP' => 'C2', 'IMDG' => 'C2', 'PEMADAM' => 'C2',
+            'LIFERAFT' => 'C2', 'HRU' => 'C2', 'HYDRO' => 'C2', 'ANTI TERITIP' => 'C2', 'AFS' => 'C2',
+            'KESELAMATAN' => 'C2', 'SMC' => 'C2',
+            'CLC' => 'C3', 'WRC' => 'C3', 'ILR' => 'C3', 'PMK' => 'C3',
+            'SAFE' => 'D1', 'KESEHATAN' => 'D3', 'SANITASI' => 'D3',
+            'SIUPAL' => 'A3', 'ASURANSI' => 'E3', 'BLUE CARD' => 'E3', 'COI' => 'E3',
+        ];
+        $categoryByCode = \App\Models\DocumentCategory::pluck('id', 'code');
+        $fleetIds = [];
+        foreach (\App\Models\Vessel::all() as $v) {
+            $fleetIds[mb_strtolower($v->vessel_name)] = $v->id;
+        }
+
+        foreach ($folders as $folder => $info) {
+            foreach ($info['files'] as $f) {
+                // 1 file -> 1 kapal: derive dari nama file ('TB 32', 'BG 115', 'TATA', 'KMP'),
+                // fallback ke kapal pertama folder (file tanpa kode).
+                $derived = $this->vesselFromFile($f['file'], $info['vessels']);
+                $vesselId = $this->resolveVesselId($derived);
+                if (! $vesselId && $info['vessels']) {
+                    $vesselId = $this->resolveVesselId($info['vessels'][0]);
+                }
+                if (! $vesselId) {
+                    continue;
+                }
+
+                $catCode = 'B1';
+                $upper = mb_strtoupper($f['file']);
+                foreach ($catMap as $keyword => $code) {
+                    if (mb_strpos($upper, $keyword) !== false) {
+                        $catCode = $code;
+                        break;
+                    }
+                }
+                \App\Models\Document::create([
+                    'document_name' => preg_replace('/\.pdf$/i', '', $f['file']),
+                    'category_id' => $categoryByCode[$catCode] ?? null,
+                    'owner_type' => 'vessel',
+                    'owner_id' => $vesselId,
+                    'source_type' => 'unggahan',
+                    'issue_date' => null,
+                    'has_expiry' => $f['exp'] !== null,
+                    'expiry_date' => $f['exp'],
+                    'verification_status' => 'verified',
+                    'uploaded_by' => $uploader->id,
+                    'responsible_person' => 'Staf Dokumen',
+                    'archive_location' => 'Dokumen_Kapal (materi klien)',
+                    'notes' => 'Metadata scan: '.$folder.'/'.$f['file'],
+                ]);
+            }
+        }
+    }
+
+    /** Tebak kapal dari nama file scan ('001 TB 32 SURAT UKUR' -> 'TB Syukur 32'). */
+    private function vesselFromFile(string $file, array $folderVessels): ?string
+    {
+        $u = mb_strtoupper($file);
+        if (preg_match('/\bTB(?:\s+SYUKUR)?\s+(\d{1,3})\b/', $u, $m)) {
+            return 'TB Syukur '.$m[1];
+        }
+        if (preg_match('/\bBG(?:\s+SYUKUR)?\s+(\d{1,3})\b/', $u, $m)) {
+            return 'BG Syukur '.$m[1];
+        }
+        if (mb_strpos($u, 'TATA') !== false) {
+            return 'KM Tata Armada 01';
+        }
+        if (mb_strpos($u, 'PRINCE') !== false || mb_strpos($u, 'KMP') !== false) {
+            return 'KM Prince Soya';
+        }
+        return $folderVessels[0] ?? null;
+    }
+
+    /** Cari vessel id dari nama materi (case-insensitive; varian 'KM. Prince Soya' / 'TATA ARMADA 01'). */
+    private function resolveVesselId(?string $name): ?int
+    {
+        $target = mb_strtolower(trim(preg_replace('/\s+/', ' ', str_replace('.', '', (string) $name))));
+        if ($target === '') {
+            return null;
+        }
+        foreach (\App\Models\Vessel::all() as $v) {
+            $vn = mb_strtolower(trim(preg_replace('/\s+/', ' ', str_replace('.', '', $v->vessel_name))));
+            if ($vn === $target || str_ends_with($vn, $target) || str_ends_with($target, $vn)) {
+                return $v->id;
+            }
+        }
+        return null;
     }
 }

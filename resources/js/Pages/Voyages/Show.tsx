@@ -127,6 +127,7 @@ export default function VoyagesShow({
     const approveForm = useForm({ decision: 'approved', comments: '' });
     const externalForm = useForm({ evidence: null as File | null, source_note: '' });
     const statusForm = useForm({ to: '', note: '' });
+    const issueInvForm = useForm({ kind: 'dp', fp_number: '' });
 
     const tabs = [
         { key: 'overview', label: 'Overview', icon: Anchor },
@@ -746,12 +747,44 @@ export default function VoyagesShow({
                                 </div>
                             )}
                             <div className="mt-4 border-t border-hairline pt-3 text-sm">
-                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Terbitkan Invoice Baru</p>
-                                <div className="flex flex-wrap gap-2">
-                                    <a href={`/keuangan?tab=invoice`} className="rounded-lg border border-hairline px-3 py-1.5 text-xs font-medium text-ink hover:border-primary/40">
-                                        Ke menu Keuangan → Invoice
-                                    </a>
-                                </div>
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Terbitkan Invoice Charter</p>
+                                <p className="mb-2 text-xs text-muted">
+                                    Auto-fill dari SPAL (rate × MT) — pelunasan memakai DSR. PPN 11%, PPh 1,2%, nomor terbit urut, PDF otomatis terarsip. Kolom FP: nomor &amp; file (sistem tidak menerbitkan FP).
+                                </p>
+                                <form
+                                    onSubmit={(e: FormEvent) => {
+                                        e.preventDefault();
+                                        issueInvForm.post(`/perjalanan/${voyage.id}/invoice-charter`, { preserveScroll: true, onSuccess: () => issueInvForm.reset() });
+                                    }}
+                                    className="flex flex-wrap items-end gap-2"
+                                >
+                                    <div>
+                                        <label className="text-xs text-muted">Tahap</label>
+                                        <select
+                                            value={issueInvForm.data.kind}
+                                            onChange={(e) => issueInvForm.setData('kind', e.target.value)}
+                                            className="mt-1 block w-44 rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
+                                        >
+                                            <option value="dp">DP (50% / terms)</option>
+                                            <option value="dp100">DP 100% (penuh)</option>
+                                            <option value="pelunasan">Pelunasan (DSR − DP)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-muted">Nomor FP (opsional)</label>
+                                        <input
+                                            value={issueInvForm.data.fp_number}
+                                            onChange={(e) => issueInvForm.setData('fp_number', e.target.value)}
+                                            placeholder="010.045-777.197.2026"
+                                            className="mt-1 block w-56 rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
+                                        />
+                                    </div>
+                                    <PrimaryButton disabled={issueInvForm.processing || !voyage.spal_number || !voyage.freight_rate}>
+                                        Terbitkan &amp; Cetak
+                                    </PrimaryButton>
+                                </form>
+                                {!voyage.spal_number && <p className="mt-1.5 text-xs text-muted">Terbitkan SPAL terlebih dahulu.</p>}
+                                {issueInvForm.errors?.kind && <p className="mt-1 text-xs text-danger">{issueInvForm.errors.kind}</p>}
                             </div>
                         </Card>
                     )}
@@ -1281,7 +1314,9 @@ export default function VoyagesShow({
                         <label className="text-sm font-medium text-ink">
                             {isBackwardTransition(voyage.voyage_status, statusForm.data.to)
                                 ? 'Alasan Perubahan Status (Wajib)'
-                                : 'Catatan'}
+                                : statusForm.data.to === 'ready_for_departure'
+                                    ? 'Catatan — jadi alasan override bila kesiapan awak < 100%'
+                                    : 'Catatan'}
                         </label>
                         <input
                             value={statusForm.data.note}
@@ -1289,7 +1324,9 @@ export default function VoyagesShow({
                             placeholder={
                                 isBackwardTransition(voyage.voyage_status, statusForm.data.to)
                                     ? 'Tuliskan alasan jelas pemunduran status...'
-                                    : 'Catatan opsional...'
+                                    : statusForm.data.to === 'ready_for_departure'
+                                        ? 'Wajib diisi jika kesiapan awak kapal belum 100% (tercatat di timeline)...'
+                                        : 'Catatan opsional...'
                             }
                             required={isBackwardTransition(voyage.voyage_status, statusForm.data.to)}
                             className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"

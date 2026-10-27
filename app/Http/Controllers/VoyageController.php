@@ -288,7 +288,6 @@ class VoyageController extends Controller
                 'dsr_mt' => $voyage->dsr_mt,
                 'dsr_date' => $voyage->dsr_date?->toDateString(),
                 'charter_stage' => $voyage->charter_stage,
-                'progress_stage' => $voyage->progress_stage,
                 'allowed_transitions' => VoyageWorkflowService::TRANSITIONS[$voyage->voyage_status] ?? [],
             ],
             'fuelLogs' => $voyage->fuelLogs()->orderByDesc('trip_date')->get()->map(fn ($fl) => [
@@ -896,6 +895,208 @@ class VoyageController extends Controller
         return back()->with('success', 'Detail charter diperbarui (tahap: '.$data['charter_stage'].').');
     }
 
+    /** Tahapan charter (satu-satunya stage machine — materi SPAL EXC). */
+    private const CHARTER_STAGES = ['si', 'spal', 'dp', 'keagenan_muat', 'dsr', 'pelunasan', 'keagenan_bongkar', 'closing'];
+
+    /**
+     * Terbitkan Invoice Charter DP / Pelunasan langsung dari halaman voyage
+     * (Journey K): auto-fill dari SPAL + DSR, PPN 11%, PPh 1.2%, nomor pola
+     * materi {seq}/BT-SLM/S.23/X/26, input No FP + upload file FP, arsip PDF.
+     */
+    public function issueCharterInvoice(Request $request, Voyage $voyage)
+    {
+        $this->authorize('update', $voyage);
+
+        $data = $request->validate([
+            'kind' => ['required', 'in:dp,pelunasan,dp100'],
+            'fp_number' => ['nullable', 'string', 'max:60'],
+            'issue_date' => ['nullable', 'date'],
+            'due_date' => ['nullable', 'date'],
+        ]);
+
+        if (! $voyage->spal_number) {
+            return back()->with('error', 'Terbitkan SPAL terlebih dahulu sebelum invoice charter.');
+        }
+        if ($voyage->payment_terms === 'custom' && ! $voyage->payment_terms_note) {
+            return back()->with('error', 'Terms custom belum diisi pada detail charter.');
+        }
+
+        $rate = (float) $voyage->freight_rate;
+        $isLumpsum = $voyage->freight_unit === 'lumpsum';
+        $cargo = $voyage->cargo()->first();
+        $baseFreight = $isLumpsum ? $rate : $rate * (float) ($cargo->weight_ton ?? 0);
+
+        $dpPaid = (float) \App\Models\Invoice::where('voyage_id', $voyage->id)
+            ->whereIn('invoice_kind', ['dp', 'dp100'])
+            ->sum('subtotal');
+
+        if ($data['kind'] === 'pelunasan') {
+            if (! $voyage->dsr_mt) {
+                return back()->with('error', 'Pelunasan membutuhkan DSR (total muatan MT dari nakhoda) — isi DSR pada detail charter terlebih dahulu.');
+            }
+            $freight = $isLumpsum ? $rate : $rate * (float) $voyage->dsr_mt;
+            $subtotal = round($freight - $dpPaid);
+        } elseif ($data['kind'] === 'dp100') {
+            $subtotal = round($baseFreight - $dpPaid);
+        } else {
+            $terms = $voyage->payment_terms === 'dp_100' ? 1.0 : 0.5;
+            $subtotal = round($baseFreight * $terms) - round($dpPaid);
+            $subtotal = max($subtotal, 0);
+        }
+
+        if ($subtotal <= 0) {
+            return back()->with('error', 'Tidak ada sisa tagihan untuk tahap ini (semua freight sudah ditagih).');
+        }
+
+        $ppn = round($subtotal * 0.11);
+        $pphRate = 0.012;
+        $pph = round($subtotal * $pphRate);
+        $total = $subtotal + $ppn - $pph;
+        $issueDate = ! empty($data['issue_date']) ? \Carbon\Carbon::parse($data['issue_date']) : now();
+
+        $numbered = app(\App\Services\NumberingService::class)->next('INV_CHARTER', [
+            '{kode_penyewa}' => $this->customerCode($voyage->customer?->name),
+            '{kode_kapal}' => $this->shipCode($voyage->vessel?->vessel_name),
+        ]);
+
+        $invoice = \App\Models\Invoice::create([
+            'number' => $numbered['number'],
+            'customer_id' => $voyage->customer_id,
+            'voyage_id' => $voyage->id,
+            'vessel_id' => $voyage->vessel_id,
+            'issue_date' => $issueDate->toDateString(),
+            'due_date' => ! empty($data['due_date']) ? $data['due_date'] : $issueDate->copy()->addDays(14)->toDateString(),
+            'status' => 'unpaid',
+            'subtotal' => $subtotal,
+            'ppn_rate' => 11,
+            'ppn_amount' => $ppn,
+            'pph_rate' => $pphRate,
+            'pph23_amount' => $pph,
+            'invoice_kind' => $data['kind'],
+            'fp_number' => $data['fp_number'] ?? null,
+            'total' => $total,
+            'created_by' => auth()->id(),
+            'notes' => $data['kind'] === 'pelunasan'
+                ? 'Pelunasan freight charter (DSR '.number_format((float) $voyage->dsr_mt, 2, ',', '.').' MT) — terbit dari voyage.'
+                : 'DP freight charter — terbit dari voyage (terms '.($voyage->payment_terms ?? '-').').',
+        ]);
+
+        $desc = $data['kind'] === 'pelunasan'
+            ? 'Pelunasan Freight Charter Contract — DSR '.number_format((float) $voyage->dsr_mt, 2, ',', '.').' MT x Rp. '.number_format($rate, 0, ',', '.').' (sisa setelah DP)'
+            : (($data['kind'] === 'dp100' ? 'Pembayaran Penuh' : 'Down Payment').' Freight Charter Contract — '
+                .number_format((float) ($cargo->weight_ton ?? 0), 0, ',', '.').' MT x Rp. '.number_format($rate, 0, ',', '.')
+                .' ('.$voyage->origin.' → '.$voyage->destination.')');
+
+        \App\Models\InvoiceItem::create([
+            'invoice_id' => $invoice->id,
+            'description' => $desc,
+            'qty' => 1,
+            'price' => $subtotal,
+            'amount' => $subtotal,
+        ]);
+
+        app(\App\Services\JournalService::class)->post(
+            [
+                ['account' => '1100', 'debit' => $total],
+                ['account' => '2101', 'debit' => $pph],
+                ['account' => '4300', 'credit' => $subtotal],
+                ['account' => '2101', 'credit' => $ppn],
+            ],
+            "Invoice charter {$numbered['number']} ({$voyage->voyage_code})",
+            'invoice', $invoice->id, $issueDate->toDateString(),
+        );
+
+        \App\Models\WithholdingTax::create([
+            'type' => 'pph23', 'period' => $issueDate->format('Y-m'), 'date' => $issueDate->toDateString(),
+            'base_amount' => $subtotal, 'rate' => 1.2, 'tax_amount' => $pph,
+            'counterparty' => $voyage->customer?->name ?? 'Charterer', 'ref_type' => 'invoice', 'ref_id' => $invoice->id,
+            'status' => 'tercatat', 'paid_at' => null,
+        ]);
+
+        // FP file (materi: input No FP + upload file FP — tanpa generate)
+        $fpNote = '';
+        if ($request->hasFile('fp_file')) {
+            $path = $request->file('fp_file')->store('documents', 'local');
+            $fpDoc = \App\Models\Document::create([
+                'document_name' => 'Faktur Pajak '.($data['fp_number'] ?? $invoice->number),
+                'category_id' => \App\Models\DocumentCategory::where('group_code', 'E')->value('id'),
+                'document_number' => $data['fp_number'] ?? null,
+                'owner_type' => 'vessel',
+                'owner_id' => $voyage->vessel_id,
+                'source_type' => 'unggahan',
+                'issue_date' => $issueDate->toDateString(),
+                'has_expiry' => false,
+                'verification_status' => 'verified',
+                'uploaded_by' => auth()->id(),
+                'responsible_person' => auth()->user()?->name,
+                'archive_location' => 'FP lampiran invoice charter',
+                'file_path' => $path,
+                'notes' => 'Faktur Pajak invoice '.$invoice->number,
+            ]);
+            $ver = \App\Models\DocumentVersion::create([
+                'document_id' => $fpDoc->id,
+                'version_number' => 1,
+                'file_path' => $path,
+                'file_mime' => $request->file('fp_file')->getClientMimeType(),
+                'file_size' => $request->file('fp_file')->getSize(),
+                'uploaded_at' => now(),
+                'uploaded_by' => auth()->id(),
+                'revision_notes' => 'Upload FP dari halaman voyage',
+            ]);
+            $fpDoc->update(['current_version_id' => $ver->id]);
+            $fpDoc->voyages()->attach($voyage->id);
+            $fpNote = ' File FP terlampir.';
+        }
+
+        // Tahap charter maju (tidak pernah mundur otomatis)
+        $newStage = $data['kind'] === 'pelunasan' ? 'pelunasan' : 'dp';
+        $cur = array_search($voyage->charter_stage, self::CHARTER_STAGES, true);
+        $new = array_search($newStage, self::CHARTER_STAGES, true);
+        if ($cur !== false && $new !== false && $new > $cur) {
+            $voyage->update(['charter_stage' => $newStage]);
+        }
+
+        // Cetak & arsip PDF otomatis (Journey K)
+        app(\App\Services\Generators\DocumentGeneratorService::class)->generateCharterInvoice($invoice->fresh(), $data['kind']);
+
+        $this->workflow->recordEvent($voyage, \App\Enums\VoyageEventType::StatusChanged,
+            'Invoice charter terbit: '.$invoice->number.' — Rp '.number_format($total, 0, ',', '.')
+            .' ('.($data['kind'] === 'pelunasan' ? 'Pelunasan' : 'DP').')');
+
+        \App\Services\AuditService::log('invoice_issued', 'invoice', $invoice->id, null, $data,
+            "Invoice charter {$invoice->number} terbit dari voyage {$voyage->voyage_code}");
+
+        return back()->with('success',
+            "Invoice charter {$invoice->number} terbit — Rp ".number_format($total, 0, ',', '.')
+            .' & PDF terarsip.'.($data['fp_number'] ? " FP: {$data['fp_number']}." : '').$fpNote);
+    }
+
+    /** Kode penyewa utk nomor invoice: 'PT Sinar Laut Maritim' -> 'BT-SLM'. */
+    private function customerCode(?string $name): string
+    {
+        $words = preg_split('/\s+/', trim((string) $name));
+        $words = array_filter($words, fn ($w) => ! in_array(strtoupper($w), ['PT', 'CV', 'KS', 'TBK', 'PERUM', 'PERPUS', 'UD', 'FIRMA', 'DAN'], true)
+            && strlen($w) >= 2);
+        $initials = strtoupper(preg_replace('/[^A-Za-z]/', '', implode('', array_map(fn ($w) => substr($w, 0, 1), array_slice($words, 0, 3)))));
+
+        return 'BT-'.($initials !== '' ? $initials : 'GEN');
+    }
+
+    /** Kode kapal utk nomor invoice: 'TB Syukur 23' -> 'S.23', 'KM Prince Soya' -> 'S.ya'. */
+    private function shipCode(?string $vesselName): string
+    {
+        if (preg_match('/Syukur\s+(\w+)/i', (string) $vesselName, $m)) {
+            return 'S.'.$m[1];
+        }
+        if (stripos((string) $vesselName, 'Prince Soya') !== false) {
+            return 'S.ya';
+        }
+        $parts = preg_split('/\s+/', trim((string) $vesselName));
+        $tail = end($parts) ?: 'KPL';
+
+        return 'S.'.$tail;
+    }
+
     public function updateProgressStage(Request $request, Voyage $voyage)
     {
         $this->authorize('update', $voyage);
@@ -914,17 +1115,14 @@ class VoyageController extends Controller
             'bunker' => 'Bunker',
         ];
 
-        $oldStage = $voyage->progress_stage;
-        $newStage = $data['progress_stage'];
-        $voyage->update(['progress_stage' => $newStage]);
+        $label = $stageLabels[$data['progress_stage']] ?? $data['progress_stage'];
+        $desc = 'Progress tahapan kapal: '.$label.(! empty($data['notes']) ? ' - '.$data['notes'] : '');
 
-        $label = $stageLabels[$newStage] ?? $newStage;
-        $desc = "Progress tahapan kapal diubah ke: {$label}" . (! empty($data['notes']) ? " - {$data['notes']}" : '');
-
+        // Disatukan ke charter_stage (satu stage machine) — progress dicatat sebagai event.
         $this->workflow->recordEvent($voyage, \App\Enums\VoyageEventType::StatusChanged, $desc);
-        AuditService::log('progress_stage_updated', 'voyage', $voyage->id, ['progress_stage' => $oldStage], $data, $desc);
+        AuditService::log('progress_stage_event', 'voyage', $voyage->id, null, $data, $desc);
 
-        return back()->with('success', "Progress kapal diperbarui: {$label}");
+        return back()->with('success', "Progress kapal dicatat: {$label}");
     }
 
     public function storeFuelLog(Request $request, Voyage $voyage)

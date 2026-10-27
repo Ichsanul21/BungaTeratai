@@ -38,9 +38,9 @@ class DocumentGeneratorService
 
         return [
             'name' => 'PT BUNGA TERATAI',
-            'address' => 'Jl. Nahkoda No. 35, Samarinda Ilir, Kota Samarinda, Kalimantan Timur 75113',
-            'phone' => '+62 812 3456 7890',
-            'email' => 'bungateratai@gmail.com',
+            'address' => ($company?->address) ?: 'Jl. Mulawarman No. 23, Samarinda, Kalimantan Timur',
+            'phone' => ($company?->phone) ?: '(0541) 731034',
+            'email' => ($company?->email) ?: 'adm.teratai@gmail.com',
             'npwp' => $npwp,
             'bank' => $bankString,
             'account_holder' => $bank?->account_holder ?? 'PT Bunga Teratai',
@@ -61,6 +61,7 @@ class DocumentGeneratorService
         ?Voyage $voyage = null,
         ?int $ownerVesselId = null,
         array $extra = [],
+        ?int $ownerCrewId = null,
     ): array {
         $template = DocumentTemplate::where('code', $templateCode)->first();
         $kode = strtoupper(str_replace(['-', ' '], '', substr($templateCode, 0, 6)));
@@ -74,8 +75,8 @@ class DocumentGeneratorService
             'document_name' => $documentName,
             'category_id' => $extra['category_id'] ?? \App\Models\DocumentCategory::where('group_code', 'E')->value('id'),
             'document_number' => $extra['document_number'] ?? null,
-            'owner_type' => $ownerVesselId ? 'vessel' : 'company',
-            'owner_id' => $ownerVesselId,
+            'owner_type' => $ownerCrewId ? 'crew' : ($ownerVesselId ? 'vessel' : 'company'),
+            'owner_id' => $ownerCrewId ?: $ownerVesselId,
             'source_type' => 'terbitan',
             'template_id' => $template?->id,
             'archive_number' => sprintf('ARS/%s/%d/%03d', $kode, $year, $seq),
@@ -275,5 +276,210 @@ class DocumentGeneratorService
             null,
             ['document_number' => $numbered['number'], 'category_id' => \App\Models\DocumentCategory::where('group_code', 'G')->value('id'), 'notes' => $data['body']],
         );
+    }
+
+    // ============ CREWING (materi CREWING) ============
+
+    /** Crew List per kapal — format materi (GRT, bendera, pemilik, buku pelaut, PKL, ANT, sign on). */
+    public function generateCrewList(\App\Models\Vessel $vessel): array
+    {
+        $rows = \App\Models\CrewAssignment::with('crew')
+            ->where('vessel_id', $vessel->id)
+            ->where('status', 'aktif')
+            ->get()
+            ->map(function ($a) {
+                $crew = $a->crew;
+                $book = $crew?->certificates()
+                    ->where('cert_type', 'buku_pelaut')
+                    ->orderByDesc('expiry_date')
+                    ->first();
+
+                return [
+                    'name' => $crew?->name ?? '—',
+                    'rank' => $a->role,
+                    'buku_no' => $book?->number ?? $crew?->buku_no ?? null,
+                    'buku_exp' => $book?->expiry_date?->format('d/m/Y') ?? null,
+                    'no_pkl' => $crew?->no_pkl,
+                    'ant' => $crew?->sccw,
+                    'seafarer_code' => $crew?->seafarer_code,
+                    'sign_on' => $a->start_date ? \Carbon\Carbon::parse($a->start_date)->format('d/m/Y') : null,
+                ];
+            })
+            ->values()
+            ->all();
+
+        $pdf = Pdf::loadView('pdf.crew-list', [
+            'vessel' => $vessel,
+            'rows' => $rows,
+            'lh' => $this->letterhead(),
+        ])->setPaper('a4');
+
+        $path = $this->storePdf($pdf, 'CREW-LIST-'.preg_replace('/[^A-Za-z0-9]/', '', $vessel->vessel_name).'-'.now()->format('Ymd').'.pdf');
+
+        return $this->archiveGeneratedPdf(
+            'CREW_LIST',
+            'Crew List - '.$vessel->vessel_name,
+            $path,
+            null,
+            $vessel->id,
+            ['category_id' => \App\Models\DocumentCategory::where('group_code', 'D')->value('id'),
+                'notes' => 'Cetak roster awak kapal ('.count($rows).' orang).'],
+        );
+    }
+
+    /** Surat Pemberhentian Awak Kapal (MUTASI OFF) — materi CREWING/MUT OFF. */
+    public function generateCrewMutasiOff(\App\Models\CrewMovement $movement): array
+    {
+        $movement->load(['crew', 'vessel', 'replacementCrew']);
+        $reason = \App\Enums\CrewOffReason::fromLabel($movement->reason);
+
+        $pdf = Pdf::loadView('pdf.crew-mutasi-off', [
+            'movement' => $movement,
+            'crew' => $movement->crew,
+            'vessel' => $movement->vessel,
+            'reasonLabel' => $movement->reason ?: $reason->label(),
+            'place' => 'Samarinda',
+            'signerTitle' => 'Manajemen',
+            'lh' => $this->letterhead(),
+        ])->setPaper('a4');
+
+        $path = $this->storePdf($pdf, 'MUTASI-OFF-'.preg_replace('/[^A-Za-z0-9]/', '', $movement->no_surat ?? 'X').'.pdf');
+
+        return $this->archiveGeneratedPdf(
+            'OFF_CREW',
+            'Surat Pemberhentian AWAK KAPAL (MUTASI OFF) '.($movement->no_surat ?? ''),
+            $path,
+            null,
+            null,
+            ['document_number' => $movement->no_surat,
+                'category_id' => \App\Models\DocumentCategory::where('group_code', 'D')->value('id')],
+            $movement->crew_id,
+        );
+    }
+
+    /** Surat Permohonan Sijil ON/OFF ke Kesyahbandaran Kelas I Samarinda — materi S. PERMOHONAN ON. */
+    public function generateSijilRequest(\App\Models\SijilRequest $sijil): array
+    {
+        if (! $sijil->no_surat) {
+            $numbered = app(\App\Services\NumberingService::class)->next('SIJIL_ON');
+            $sijil->no_surat = $numbered['number'];
+        }
+        $sijil->save();
+
+        $vessel = $sijil->vessel;
+        $crewList = $sijil->crews()->map(fn ($c) => [
+            'name' => $c->name,
+            'rank' => $this->rankLabel($c->rank),
+        ])->values()->all();
+
+        $vesselTypeLabel = match ($vessel->vessel_type) {
+            'tugboat' => 'Tugboat',
+            'tongkang' => 'Tongkang',
+            'kapal_penumpang' => 'Kapal Penumpang',
+            default => ucfirst(str_replace('_', ' ', $vessel->vessel_type)),
+        };
+
+        $pdf = Pdf::loadView('pdf.sijil-request', [
+            'sijil' => $sijil,
+            'vessel' => $vessel,
+            'crewList' => $crewList,
+            'vesselTypeLabel' => $vesselTypeLabel,
+            'place' => 'Samarinda',
+            'lh' => $this->letterhead(),
+        ])->setPaper('a4');
+
+        $path = $this->storePdf($pdf, 'SIJIL-'.strtoupper($sijil->kind).'-'.preg_replace('/[^A-Za-z0-9]/', '', $sijil->no_surat).'.pdf');
+
+        $archived = $this->archiveGeneratedPdf(
+            'SIJIL_ON',
+            'Surat Permohonan Sijil '.strtoupper($sijil->kind).' - '.($vessel->vessel_name ?? ''),
+            $path,
+            null,
+            null,
+            ['document_number' => $sijil->no_surat,
+                'category_id' => \App\Models\DocumentCategory::where('group_code', 'E')->value('id')],
+        );
+        $sijil->update(['document_id' => $archived['document']->id, 'status' => 'terbit']);
+
+        return $archived;
+    }
+
+    /** Surat Kadet ON (Prala) / OFF (selesai PK) — materi Format crew ON OFF kadet. */
+    public function generateKadetLetter(\App\Models\CrewMovement $movement, string $kind): array
+    {
+        $movement->load(['crew', 'vessel']);
+        $template = $kind === 'on' ? 'KADET_ON' : 'KADET_OFF';
+        if (! $movement->no_surat) {
+            $numbered = app(\App\Services\NumberingService::class)->next($template);
+            $movement->no_surat = $numbered['number'];
+            $movement->save();
+        }
+
+        $pdf = Pdf::loadView($kind === 'on' ? 'pdf.kadet-on' : 'pdf.kadet-off', [
+            'movement' => $movement,
+            'crew' => $movement->crew,
+            'vessel' => $movement->vessel,
+            'place' => 'Samarinda',
+            'lh' => $this->letterhead(),
+        ])->setPaper('a4');
+
+        $path = $this->storePdf($pdf, 'KADET-'.strtoupper($kind).'-'.preg_replace('/[^A-Za-z0-9]/', '', $movement->no_surat).'.pdf');
+
+        $archived = $this->archiveGeneratedPdf(
+            $kind === 'on' ? 'KADET_ON' : 'KADET_OFF',
+            ($kind === 'on' ? 'Surat Pengangkatan Taruna (Prala) ' : 'Mutasi OFF Kadet (Selesai PK) ').($movement->no_surat ?? ''),
+            $path,
+            null,
+            null,
+            ['document_number' => $movement->no_surat,
+                'category_id' => \App\Models\DocumentCategory::where('group_code', 'D')->value('id')],
+            $movement->crew_id,
+        );
+
+        return $archived;
+    }
+
+    /** Surat Kuasa PKL (Direktur H. Syarif) — materi S. KUASA PKL. */
+    public function generateKuasaPkl(array $data): array
+    {
+        $vesselName = $data['vessel_name'] ?? '';
+        $kodeKapal = 'TB.00';
+        if (preg_match('/^(TB|BG|KM)\s+(?:Syukur\s+)?(\w+)/i', $vesselName, $m)) {
+            $kodeKapal = strtoupper($m[1]).'.'.strtoupper($m[2]);
+        }
+        $numbered = app(\App\Services\NumberingService::class)->next('KUASA_PKL', ['{kode_kapal}' => $kodeKapal]);
+
+        $pdf = Pdf::loadView('pdf.kuasa-pkl', [
+            'number' => $numbered['number'],
+            'date' => $data['date'] ?? now()->toDateString(),
+            'place' => 'Samarinda',
+            'attorney' => $data['attorney'] ?? 'H. Ariyanto',
+            'attorneyTitle' => $data['attorney_title'] ?? 'Kepala Operasional',
+            'crewName' => $data['crew_name'] ?? '—',
+            'vesselName' => $vesselName ?: '—',
+            'lh' => $this->letterhead(),
+        ])->setPaper('a4');
+
+        $path = $this->storePdf($pdf, 'KUASA-PKL-'.preg_replace('/[^A-Za-z0-9]/', '', $numbered['number']).'.pdf');
+
+        return $this->archiveGeneratedPdf(
+            'KUASA_PKL',
+            'Surat Kuasa PKL '.$numbered['number'],
+            $path,
+            null,
+            $data['vessel_id'] ?? null,
+            ['document_number' => $numbered['number'],
+                'category_id' => \App\Models\DocumentCategory::where('group_code', 'D')->value('id')],
+        );
+    }
+
+    private function rankLabel(string $rank): string
+    {
+        foreach (\App\Enums\CrewRank::cases() as $r) {
+            if ($r->value === $rank) {
+                return $r->label();
+            }
+        }
+        return $rank;
     }
 }

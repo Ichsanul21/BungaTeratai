@@ -2,7 +2,7 @@
 
 ## Apa ini
 
-**Bunga Teratai System** — prototype ERP manajemen dokumen & operasi pelayaran (PT Bunga Teratai, Samarinda). Status: **Fase 0–E SELESAI** (aplikasi penuh, CRUD lengkap, generator PDF/Excel BahanBT, seed data klien armada Syukur + SPAL 104, **63 test / 311 assertions hijau**).
+**Bunga Teratai System** — prototype ERP manajemen dokumen & operasi pelayaran (PT Bunga Teratai, Samarinda). Status: **Fase 0–G SELESAI** (aplikasi penuh, CRUD lengkap, generator PDF/Excel BahanBT, seed data klien **39 kapal + SPAL 104 + modul Crewing lengkap**, **68 test / 374 assertions hijau**).
 
 Stack: **Laravel 13 + Inertia (React 19 + TypeScript) + SQLite + Tailwind + Recharts + Leaflet + lucide-react**. Desktop-first, UI **Bahasa Indonesia**, timezone **Asia/Makassar (WITA)**, primer `#C41212`, sidebar `#172B3A`.
 
@@ -24,7 +24,7 @@ Aturan spek yang gampang dilanggar (hafalkan):
 - **Numbering**: nomor terbit dari pola per template (`{seq}/PO-BT/TB/{roman}/{tahun}`, `{seq}/{kode_penyewa}/FC/{kode_kapal}/…`); nomor arsip internal `ARS/{kode}/{tahun}/{seq}` (counter terpisah) untuk unggahan; **nomor tidak dipakai ulang setelah void**. Labeling file: `{kode}-{nomor}-{kapal?}-{tanggal}.{ext}`.
 - **SPAL = Surat Perjanjian Angkutan Laut** (kontrak charter, format GENCON). Alur: SI → SPAL → invoice DP 50% (+FP) → keagenan muat → DSR → invoice pelunasan (+FP) → keagenan bongkar → closing.
 - **Faktur Pajak elektronik TIDAK dibuat sistem** (legalitas DJP) — hanya dicatat nomornya + file FP diunggah. PPN 11%; PPh jasa charter preset **1.2%** (juga 2%/custom).
-- **Data demo**: armada asli dari materi klien (**TB Syukur 01/03/23/32/54/58/62 + BG Syukur 03/06/07/09/49/59/61**, KM Prince Soya, KM Etam Bahari) — nama kapal asli berizin dari materi klien; **transaksi/angka tetap simulasi berlabel `DEMO DATA`**. Alamat surat: Jl. Mulawarman No. 23 Samarinda, Telp 0541-731034, adm.teratai@gmail.com, Direktur H. Syarif, BRI Cab. Samarinda 1 a/c 0082-01000-409-309.
+- **Data demo**: armada asli dari materi klien — **39 kapal = 18 TB (01/03/11/23/30/32/36/45/51/52/54/56/58/62/70/75/78/82) + 18 BG (03/06/07/09/29/37/47/49/53/55/57/59/61/71/73/80/81/115) + KM Prince Soya + KM Etam Bahari + KM Tata Armada 01** (GT = asli dari Master Tracker); nama kapal asli berizin dari materi klien; **transaksi/angka tetap simulasi berlabel `DEMO DATA`**. Alamat surat: Jl. Mulawarman No. 23 Samarinda, Telp 0541-731034, adm.teratai@gmail.com, Direktur H. Syarif, BRI Cab. Samarinda 1 a/c 0082-01000-409-309.
 - **Assist kolong jembatan = beban (Hutang)** yang DIBAYAR perusahaan, bukan pendapatan.
 - **Larangan klaim**: AIS/GGPS real-time, SPB otomatis, email/WA terkirim, integrasi otoritas/DJP — semua simulasi.
 - PDF output = **rekonstruksi struktur via CSS print** (dompdf), bukan rasterisasi scan.
@@ -35,15 +35,15 @@ Aturan spek yang gampang dilanggar (hafalkan):
 php artisan serve                    # server dev (port 8000)
 npm run dev                          # Vite dev
 npm run build                        # VERIFIKASI wajib sebelum selesai task
-php artisan test                     # 63 test BungaTerataiTest + Breeze — wajib lulus semua
-php artisan migrate:fresh --seed     # reset + seed data klien (±16 detik, wajib sukses)
+php artisan test                     # 68 test BungaTerataiTest + Breeze — wajib lulus semua
+php artisan migrate:fresh --seed     # reset + seed data klien (±45 detik, wajib sukses)
 ```
 
 - Verifikasi akhir berurutan: `php artisan test` → `php artisan migrate:fresh --seed` → `npm run build` → uji manual journey di `docs/08-user-journeys.md`.
 - SQLite: `database/database.sqlite`; `*.sqlite` di-.gitignore (di-seed ulang, jangan commit).
 - Environment: PHP 8.3.30, Composer 2.9.4, Node 22.22.0, npm 11.14.1 — tidak ada pnpm/yarn.
 - Library PDF/Excel: **`barryvdh/laravel-dompdf`** (generator SPAL/invoice/keagenan/PO/surat umum) + **`maatwebsite/excel`** (Master Tracker, Monthly Report, Rekap NotA, Outstanding). Export class wajib `implements Export` (marker interface maatwebsite v4). Nama file download wajib **tanpa `/`** (sanitasi `preg_replace('/[^A-Za-z0-9._-]+/', '_', ...)`).
-- Generator: `app/Services/Generators/DocumentGeneratorService` + blade di `resources/views/pdf/`; setiap generate **otomatis terarsip** (documents source_type=terbitan + nomor arsip ARS/...). Nomor terbit: `NumberingService::next(template, replacements, 'terbit'|'arsip')` — counter per template (PO lanjut #363, SPAL #105, Keagenan #045 — jangan direset).
+- Generator: `app/Services/Generators/DocumentGeneratorService` + blade di `resources/views/pdf/`; setiap generate **otomatis terarsip** (documents source_type=terbitan + nomor arsip ARS/...). Nomor terbit: `NumberingService::next(template, replacements, 'terbit'|'arsip')` — counter per template (PO lanjut #363, SPAL #105, Keagenan #045, INV Charter #212, BT-OFF #108, Sijil #0548 — jangan direset). Placeholder tersedia: `{seq}` `{seq_raw}` `{seq4}` `{tahun}` `{tahun2}` `{bulan_romawi}` `{kode_penyewa}` `{kode_kapal}`.
 
 ## Konvensi repo
 
@@ -60,11 +60,11 @@ php artisan migrate:fresh --seed     # reset + seed data klien (±16 detik, waji
 ## Struktur yang sudah dibangun (Fase 0–8 SELESAI)
 
 - `app/Http/Controllers/` — Dashboard, Fleet, Document, Voyage, Approvals, Notification, Operations, Finance (14 tab), Inventory, Hr, Reports, AuditTrail, Settings, Profile
-- `app/Services/` — DocumentCompleteness, Reminder, FuelAnalysis, **JournalService (satu-satunya pintu jurnal)**, Payroll (PPh21 UU HPP), VoyageWorkflow (13 status tervalidasi), Audit
+- `app/Services/` — DocumentCompleteness, Reminder, FuelAnalysis, **JournalService (satu-satunya pintu jurnal)**, Payroll (PPh21 UU HPP), VoyageWorkflow (13 status tervalidasi + gate awak), **CrewCompliance (matriks 11 jabatan + sertifikat pengawakan)**, NumberingService, Audit
 - `app/Policies/` — Vessel, Document, Voyage + Gate: `menu.*`, `operations.manage`, `finance.manage`, `verify-documents`
-- `resources/js/Pages/` — 13 menu sidebar; tab = query param `?tab=` (server-driven)
-- `database/seeders/DemoDataSeeder.php` — satu pintu seed: 12 kapal (8 siap/3 tindak lanjut/1 ditinjau), 15 voyage, 251 dokumen (5 expiring, 2 expired), 42 invoice, 25 bill (16 assist), payroll 6 bulan posted, 20 ABK, 15 karyawan, 20 item inventory, 116+ jurnal
-- **Test: `tests/Feature/BungaTerataiTest.php` (63 test / 311 assertions — BungaTerataiTest)** — smoke 13 menu + semua tab, RBAC 7 role, journey A–J, angka target spek
+- `resources/js/Pages/` — 13 menu sidebar; tab = query param `?tab=` (server-driven); **SDM punya tab ABK · Register ON/OFF · Kadet (Prala) · Karyawan**
+- `database/seeders/DemoDataSeeder.php` + **`database/seeders/data/*.php`** (12 file hasil ekstraksi sekali dari BahanBT — JANGAN diedit manual): 39 kapal, ±1.365 dokumen (termasuk 645 metadata Dokumen_Kapal + 30 SPT + tracker per-kapal), 15 voyage + SPAL 104 (DSR 7.539,27 MT, invoice `197/211-BT-SLM/S.23/X/26`, keagenan 040/044 asli), 44 invoice, 56 bill (16 assist nyata + 25 keagenan/CO), 8 PO persis materi (nomor 001–008/I/2025), **413 crew (366 ABK + 46 kadet) + 109 register OFF + sijil 0547** gaji persis tabel gAJI, payroll 6 bulan (2.310 entries), 30 toko REKAP NOTA
+- **Test: `tests/Feature/BungaTerataiTest.php` (68 test / 374 assertions — BungaTerataiTest)** — smoke 13 menu + semua tab, RBAC 7 role, journey A–N, target seed klien, **crewing (sign OFF wajib pengganti perwira, nomor BT-OFF/BT-MI/AG-BT-ADM/BT-KDT, cetak surat, crew list) + gate awak override + endpoint invoice charter**
 
 ## Fase A–E (SELESAI — riwayat; semua sudah terimplementasi & ter-push)
 
@@ -75,6 +75,7 @@ Rincian per fase: `docs/10-implementation-roadmap.md`.
 - **Fase C** — Generator: 6 PDF (SPAL 2 hal GENCON, invoice charter DP/pelunasan PPh 1.2%, keagenan, PO, invoice keuangan, surat umum) + 4 Excel (Master Tracker TugBoat/Barge, Monthly Expiry & Endorsement, Rekap NotA, Outstanding) — endpoint `/cetak/*` & `/laporan/export/*`, autosave ke arsip.
 - **Fase D** — Seed klien: 8 TB/BG Syukur + 4 kapal lain; dokumen tracker A1–K1 (expiry serial Excel + 15 endorsement); SPAL 104 lengkap (invoice 197/211 FP+PPh1.2%, keagenan 040/044, DSR 7.500 MT); 8 PO + 3 bill + bayar cek/BG; arsip SPT 6 bulan.
 - **Fase E** — Test BahanBT (nomor urut, issue PDF+void, surat umum, export Excel, endorsement reminder, DSR validation, seed Syukur) → **63 test / 311 assertions lulus** → `migrate:fresh --seed` → `npm run build` → push.
+- **Fase G** — Penyelarasan penuh ke materi BahanBT (`D:\ICHSAN\Prototype\BahanBT`): armada **39 kapal** (GT asli tracker), overlay dokumen tracker **per-kapal** (serial expiry + endorsement asli), 645 metadata Dokumen_Kapal (tanpa file), SPT 30 file, PO 001–008 persis Excel +29 toko REKAP NOTA + TIGA BERLIAN, assist 16 nyata + 25 bill keagenan/CO, SPAL 104 (nomor invoice `197/211-BT-SLM/S.23/X/26`, DSR 7.539,27, keagenan `040/BT-SLM/AG/IX/2026` & `044/BT-TTSS/AG/X/2026` port Bolaang Mangondow), kop PDF baca Company (Jl. Mulawarman). **Modul Crewing**: kolom lengkap (kode pelaut, buku pelaut, PKL, mutasi), `crew_movements` + `sijil_requests`, enum37 jabatan (tabel gAJI)+kadet, Sign ON/OFF (perwira wajib pengganti+rekomendasi, H-7), Mutasi BT-MI, Sijil ON multi-crew AG/BT-ADM, Kadet ON/OFF BT-KDT, Surat Kuasa PKL, Cetak Crew List format materi, tab SDM Register ON/OFF + Kadet. **Alur charter**: gate awak (warning+override → voyage_events) di Ready for Departure, **tombol Terbitkan Invoice DP/Pelunasan dari voyage** (auto-fill SPAL+DSR, PPh 1,2%, FP dicatat+diunggah, PDF auto-arsip), `charter_stage` = satu-satunya stage machine (progress_stage → events), Finance invoice + kolom FP/tahap/tarif PPh. → **68 test / 374 assertions lulus**.
 
 ## Jebakan yang sudah ditemukan (JANGAN diulangi)
 
@@ -87,5 +88,10 @@ Rincian per fase: `docs/10-implementation-roadmap.md`.
 - Validasi nullable: `$data['key']` bisa undefined → selalu `?? null`
 - PowerShell `Set-Content -Encoding UTF8` = **BOM** → fatal PHP; pakai `[System.IO.File]::WriteAllText(path, content, UTF8Encoding($false))`
 - `with()` hanya untuk relasi yang ada di model
-- Seeder voyage: transisi status berurutan + prasyarat (approval internal → checklist wajib → **bukti eksternal** sebelum Ready for Departure)
+- Seeder voyage: transisi status berurutan + prasyarat (approval internal → checklist wajib → **bukti eksternal** sebelum Ready for Departure); **siapkan `note` override** utk transisi ke Ready for Departure (gate awak CrewCompliance menolak bila roster <100% tanpa alasan)
 - Jangan typo `Gate: : authorize` (spasi) — pernah terjadi 2×
+- **`CrewRank::fromLabel()` / `CrewOffReason::fromLabel()` mengembalikan STRING slug** — jangan `->value` (enum instance hanya via `::Case` / `::from()`)
+- `AuditService::log()` param ke-6 = **`change_summary`** (bukan `description`) — query audit pakai kolom itu / `entity_type`
+- Notifikasi **endorsement** sah utk dokumen permanen (A2 Surat Laut diendorse tahunan) — test "tanpa expiry tak dinotifikasi" harus filter tipe notif `dokumen_kedaluwarsa`/`dokumen_mendekati_kedaluwarsa`
+- Excel klien: tanggal dalam banyak format (serial, `01 Jan 26`, `02-Des-70`, `22-06-2001`) — parser ekstraksi `xlDate` di `C:\Users\Shifted\AppData\Local\Temp\opencode\` (sekali pakai) sudah meng-handle; file `database/seeders/data/*.php` = **output ekstraksi, jangan diedit manual**
+- Kop PDF (`letterhead()` + `resources/views/pdf/layout.blade.php`) **baca Company** — jangan hardcode alamat di situ lagi

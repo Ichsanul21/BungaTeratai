@@ -179,6 +179,29 @@ class VoyageWorkflowService
             }
 
             if ($to === VoyageStatus::ReadyForDeparture->value) {
+                // Gate awak kapal (materi CREWING: TABLE CREW 11 jabatan) —
+                // berlaku utk tugboat (TB/Tata) & KM Prince Soya (yang punya
+                // komposisi wajib di materi); tongkang & kapal lain dikecualikan.
+                // warning + override dengan alasan (tercatat di voyage_events).
+                $vesselForGate = $voyage->vessel;
+                if ($vesselForGate
+                    && ($vesselForGate->vessel_type === 'tugboat' || $vesselForGate->vessel_name === 'KM Prince Soya')) {
+                    $readiness = app(\App\Services\CrewComplianceService::class)->forVessel($vesselForGate);
+                    if (! $readiness['ok']) {
+                        $missing = implode(', ', array_map(fn ($m) => $m['label'].' ×'.$m['need'], $readiness['missing']));
+                        if ($cleanReason === '') {
+                            throw new InvalidArgumentException(
+                                "Kesiapan awak kapal belum lengkap ({$readiness['percent']}% — kurang: {$missing}). ".
+                                'Isi alasan override pada perubahan status untuk melanjutkan.'
+                            );
+                        }
+                        $this->recordEvent(
+                            $voyage,
+                            VoyageEventType::StatusChanged,
+                            "Override kesiapan awak kapal ({$readiness['percent']}%): {$cleanReason} — belum lengkap: {$missing}"
+                        );
+                    }
+                }
                 if ($voyage->external_approval_status === 'menunggu') {
                     throw new InvalidArgumentException('Persetujuan eksternal berstatus menunggu - wajib dikonfirmasi dengan lampiran bukti terlebih dahulu.');
                 }

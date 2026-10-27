@@ -497,6 +497,9 @@ class FinanceController extends Controller
             'issue_date' => ['required', 'date'],
             'due_date' => ['nullable', 'date'],
             'pph23' => ['required', 'boolean'],
+            'pph_rate' => ['nullable', 'numeric', 'min:0', 'max:0.2'], // 0.012 utk charter
+            'invoice_kind' => ['nullable', 'in:umum,dp,pelunasan,dp100'],
+            'fp_number' => ['nullable', 'string', 'max:60'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.description' => ['required', 'string', 'max:200'],
@@ -507,7 +510,10 @@ class FinanceController extends Controller
         $invoice = DB::transaction(function () use ($data) {
             $subtotal = collect($data['items'])->sum(fn ($i) => $i['qty'] * $i['price']);
             $ppn = round($subtotal * 0.11);
-            $pph23 = $data['pph23'] ? round($subtotal * 0.02) : 0.0;
+            $pphRate = $data['pph_rate'] ?? null;
+            $pph23 = $pphRate !== null
+                ? round($subtotal * (float) $pphRate)
+                : ($data['pph23'] ? round($subtotal * 0.02) : 0.0);
             $total = $subtotal + $ppn - $pph23;
 
             $vesselId = $data['vessel_id'] ?? null;
@@ -526,7 +532,10 @@ class FinanceController extends Controller
                 'subtotal' => $subtotal,
                 'ppn_rate' => 11,
                 'ppn_amount' => $ppn,
+                'pph_rate' => $pphRate ?? 0.02,
                 'pph23_amount' => $pph23,
+                'invoice_kind' => $data['invoice_kind'] ?? 'umum',
+                'fp_number' => $data['fp_number'] ?? null,
                 'total' => $total,
                 'notes' => $data['notes'] ?? null,
                 'created_by' => auth()->id(),
@@ -562,7 +571,7 @@ class FinanceController extends Controller
                     'period' => substr($data['issue_date'], 0, 7),
                     'date' => $data['issue_date'],
                     'base_amount' => $subtotal,
-                    'rate' => 2,
+                    'rate' => $pphRate !== null ? round((float) $pphRate * 100, 3) : 2,
                     'tax_amount' => $pph23,
                     'counterparty' => Customer::find($data['customer_id'])?->name,
                     'ref_type' => 'invoice',

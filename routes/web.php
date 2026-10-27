@@ -73,6 +73,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/perjalanan/{voyage}/passenger-log', [VoyageController::class, 'addPassengerLog'])->name('voyages.passenger-log');
     // Charter SPAL (B3)
     Route::post('/perjalanan/{voyage}/charter', [VoyageController::class, 'updateCharter'])->name('voyages.charter');
+    Route::post('/perjalanan/{voyage}/invoice-charter', [VoyageController::class, 'issueCharterInvoice'])->name('voyages.invoice-charter');
     Route::post('/perjalanan/{voyage}/keagenan', [VoyageController::class, 'storeAgency'])->name('voyages.agency');
     Route::delete('/perjalanan/{voyage}/keagenan/{agency}', [VoyageController::class, 'deleteAgency'])->name('voyages.agency.delete');
     Route::post('/perjalanan/{voyage}/progress-stage', [VoyageController::class, 'updateProgressStage'])->name('voyages.progress-stage');
@@ -167,6 +168,14 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/sdm/karyawan/{employee}', [HrController::class, 'updateEmployee'])->name('hr.employee.update');
     Route::delete('/sdm/karyawan/{employee}', [HrController::class, 'deleteEmployee'])->name('hr.employee.delete');
 
+    // Crewing (materi CREWING): Sign ON/OFF, Mutasi, Kadet, Sijil, Crew List
+    Route::post('/sdm/sign-on', [HrController::class, 'signOn'])->name('hr.sign-on');
+    Route::post('/sdm/sign-off', [HrController::class, 'signOff'])->name('hr.sign-off');
+    Route::post('/sdm/mutasi', [HrController::class, 'mutasiCrew'])->name('hr.mutasi');
+    Route::post('/sdm/kadet/{kind}', [HrController::class, 'kadetMovement'])->name('hr.kadet');
+    Route::post('/sdm/sijil', [HrController::class, 'storeSijil'])->name('hr.sijil');
+    Route::get('/sdm/crew-list/{vessel}/cetak', [HrController::class, 'printCrewList'])->name('hr.crew-list.print');
+
     Route::get('/laporan', [ReportsController::class, 'index'])
         ->name('reports.index');
 
@@ -176,6 +185,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/cetak/po/{po}', [IssueController::class, 'po'])->name('issue.po');
     Route::get('/cetak/invoice-charter/{invoice}', [IssueController::class, 'charterInvoice'])->name('issue.invoice.charter');
     Route::get('/cetak/invoice/{invoice}', [IssueController::class, 'financeInvoice'])->name('issue.invoice');
+    Route::get('/cetak/surat-off/{movement}', [IssueController::class, 'crewOffLetter'])->name('issue.crew-off');
+    Route::get('/cetak/sijil/{sijil}', [IssueController::class, 'sijil'])->name('issue.sijil');
+    Route::get('/cetak/kadet/{movement}', [IssueController::class, 'kadetLetter'])->name('issue.kadet');
+    Route::post('/cetak/kuasa-pkl', [IssueController::class, 'kuasaPkl'])->name('issue.kuasa-pkl');
     Route::post('/dokumen/surat-umum', [IssueController::class, 'storeGenericLetter'])->name('issue.letter');
     Route::get('/laporan/export/master-tracker', [IssueController::class, 'exportMasterTracker'])->name('export.tracker');
     Route::get('/laporan/export/monthly', [IssueController::class, 'exportMonthly'])->name('export.monthly');

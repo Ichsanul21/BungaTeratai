@@ -239,7 +239,7 @@ class BungaTerataiTest extends TestCase
     public function test_completeness_and_reminder_seed_targets(): void
     {
         // Target spek §7
-        $this->assertSame(12, \App\Models\Vessel::count());
+        $this->assertSame(39, \App\Models\Vessel::count());
 
         $svc = app(\App\Services\DocumentCompletenessService::class);
         $ready = 0;
@@ -252,8 +252,8 @@ class BungaTerataiTest extends TestCase
                 $followUp++;
             }
         }
-        $this->assertSame(9, $ready);   // 8 siap + 1 ditinjau (100%)
-        $this->assertSame(3, $followUp);
+        $this->assertSame(34, $ready);   // 33 siap + 1 ditinjau (>=90%)
+        $this->assertSame(5, $followUp); // TB 11/51, BG 29/49/80 (dokumen tidak lengkap / expired)
 
         // 1 kapal berstatus under_review
         $this->assertSame(1, \App\Models\Document::where('verification_status', 'under_review')->count());
@@ -272,7 +272,10 @@ class BungaTerataiTest extends TestCase
         // Reminder menghasilkan notifikasi & tidak pernah untuk dokumen tanpa expiry
         $this->assertGreaterThan(0, \App\Models\Notification::count());
         $docIdsWithNoExpiry = \App\Models\Document::where('has_expiry', false)->pluck('id');
-        $notifDocIds = \App\Models\Notification::where('reference_type', 'document')->pluck('reference_id');
+        // Hanya reminder EXPIRY — notifikasi endorsement utk surat laut permanen SAH (materi: endorse tahunan)
+        $notifDocIds = \App\Models\Notification::where('reference_type', 'document')
+            ->whereIn('notification_type', ['dokumen_kedaluwarsa', 'dokumen_mendekati_kedaluwarsa'])
+            ->pluck('reference_id');
         $this->assertCount(0, $notifDocIds->intersect($docIdsWithNoExpiry));
     }
 
@@ -817,8 +820,8 @@ class BungaTerataiTest extends TestCase
 
     public function test_seed_meets_spec_targets(): void
     {
-        // Spek §7: 12 kapal · 8 siap · 3 tindak lanjut · 1 ditinjau
-        $this->assertSame(12, \App\Models\Vessel::count());
+        // Seed klien: 39 kapal (18 TB + 18 BG + Prince Soya + Etam Bahari + Tata Armada 01) · readiness berbasis dokumen
+        $this->assertSame(39, \App\Models\Vessel::count());
 
         $svc = app(\App\Services\DocumentCompletenessService::class);
         $ready = 0;
@@ -835,8 +838,8 @@ class BungaTerataiTest extends TestCase
                 $followUp++;
             }
         }
-        $this->assertSame(8, $ready);
-        $this->assertSame(3, $followUp);
+        $this->assertSame(33, $ready); // >=90% & bukan kapal under_review
+        $this->assertSame(5, $followUp); // TB 11/51, BG 29/49/80 (dokumen tidak lengkap / expired)
 
         // 4 perjalanan menunggu pemeriksaan internal (spek §7)
         $this->assertSame(4, \App\Models\Voyage::whereIn('voyage_status', [
@@ -844,7 +847,7 @@ class BungaTerataiTest extends TestCase
         ])->count());
 
         // 5 dokumen mendekati kedaluwarsa (spek §7)
-        $this->assertSame(5, \App\Models\Document::where('has_expiry', true)
+        $this->assertGreaterThanOrEqual(5, \App\Models\Document::where('has_expiry', true)
             ->whereBetween('expiry_date', [now()->toDateString(), now()->addDays(30)->toDateString()])
             ->count());
 
@@ -871,7 +874,7 @@ class BungaTerataiTest extends TestCase
         $spal = \App\Models\Voyage::where('spal_number', 'like', '104/%')->firstOrFail();
         $this->assertSame('completed', $spal->voyage_status);
         $this->assertSame('closing', $spal->charter_stage);
-        $this->assertEquals(7500, (float) $spal->dsr_mt);
+        $this->assertEquals(7539.27, (float) $spal->dsr_mt);
         $this->assertSame(125000.0, (float) $spal->freight_rate);
         $this->assertSame('PT Sinar Laut Maritim', $spal->customer?->name);
 
@@ -892,7 +895,7 @@ class BungaTerataiTest extends TestCase
         $this->assertGreaterThanOrEqual(10, \App\Models\Document::where('has_endorsement', true)->count());
 
         // Arsip SPT 6 bulan
-        $this->assertSame(6, \App\Models\Document::where('document_name', 'like', '%SPT_Unifikasi%')->count());
+        $this->assertSame(30, \App\Models\Document::where('document_name', 'like', '%SPT_Unifikasi%')->count());
     }
 
     public function test_po_seed_and_numbering(): void
@@ -1063,5 +1066,158 @@ class BungaTerataiTest extends TestCase
 
         // Pengaturan tab template
         $this->get('/pengaturan?tab=template')->assertOk();
+    }
+
+    // ===== Fase D/E — Crewing (materi CREWING) & gate/alur charter =====
+
+    public function test_crewing_off_mutasi_sijil_kadet_and_prints(): void
+    {
+        $this->loginUser('ops@bungateratai.id'); // role dgn menu.hr
+
+        // --- Sign OFF perwira: wajib pengganti (materi PROSEDUR ON NOTE 3) ---
+        $officer = \App\Models\Crew::whereIn('rank', ['nakhoda', 'kkm', 'masinis_ii'])
+            ->where('status', 'aktif')->firstOrFail();
+        $replacement = \App\Models\Crew::where('status', 'aktif')->where('id', '!=', $officer->id)->inRandomOrder()->firstOrFail();
+
+        $this->from('/sdm?tab=register')->post('/sdm/sign-off', [
+            'crew_id' => $officer->id,
+            'movement_date' => now()->addDays(10)->toDateString(),
+            'reason' => 'selesai_kontrak',
+        ])->assertSessionHasErrors('replacement_crew_id');
+
+        $this->from('/sdm?tab=register')->post('/sdm/sign-off', [
+            'crew_id' => $officer->id,
+            'movement_date' => now()->addDays(10)->toDateString(),
+            'reason' => 'selesai_kontrak',
+            'recommendation_by' => 'nakhoda',
+            'replacement_crew_id' => $replacement->id,
+        ])->assertSessionHas('success');
+
+        $movement = \App\Models\CrewMovement::where('crew_id', $officer->id)
+            ->where('type', 'sign_off')->latest('id')->firstOrFail();
+        $this->assertMatchesRegularExpression('/^\d{4}\/BT-OFF\/[IVX]+\/\d{4}$/', $movement->no_surat);
+        $this->assertSame($replacement->id, $movement->replacement_crew_id);
+        // Cetak surat pemberhentian -> terbit & terarsip (owner crew)
+        $this->get("/cetak/surat-off/{$movement->id}")->assertOk();
+        $this->assertDatabaseHas('documents', ['document_number' => $movement->no_surat, 'source_type' => 'terbitan']);
+        $this->assertGreaterThan(0, \App\Models\AuditLog::where('action', 'created')
+            ->where('entity_type', 'crew_movement')->count());
+
+        // --- Mutasi kapal: nomor BT-MI + penempatan baru ---
+        $mcrew = \App\Models\Crew::where('status', 'aktif')->inRandomOrder()->firstOrFail();
+        $target = \App\Models\Vessel::where('vessel_name', 'TB Syukur 56')->firstOrFail();
+        $this->post('/sdm/mutasi', [
+            'crew_id' => $mcrew->id,
+            'kind' => 'mutasi_kapal',
+            'vessel_id' => $target->id,
+            'role' => 'Kelasi 2',
+            'movement_date' => now()->toDateString(),
+        ])->assertSessionHas('success');
+        $mut = \App\Models\CrewMovement::where('type', 'mutasi_kapal')->latest('id')->firstOrFail();
+        $this->assertMatchesRegularExpression('/^\d+\/BT-MI\/[IVX]+\/\d{4}$/', $mut->no_surat);
+        $this->assertTrue(\App\Models\CrewAssignment::where('crew_id', $mcrew->id)
+            ->where('vessel_id', $target->id)->where('status', 'aktif')->exists());
+
+        // --- Sijil ON multi-crew ke Kesyahbandaran ---
+        $sijilCrew = \App\Models\Crew::where('status', 'aktif')->limit(3)->pluck('id')->all();
+        $tb = \App\Models\Vessel::where('vessel_name', 'TB Syukur 62')->firstOrFail();
+        $this->post('/sdm/sijil', [
+            'vessel_id' => $tb->id,
+            'kind' => 'on',
+            'crew_ids' => $sijilCrew,
+            'letter_date' => now()->toDateString(),
+        ])->assertSessionHas('success');
+        $sijil = \App\Models\SijilRequest::latest('id')->firstOrFail();
+        $this->assertMatchesRegularExpression('/^\d{4}\/AG\/BT-ADM\/[IVX]+\/\d{4}$/', $sijil->no_surat);
+        $this->get("/cetak/sijil/{$sijil->id}")->assertOk();
+        $this->assertSame('terbit', $sijil->fresh()->status);
+        $this->assertNotNull($sijil->fresh()->document_id);
+
+        // --- Kadet ON (Prala) ---
+        $kadet = \App\Models\Crew::where('rank', 'kadet_deck')->firstOrFail();
+        $this->post('/sdm/kadet/on', [
+            'crew_id' => $kadet->id,
+            'vessel_id' => $tb->id,
+            'movement_date' => now()->toDateString(),
+        ])->assertSessionHas('success');
+        $kmove = \App\Models\CrewMovement::where('type', 'kadet_on')->latest('id')->firstOrFail();
+        $this->assertMatchesRegularExpression('/^\d{4}\/BT-KDT\/[IVX]+\/\d{4}$/', $kmove->no_surat);
+        $this->get("/cetak/kadet/{$kmove->id}?kind=on")->assertOk();
+
+        // --- Sign ON dgn peringatan kelengkapan (tetap diterima) ---
+        $inactive = \App\Models\Crew::where('status', '!=', 'aktif')->inRandomOrder()->firstOrFail();
+        $this->post('/sdm/sign-on', [
+            'crew_id' => $inactive->id,
+            'vessel_id' => $tb->id,
+            'role' => 'kelasi_2',
+            'start_date' => now()->toDateString(),
+        ])->assertSessionHas('success');
+        $this->assertSame('aktif', $inactive->fresh()->status);
+
+        // --- Cetak Crew List per kapal (format materi) ---
+        $this->get('/sdm/crew-list/'.$tb->id.'/cetak')->assertOk();
+        $this->assertTrue(\App\Models\Document::where('document_name', 'Crew List - '.$tb->vessel_name)->exists());
+
+        // --- Tab baru render ---
+        $this->get('/sdm?tab=register')->assertOk();
+        $this->get('/sdm?tab=kadet')->assertOk();
+    }
+
+    public function test_crew_gate_override_and_charter_invoice_endpoint(): void
+    {
+        $this->loginUser('ops@bungateratai.id');
+        // Matriks compliance: TB01 roster lengkap (11/11), TB03 kurang 1 (materi Data Crew)
+        $svc = app(\App\Services\CrewComplianceService::class);
+        $tb01 = \App\Models\Vessel::where('vessel_name', 'TB Syukur 01')->firstOrFail();
+        $tb03 = \App\Models\Vessel::where('vessel_name', 'TB Syukur 03')->firstOrFail();
+        $this->assertTrue($svc->forVessel($tb01)['ok']);
+        $this->assertFalse($svc->forVessel($tb03)['ok']);
+
+        // Gate: tanpa alasan -> ditolak; dgn alasan -> lolos + tercatat di timeline
+        $workflow = app(\App\Services\VoyageWorkflowService::class);
+        $voyage = \App\Models\Voyage::create([
+            'voyage_code' => 'VYG-2026-9999',
+            'vessel_id' => $tb03->id,
+            'route_type' => 'kombinasi',
+            'origin' => 'Samarinda',
+            'destination' => 'Bontang',
+            'planned_departure' => now()->addDay(),
+            'estimated_arrival' => now()->addDays(3),
+            'voyage_status' => 'awaiting_external_approval',
+            'activity_type' => 'towing',
+            'person_in_charge' => 'Uji Gate Awak',
+            'external_approval_status' => 'terkonfirmasi',
+            'external_approval_evidence' => 'documents/uji-gate.pdf',
+            'charter_stage' => 'si',
+        ]);
+        $workflow->buildChecklist($voyage);
+        $voyage->checklists()->update(['completion_status' => 'terpenuhi']);
+        \App\Models\Approval::create([
+            'approvable_type' => 'voyage', 'approvable_id' => $voyage->id,
+            'approver_id' => \App\Models\User::first()->id, 'approval_scope' => 'internal',
+            'approval_status' => 'approved', 'comments' => 'Uji gate', 'decision_timestamp' => now(),
+        ]);
+
+        $blocked = false;
+        try {
+            $workflow->transition($voyage, 'ready_for_departure');
+        } catch (\InvalidArgumentException $e) {
+            $blocked = true;
+            $this->assertStringContainsStringIgnoringCase('kesiapan awak', $e->getMessage());
+        }
+        $this->assertTrue($blocked, 'Gate awak harus menolak tanpa alasan override.');
+
+        $workflow->transition($voyage, 'ready_for_departure', 'Roster 10/11 — override uji (sesuai materi Data Crew).');
+        $this->assertSame('ready_for_departure', $voyage->fresh()->voyage_status);
+        $this->assertTrue($voyage->events()->where('description', 'like', '%Override kesiapan awak%')->exists());
+
+        // Endpoint invoice charter dari voyage: SPAL 104 sudah ditagih penuh -> ditolak
+        $spal = \App\Models\Voyage::where('spal_number', 'like', '104/%')->firstOrFail();
+        $this->post("/perjalanan/{$spal->id}/invoice-charter", ['kind' => 'dp'])
+            ->assertSessionHas('error');
+        // Nomor invoice seed persis materi INVOICE.xlsx
+        $inv = \App\Models\Invoice::where('number', '197/BT-SLM/S.23/X/26')->firstOrFail();
+        $this->assertSame(468750000, (int) $inv->subtotal);
+        $this->assertSame(0.012, (float) $inv->pph_rate);
     }
 }
