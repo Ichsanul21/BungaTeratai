@@ -7466,7 +7466,7 @@ return array (
     'name_ktp' => NULL,
     'nik' => NULL,
     'birth_place' => NULL,
-    'birth_date' => '0',
+    'birth_date' => NULL,
     'address' => NULL,
     'sccw' => NULL,
     'no_ijazah' => NULL,

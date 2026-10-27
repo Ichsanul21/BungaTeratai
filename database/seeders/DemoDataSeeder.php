@@ -592,6 +592,25 @@ class DemoDataSeeder extends Seeder
      * kapal (Crew List) + register OFF + kadet Prala + sertifikat buku pelaut/ANT
      * + gaji persis tabel gAJI + kantor (H. Syarif, H. Ariyanto, Capt Azwar).
      */
+
+    /** Tanggal valid 'Y-m-d' dari data klien; selain itu -> fallback (default null). */
+    private function asDate($value, ?string $fallback = null): ?string
+    {
+        if ($value instanceof \Carbon\Carbon || $value instanceof \DateTimeInterface) {
+            return $value->format('Y-m-d');
+        }
+        if ($value === null) {
+            return $fallback;
+        }
+        $s = is_string($value) ? trim($value) : (string) $value;
+        if ($s === '') {
+            return $fallback;
+        }
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $s, $m) && checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
+            return $s;
+        }
+        return $fallback;
+    }
     private function seedHr(): void
     {
         if (\App\Models\Crew::count() > 0) {
@@ -634,7 +653,7 @@ class DemoDataSeeder extends Seeder
                 'name_ktp' => $c['name_ktp'],
                 'nik' => $c['nik'],
                 'birth_place' => $c['birth_place'],
-                'birth_date' => $c['birth_date'],
+                'birth_date' => $this->asDate($c['birth_date']),
                 'religion' => $c['religion'],
                 'mother_name' => $c['mother_name'],
                 'bank_account' => $c['bank_account'],
@@ -647,7 +666,7 @@ class DemoDataSeeder extends Seeder
                 'no_pkl' => $c['no_pkl'],
                 'no_surat_mutasi' => $c['no_surat_mutasi'],
                 'is_blacklist' => $c['blacklist'],
-                'joined_on' => $c['join_date'],
+                'joined_on' => $this->asDate($c['join_date']),
                 'rank' => $rank,
                 'base_salary' => $salaryBySlug[$rank] ?? 3800000,
                 'status' => $vesselId ? 'aktif' : 'selesai',
@@ -665,7 +684,7 @@ class DemoDataSeeder extends Seeder
                     'number' => $c['buku_no'],
                     'issued_at' => null,
                     'has_expiry' => $c['buku_exp'] !== null,
-                    'expiry_date' => $c['buku_exp'],
+                    'expiry_date' => $this->asDate($c['buku_exp']),
                 ]);
             }
             $sccwKey = mb_strtoupper(trim((string) $c['sccw']));
@@ -685,7 +704,7 @@ class DemoDataSeeder extends Seeder
                     'crew_id' => $crew->id,
                     'vessel_id' => $vesselId,
                     'role' => $c['rank_label'] ?? (\App\Enums\CrewRank::tryFrom($rank)?->label() ?? $rank),
-                    'start_date' => $c['join_date'] ?? now()->subYear()->toDateString(),
+                    'start_date' => $this->asDate($c['join_date'], now()->subYear()->toDateString()),
                     'status' => 'aktif',
                 ]);
             }
@@ -709,7 +728,7 @@ class DemoDataSeeder extends Seeder
                         'seafarer_code' => $r['seafarer_code'],
                         'no_pkl' => $r['no_pkl'],
                         'sccw' => $r['sccw'],
-                        'joined_on' => $r['sign_on'],
+                        'joined_on' => $this->asDate($r['sign_on']),
                         'status' => 'aktif',
                     ]);
                     $byName[$key] = $crew;
@@ -733,7 +752,7 @@ class DemoDataSeeder extends Seeder
                             'cert_type' => 'buku_pelaut',
                             'number' => $r['buku_no'],
                             'has_expiry' => $r['buku_exp'] !== null,
-                            'expiry_date' => $r['buku_exp'],
+                            'expiry_date' => $this->asDate($r['buku_exp']),
                         ]);
                     }
                 }
@@ -746,7 +765,7 @@ class DemoDataSeeder extends Seeder
                     'crew_id' => $crew->id,
                     'vessel_id' => $vesselId,
                     'role' => $r['rank_label'],
-                    'start_date' => $r['sign_on'] ?? now()->subMonths(6)->toDateString(),
+                    'start_date' => $this->asDate($r['sign_on'], now()->subMonths(6)->toDateString()),
                     'status' => 'aktif',
                 ]);
                 $crew->update(['status' => 'aktif']);
@@ -776,7 +795,7 @@ class DemoDataSeeder extends Seeder
                 'vessel_id' => $active?->vessel_id,
                 'type' => \App\Enums\CrewMovementType::SignOff->value,
                 'role' => \App\Enums\CrewRank::tryFrom($crew->rank)?->label() ?? $crew->rank,
-                'movement_date' => $o['off_date'],
+                'movement_date' => $this->asDate($o['off_date'], now()->toDateString()),
                 'reason' => $reason,
                 'no_surat' => $o['letter_no'],
                 'notes' => 'Tercatat dari register OFF klien.',
@@ -859,12 +878,12 @@ class DemoDataSeeder extends Seeder
             $crew = \App\Models\Crew::create([
                 'name' => $k['name'],
                 'birth_place' => $k['birth_place'],
-                'birth_date' => $k['birth_date'],
+                'birth_date' => $this->asDate($k['birth_date']),
                 'address' => $k['address'],
                 'seafarer_code' => $k['seafarer_code'],
                 'school_origin' => $k['school'],
                 'nit' => $k['nit'],
-                'joined_on' => $k['pkl_date'],
+                'joined_on' => $this->asDate($k['pkl_date']),
                 'rank' => $rank,
                 'base_salary' => 0, // kadet prala — tanpa gaji pokok
                 'status' => $active ? 'aktif' : 'selesai',
@@ -876,7 +895,7 @@ class DemoDataSeeder extends Seeder
                     'cert_type' => 'buku_pelaut',
                     'number' => $k['buku_no'],
                     'has_expiry' => $k['buku_exp'] !== null,
-                    'expiry_date' => $k['buku_exp'],
+                    'expiry_date' => $this->asDate($k['buku_exp']),
                 ]);
             }
             if ($active) {
@@ -884,7 +903,7 @@ class DemoDataSeeder extends Seeder
                     'crew_id' => $crew->id,
                     'vessel_id' => $vesselId,
                     'role' => (\App\Enums\CrewRank::tryFrom($rank)?->label() ?? $rank),
-                    'start_date' => $k['pkl_date'],
+                    'start_date' => $this->asDate($k['pkl_date'], now()->toDateString()),
                     'status' => 'aktif',
                 ]);
             }
@@ -894,7 +913,7 @@ class DemoDataSeeder extends Seeder
                     'vessel_id' => $vesselId,
                     'type' => \App\Enums\CrewMovementType::KadetOn->value,
                     'role' => (\App\Enums\CrewRank::tryFrom($rank)?->label() ?? $rank),
-                    'movement_date' => $k['pkl_date'],
+                    'movement_date' => $this->asDate($k['pkl_date'], now()->toDateString()),
                     'notes' => 'Tercatat dari register kadet klien (Prala).',
                 ]);
             }
