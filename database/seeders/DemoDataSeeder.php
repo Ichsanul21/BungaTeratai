@@ -2012,7 +2012,16 @@ class DemoDataSeeder extends Seeder
                 return null;
             }
 
-            return date('Y-m-d', ((float) $serial - 25569) * 86400);
+            $ts = ((float) $serial - 25569) * 86400;
+            $year = (int) date('Y', $ts);
+            // Serial di luar representasi wajar -> tolak. Data klien ada yang korup
+            // (mis. 6704940 -> tahun 20257, di luar batas Excel 2958465 = tahun 9999),
+            // dan MySQL DATE hanya menerima 1000-01-01 s/d 9999-12-31.
+            if ($year < 1900 || $year > 2100) {
+                return null;
+            }
+
+            return date('Y-m-d', $ts);
         };
 
         // requirement_code => kode dokumen di Master Tracker (tugboat)
@@ -2063,13 +2072,13 @@ class DemoDataSeeder extends Seeder
                 }
                 $entry = $entries[$trackerCode];
                 $updates = ['document_name' => $entry['name'].' — '.$vessel->vessel_name];
+                $expiryDate = is_numeric($entry['exp'] ?? null) ? $serialToDate($entry['exp']) : null;
 
                 if (($entry['exp'] ?? null) === 'Permanent') {
                     // A1 Surat Ukur & A2 Surat Laut permanen (A2 diendorse tahunan)
                     $updates['has_expiry'] = false;
                     $updates['expiry_date'] = null;
-                } elseif (is_numeric($entry['exp'] ?? null)) {
-                    $expiryDate = $serialToDate($entry['exp']);
+                } elseif ($expiryDate !== null) {
                     $currentDays = $doc->has_expiry && $doc->expiry_date
                         ? (int) now()->startOfDay()->diffInDays($doc->expiry_date, false)
                         : null;
@@ -2079,11 +2088,16 @@ class DemoDataSeeder extends Seeder
                         $updates['expiry_date'] = $expiryDate;
                     }
                 }
+                // serial expiry korup (mis. BG115/B2 = 6708527) -> null -> expiry tetap dari seedDocuments
 
-                if (! empty($entry['ne']) && is_numeric($entry['ne'])) {
+                $nextDate = is_numeric($entry['ne'] ?? null) ? $serialToDate($entry['ne']) : null;
+                if ($nextDate !== null) {
+                    // serial endorsement korup (mis. TB30/B3 le=6704940, ne=6705305) -> null -> tanpa endorsement
                     $updates['has_endorsement'] = true;
-                    $updates['endorsement_next_date'] = $serialToDate($entry['ne']);
-                    $updates['endorsement_last_date'] = $serialToDate($entry['le'] ?? null);
+                    $updates['endorsement_next_date'] = $nextDate;
+                    $updates['endorsement_last_date'] = is_numeric($entry['le'] ?? null)
+                        ? $serialToDate($entry['le'])
+                        : null;
                 }
 
                 $doc->update($updates);
