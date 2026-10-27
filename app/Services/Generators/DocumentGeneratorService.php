@@ -327,6 +327,70 @@ class DocumentGeneratorService
         );
     }
 
+    /**
+     * Register Hours of Rest 1 bulan (MLC 2006) utk 1 awak — cetak PSC.
+     * Laporan periodik: TANPA nomor terbit & tanpa arsip (selalu bisa dicetak ulang).
+     */
+    public function generateHorRegister(\App\Models\Crew $crew, string $month): array
+    {
+        $start = \Carbon\Carbon::parse($month.'-01');
+        $end = $start->copy()->endOfMonth();
+        $weekday = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+
+        $logs = \App\Models\HoursOfRestLog::where('crew_id', $crew->id)
+            ->whereBetween('log_date', [$start->toDateString(), $end->toDateString()])
+            ->orderBy('log_date')
+            ->get()
+            ->keyBy(fn ($l) => $l->log_date->toDateString());
+
+        $rows = [];
+        for ($day = $start->copy(); $day->lte($end); $day->addDay()) {
+            $log = $logs->get($day->toDateString());
+            $rows[] = [
+                'date' => $day->format('d/m/Y'),
+                'weekday' => $weekday[(int) $day->format('w')],
+                'entries' => $log
+                    ? collect($log->rest_entries ?? [])->map(fn ($e) => ($e['start'] ?? '?').'-'.($e['end'] ?? '?'))->implode(', ')
+                    : null,
+                'rest_h' => $log ? round($log->total_rest_minutes / 60, 1) : null,
+                'work_h' => $log ? round($log->total_work_minutes / 60, 1) : null,
+                'ok' => $log?->is_compliant,
+                'violations' => $log?->violations ?? [],
+                'note' => $log?->notes,
+            ];
+        }
+
+        // Kepatuhan mingguan 77 jam (blok 7 hari dalam bulan)
+        $weekly = [];
+        foreach (array_chunk($rows, 7) as $i => $chunk) {
+            $logged = array_values(array_filter($chunk, fn ($r) => $r['rest_h'] !== null));
+            $sum = array_sum(array_column($logged, 'rest_h'));
+            $weekly[] = [
+                'label' => 'Minggu '.($i + 1),
+                'range' => $chunk[0]['date'].' - '.$chunk[count($chunk) - 1]['date'],
+                'rest_h' => round($sum, 1),
+                'complete' => count($logged) === count($chunk),
+                'ok' => count($logged) === count($chunk) && $sum >= 77,
+            ];
+        }
+
+        $vessel = $crew->assignments()->where('status', 'aktif')->first()?->vessel;
+
+        $pdf = Pdf::loadView('pdf.hor-register', [
+            'crew' => $crew,
+            'vessel' => $vessel,
+            'month' => $month,
+            'monthLabel' => $start->format('F Y'),
+            'rows' => $rows,
+            'weekly' => $weekly,
+            'lh' => $this->letterhead(),
+        ])->setPaper('a4');
+
+        $path = $this->storePdf($pdf, 'HOR-'.preg_replace('/[^A-Za-z0-9]/', '', $crew->name).'-'.$month.'.pdf');
+
+        return ['path' => $path, 'rows' => $rows, 'weekly' => $weekly];
+    }
+
     /** Surat Pemberhentian Awak Kapal (MUTASI OFF) — materi CREWING/MUT OFF. */
     public function generateCrewMutasiOff(\App\Models\CrewMovement $movement): array
     {

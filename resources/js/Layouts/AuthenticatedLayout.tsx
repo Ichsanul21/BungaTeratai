@@ -1,3 +1,5 @@
+import OfflineBanner from '@/Components/sync/OfflineBanner';
+import SyncDrawer from '@/Components/sync/SyncDrawer';
 import Sidebar from '@/Components/layout/Sidebar';
 import Topbar from '@/Components/layout/Topbar';
 import { type PageProps } from '@/types';
@@ -154,6 +156,7 @@ export default function AuthenticatedLayout({
                 )}
             >
                 <Topbar onOpenSidebar={() => setSidebarOpen(true)} />
+                <OfflineBanner />
 
                 <main className="flex-1 px-4 py-6 lg:px-6 lg:py-8">
                     {header && (
@@ -206,6 +209,8 @@ export default function AuthenticatedLayout({
                     </div>
                 </div>
             )}
+
+            <SyncDrawer />
         </div>
     );
 }

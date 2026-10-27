@@ -28,16 +28,28 @@ class VesselPolicy
 
     public function create(User $user): bool
     {
+        $perm = $user->checkPermission('fleet.create');
+        if ($perm !== null) {
+            return $perm; // terkelola RBAC: katalog izin yang menentukan
+        }
+
         return $user->hasAnyRole(['ship_ops', 'management']);
     }
 
     public function update(User $user, Vessel $vessel): bool
     {
+        $perm = $user->checkPermission('fleet.update');
+        if ($perm !== null) {
+            if ($perm === false) {
+                return false;
+            }
+        }
+
         if ($user->isReadOnly()) {
             return false;
         }
 
-        return $user->hasAnyRole(['ship_ops', 'management']);
+        return $perm ?? $user->hasAnyRole(['ship_ops', 'management']);
     }
 
     public function delete(User $user, Vessel $vessel): bool

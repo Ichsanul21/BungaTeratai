@@ -29,6 +29,10 @@ class SettingsController extends Controller
 
         $tab = $request->string('tab')->toString() ?: 'users';
 
+        if ($tab === 'rbac') {
+            $this->authorize('settings.rbac');
+        }
+
         $data = match ($tab) {
             'profil' => [
                 'company' => Company::first(),
@@ -46,6 +50,7 @@ class SettingsController extends Controller
                 'serviceCatalog' => ServiceCatalog::orderBy('kind')->get(),
                 'accountsList' => Account::orderBy('code')->get(),
             ],
+            'rbac' => $this->rbacData(),
             default => [
                 'usersList' => User::with('roles')->orderBy('name')->get()->map(fn ($u) => [
                     'id' => $u->id,
@@ -65,8 +70,61 @@ class SettingsController extends Controller
         return Inertia::render('Settings/Index', [
             'tab' => $tab,
             'canManageUsers' => auth()->user()?->isSuperAdmin() ?? false,
+            'canRbac' => auth()->user()?->can('settings.rbac') ?? false,
             ...$data,
         ]);
+    }
+
+    /** Matriks hak akses: izin (katalog DB) × role. */
+    private function rbacData(): array
+    {
+        $roles = Role::orderBy('id')->get(['id', 'slug', 'name']);
+        $permissions = \App\Models\Permission::orderBy('module')->orderBy('sort')->get([
+            'id', 'code', 'label', 'module', 'action', 'description',
+        ]);
+
+        $rolePermissions = [];
+        foreach ($roles as $role) {
+            $rolePermissions[$role->id] = $role->slug === 'super_admin'
+                ? $permissions->pluck('id')->values()
+                : $permissions->whereIn('id', $role->permissions()->pluck('permission_id'))->pluck('id')->values();
+        }
+
+        return [
+            'rbacRoles' => $roles->values(),
+            'rbacPermissions' => $permissions->groupBy('module'),
+            'rbacGrants' => $rolePermissions,
+        ];
+    }
+
+    public function updateRolePermissions(Request $request, Role $role)
+    {
+        $this->authorize('settings.rbac');
+
+        if ($role->slug === 'super_admin') {
+            return back()->with('success', 'Role Super Admin selalu memiliki semua hak akses.');
+        }
+
+        $data = $request->validate([
+            'permissions' => ['required', 'array'],
+            'permissions.*' => ['integer', 'exists:permissions,id'],
+        ]);
+
+        $before = $role->permissionCodes();
+
+        $codes = \App\Models\Permission::whereIn('id', $data['permissions'])->pluck('code')->all();
+        $role->syncPermissionCodes($codes);
+
+        AuditService::log(
+            'updated',
+            'role',
+            $role->id,
+            ['permissions' => $before],
+            ['permissions' => $codes],
+            "Hak akses role {$role->name} diperbarui (".count($codes).' izin)'
+        );
+
+        return back()->with('success', "Hak akses role {$role->name} disimpan (".count($codes).' izin aktif).');
     }
 
     public function storeUser(Request $request)

@@ -1,0 +1,21 @@
+{
+    "apps": [
+        {
+            "name": "bt-reverb",
+            "script": "php",
+            "args": "artisan reverb:start",
+            "cwd": "/srv/www/production/BungaTeratai",
+            "instances": 1,
+            "autorestart": true,
+            "max_restarts": 10,
+            "restart_delay": 5000,
+            "out_file": "/var/log/bt-reverb.out.log",
+            "error_file": "/var/log/bt-reverb.err.log",
+            "merge_logs": true,
+            "time": true,
+            "env": {
+                "APP_ENV": "production"
+            }
+        }
+    ]
+}

@@ -175,6 +175,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/sdm/kadet/{kind}', [HrController::class, 'kadetMovement'])->name('hr.kadet');
     Route::post('/sdm/sijil', [HrController::class, 'storeSijil'])->name('hr.sijil');
     Route::get('/sdm/crew-list/{vessel}/cetak', [HrController::class, 'printCrewList'])->name('hr.crew-list.print');
+    // Hours of Rest (MLC 2006) — catatan offline-friendly + register cetak PSC
+    Route::post('/sdm/hor', [HrController::class, 'storeHor'])->name('hr.hor.store');
+    Route::put('/sdm/hor/{log}', [HrController::class, 'updateHor'])->name('hr.hor.update');
+    Route::delete('/sdm/hor/{log}', [HrController::class, 'deleteHor'])->name('hr.hor.delete');
+    Route::get('/sdm/hor/cetak/{crew}', [HrController::class, 'printHorRegister'])->name('hr.hor.print');
 
     Route::get('/laporan', [ReportsController::class, 'index'])
         ->name('reports.index');
@@ -208,6 +213,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/pengaturan/katalog', [SettingsController::class, 'storeCatalog'])->name('settings.katalog');
     // CRUD tambahan (Fase A)
     Route::put('/pengaturan/users/{user}', [SettingsController::class, 'updateUser'])->name('settings.users.update');
+    Route::put('/pengaturan/rbac/{role}', [SettingsController::class, 'updateRolePermissions'])->name('settings.rbac.update');
     Route::delete('/pengaturan/users/{user}', [SettingsController::class, 'deleteUser'])->name('settings.users.delete');
     Route::put('/pengaturan/customers/{customer}', [SettingsController::class, 'updateCustomer'])->name('settings.customers.update');
     Route::delete('/pengaturan/customers/{customer}', [SettingsController::class, 'deleteCustomer'])->name('settings.customers.delete');
@@ -221,6 +227,14 @@ Route::middleware(['auth'])->group(function () {
     // B5: Master template & nomor surat
     Route::put('/pengaturan/templates/{template}', [SettingsController::class, 'updateTemplate'])->name('settings.templates.update');
     Route::post('/pengaturan/templates/{template}/reset-counter', [SettingsController::class, 'resetTemplateCounter'])->name('settings.templates.reset');
+
+    // Sinkronisasi maritim (offline kapal <-> kantor) — session auth + CSRF
+    Route::post('/api/sync/device', [\App\Http\Controllers\Api\SyncController::class, 'registerDevice'])->name('sync.device');
+    Route::post('/api/sync/push', [\App\Http\Controllers\Api\SyncController::class, 'push'])->name('sync.push');
+    Route::get('/api/sync/pull', [\App\Http\Controllers\Api\SyncController::class, 'pull'])->name('sync.pull');
+    Route::get('/api/sync/pack/{vessel}', [\App\Http\Controllers\Api\SyncController::class, 'pack'])->name('sync.pack');
+    Route::get('/api/sync/conflicts', [\App\Http\Controllers\Api\SyncController::class, 'conflicts'])->name('sync.conflicts');
+    Route::post('/api/sync/conflicts/{conflict}/resolve', [\App\Http\Controllers\Api\SyncController::class, 'resolveConflict'])->name('sync.conflicts.resolve');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

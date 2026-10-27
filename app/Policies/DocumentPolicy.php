@@ -28,29 +28,47 @@ class DocumentPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['doc_controller', 'ship_ops']);
-    }
-
-    public function update(User $user, Document $document): bool
-    {
-        if ($user->isReadOnly()) {
-            return false;
+        $perm = $user->checkPermission('documents.upload');
+        if ($perm !== null) {
+            return $perm;
         }
 
         return $user->hasAnyRole(['doc_controller', 'ship_ops']);
     }
 
+    public function update(User $user, Document $document): bool
+    {
+        $perm = $user->checkPermission('documents.update');
+        if ($perm !== null) {
+            if ($perm === false) {
+                return false;
+            }
+        }
+
+        if ($user->isReadOnly()) {
+            return false;
+        }
+
+        return $perm ?? $user->hasAnyRole(['doc_controller', 'ship_ops']);
+    }
+
     /** Kirim untuk pemeriksaan. */
     public function submit(User $user, Document $document): bool
     {
+        $perm = $user->checkPermission('documents.submit');
+        if ($perm !== null) {
+            return $perm && ! $user->isReadOnly();
+        }
+
         return ! $user->isReadOnly() && $user->hasAnyRole(['doc_controller', 'ship_ops']);
     }
 
     /** Approve / minta revisi / tolak — Supervisor. */
     public function verify(User $user, Document $document): bool
     {
-        if ($user->isReadOnly()) {
-            return false;
+        $perm = $user->checkPermission('documents.verify');
+        if ($perm !== null) {
+            return $perm && ! $user->isReadOnly();
         }
 
         return $user->hasAnyRole(['supervisor', 'management']);

@@ -16,7 +16,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { classNames, formatDate, formatRupiah } from '@/lib/format';
 import { type PageProps } from '@/types';
 import { Head, router, useForm } from '@inertiajs/react';
-import { Bell, BookOpen, Briefcase, Building2, Pencil, Plus, ScrollText, Shield, Trash2, Users } from 'lucide-react';
+import { Bell, BookOpen, Briefcase, Building2, KeyRound, Pencil, Plus, ScrollText, Shield, Trash2, Users } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -34,6 +34,7 @@ const SUPPLIER_CATEGORIES = ['bengkel', 'sparepart', 'operator_lain', 'pemerinta
 export default function SettingsIndex({
     tab,
     canManageUsers,
+    canRbac,
     usersList,
     roles,
     company,
@@ -45,6 +46,9 @@ export default function SettingsIndex({
     serviceCatalog,
     accountsList,
     workflow,
+    rbacRoles,
+    rbacPermissions,
+    rbacGrants,
 }: PageProps<Record<string, any>>) {
     const tabs = [
         { key: 'users', label: 'Users & Roles', icon: Users },
@@ -54,6 +58,7 @@ export default function SettingsIndex({
         { key: 'workflow', label: 'Alur Persetujuan', icon: Shield },
         { key: 'kategori', label: 'Kategori Dokumen', icon: BookOpen },
         { key: 'master', label: 'Master Data', icon: Briefcase },
+        ...(canRbac ? [{ key: 'rbac', label: 'Hak Akses (RBAC)', icon: KeyRound }] : []),
     ];
 
     const [modal, setModal] = useState<null | 'editUser' | 'editCustomer' | 'editSupplier' | 'editCatalog' | 'editCategory' | 'addCategory' | 'editTemplate'>(null);
@@ -65,6 +70,63 @@ export default function SettingsIndex({
     const [editTemplate, setEditTemplate] = useState<any>(null);
     const [confirmDel, setConfirmDel] = useState<{ url: string; label: string; note?: string } | null>(null);
     const [busy, setBusy] = useState(false);
+
+    // --- RBAC matriks (izin × role) ---
+    const editableRoles: any[] = (rbacRoles ?? []).filter((r: any) => r.slug !== 'super_admin');
+    const [rbacRoleId, setRbacRoleId] = useState<number | null>(editableRoles[0]?.id ?? null);
+    const [rbacGrantsState, setRbacGrantsState] = useState<Record<number, number[]>>(() => {
+        const init: Record<number, number[]> = {};
+        (rbacRoles ?? []).forEach((r: any) => {
+            init[r.id] = (rbacGrants?.[r.id] ?? []).map(Number);
+        });
+        return init;
+    });
+    const [savingRole, setSavingRole] = useState<number | null>(null);
+
+    const MODULE_LABELS: Record<string, string> = {
+        menu: 'Menu Sidebar',
+        fleet: 'Armada (Kapal)',
+        documents: 'Arsip Dokumen Terpadu',
+        voyages: 'Perjalanan (Voyage)',
+        operations: 'Operasional',
+        finance: 'Keuangan',
+        inventory: 'Inventaris',
+        hr: 'SDM / Crewing',
+        hours_of_rest: 'Hours of Rest (MLC 2006)',
+        reports: 'Laporan',
+        audit: 'Jejak Audit',
+        settings: 'Pengaturan',
+        sync: 'Sinkronisasi Offline',
+    };
+
+    const selectedRole: any = (rbacRoles ?? []).find((r: any) => r.id === rbacRoleId) ?? null;
+    const selectedGrants = (rbacRoleId !== null ? rbacGrantsState[rbacRoleId] : []) ?? [];
+    const isSuperRole = selectedRole?.slug === 'super_admin';
+
+    const toggleRbacPermission = (roleId: number, permId: number) => {
+        setRbacGrantsState((prev) => {
+            const cur = prev[roleId] ?? [];
+            return {
+                ...prev,
+                [roleId]: cur.includes(permId)
+                    ? cur.filter((id) => id !== permId)
+                    : [...cur, permId],
+            };
+        });
+    };
+
+    const setAllForRole = (roleId: number, permIds: number[]) => {
+        setRbacGrantsState((prev) => ({ ...prev, [roleId]: permIds }));
+    };
+
+    const submitRbac = (roleId: number) => {
+        setSavingRole(roleId);
+        router.put(
+            `/pengaturan/rbac/${roleId}`,
+            { permissions: rbacGrantsState[roleId] ?? [] },
+            { preserveScroll: true, onFinish: () => setSavingRole(null) },
+        );
+    };
 
     const userForm = useForm({ name: '', email: '', password: '', role: 'ship_ops' });
     const editUserForm = useForm({ name: '', email: '', password: '', role: 'ship_ops' });
@@ -164,6 +226,113 @@ export default function SettingsIndex({
                 active={tab}
                 onChange={(key) => router.get('/pengaturan', { tab: key }, { preserveState: true })}
             />
+
+            {tab === 'rbac' && canRbac && (
+                <div className="space-y-4">
+                    <Card title="Matriks Hak Akses (RBAC)">
+                        <p className="text-sm text-muted">
+                            Atur role mana yang boleh <strong>melihat</strong> / <strong>CRUD</strong> tiap modul & fungsi.
+                            Super Admin selalu memiliki semua izin. Perubahan langsung berlaku dan tercatat di Jejak Audit.
+                        </p>
+
+                        <div className="mt-4 flex flex-wrap items-center gap-2">
+                            {(rbacRoles ?? []).map((r: any) => (
+                                <button
+                                    key={r.id}
+                                    type="button"
+                                    onClick={() => setRbacRoleId(r.id)}
+                                    className={classNames(
+                                        'rounded-full px-3 py-1.5 text-sm font-medium ring-1 transition',
+                                        rbacRoleId === r.id
+                                            ? 'bg-primary text-white ring-primary'
+                                            : 'bg-appbg text-ink ring-hairline hover:bg-gray-100',
+                                    )}
+                                >
+                                    {ROLE_LABELS[r.slug] ?? r.name}
+                                </button>
+                            ))}
+                        </div>
+
+                        {selectedRole && (
+                            <div className="mt-5">
+                                <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-appbg px-3 py-2">
+                                    <div className="text-sm">
+                                        <span className="font-semibold text-ink">{ROLE_LABELS[selectedRole.slug] ?? selectedRole.name}</span>
+                                        <span className="ml-2 text-muted">
+                                            {isSuperRole
+                                                ? 'Selalu semua izin (bypass)'
+                                                : `${selectedGrants.length} izin aktif dari ${Object.values(rbacPermissions ?? {}).flat().length}`}
+                                        </span>
+                                    </div>
+                                    {!isSuperRole && (
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setAllForRole(selectedRole.id, (Object.values(rbacPermissions ?? {}) as any[][]).flat().map((p: any) => p.id))}
+                                                className="rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-gray-100"
+                                            >
+                                                Centang semua
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setAllForRole(selectedRole.id, [])}
+                                                className="rounded-md px-2 py-1 text-xs font-medium text-muted hover:bg-gray-100"
+                                            >
+                                                Kosongkan
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="mt-4 grid grid-cols-1 gap-5 lg:grid-cols-2">
+                                    {Object.entries(rbacPermissions ?? {}).map(([module, perms]) => (
+                                        <div key={module} className="rounded-lg border border-hairline p-3">
+                                            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">
+                                                {MODULE_LABELS[module] ?? module}
+                                            </h3>
+                                            <ul className="mt-2 space-y-1.5">
+                                                {(perms as any[]).map((perm) => (
+                                                    <li key={perm.id}>
+                                                        <label className={classNames(
+                                                            'flex items-start gap-2 text-sm',
+                                                            isSuperRole ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
+                                                        )}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isSuperRole ? true : selectedGrants.includes(perm.id)}
+                                                                disabled={isSuperRole}
+                                                                onChange={() => toggleRbacPermission(selectedRole.id, perm.id)}
+                                                                className="mt-0.5 rounded border-gray-300 text-primary focus:ring-primary"
+                                                            />
+                                                            <span>
+                                                                {perm.label}
+                                                                {perm.description && (
+                                                                    <span className="block text-xs text-muted">{perm.description}</span>
+                                                                )}
+                                                            </span>
+                                                        </label>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {!isSuperRole && (
+                                    <div className="mt-5 flex justify-end">
+                                        <PrimaryButton
+                                            onClick={() => submitRbac(selectedRole.id)}
+                                            disabled={savingRole === selectedRole.id}
+                                        >
+                                            {savingRole === selectedRole.id ? 'Menyimpan…' : `Simpan Hak Akses ${ROLE_LABELS[selectedRole.slug] ?? selectedRole.name}`}
+                                        </PrimaryButton>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </Card>
+                </div>
+            )}
 
             {tab === 'users' && (
                 <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">

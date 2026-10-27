@@ -1,5 +1,7 @@
 import { ROLE_LABELS } from '@/Constants/navigation';
+import SyncStatusChip from '@/Components/sync/SyncStatusChip';
 import { type PageProps } from '@/types';
+import { useSync } from '@/lib/sync/SyncProvider';
 import { Link, useForm, usePage } from '@inertiajs/react';
 import { Bell, ChevronDown, LogOut, Menu, Search, User } from 'lucide-react';
 import { FormEventHandler, useEffect, useRef, useState } from 'react';
@@ -20,6 +22,10 @@ export default function Topbar({
     onOpenSidebar: () => void;
 }) {
     const { auth, unreadNotifications } = usePage<PageProps>().props;
+    const { state: syncState } = useSync();
+    // Badge = unread dari halaman terakhir + notifikasi baru dari pull terakhir
+    // (hint direset saat navigasi sukses, saat shared props sudah di-refresh).
+    const badgeCount = (unreadNotifications ?? 0) + syncState.notificationsHint;
     const user = auth.user;
     const initials = (user?.name ?? '?')
         .split(' ')
@@ -186,19 +192,18 @@ export default function Topbar({
                 </div>
             </div>
 
-            {/* Kanan: notifikasi + menu pengguna */}
+            {/* Kanan: status sinkronisasi + notifikasi + menu pengguna */}
             <div className="flex min-w-0 items-center justify-end gap-1.5">
+                <SyncStatusChip />
                 <Link
                     href="/notifikasi"
                     title="Notifikasi"
                     className="relative rounded-xl p-2 text-muted transition-all duration-200 hover:bg-ink/[0.06] hover:text-ink active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 >
                     <Bell size={19} />
-                    {(unreadNotifications ?? 0) > 0 && (
+                    {badgeCount > 0 && (
                         <span className="absolute -right-0.5 -top-0.5 inline-flex min-w-[1rem] items-center justify-center rounded-full bg-primary px-1 font-mono text-[9px] font-semibold leading-4 text-white shadow-[0_0_10px_rgba(193,18,31,0.5)]">
-                            {(unreadNotifications ?? 0) > 99
-                                ? '99+'
-                                : unreadNotifications}
+                            {badgeCount > 99 ? '99+' : badgeCount}
                         </span>
                     )}
                 </Link>

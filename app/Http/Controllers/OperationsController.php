@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Crew;
 use App\Models\FuelLog;
 use App\Models\InventoryBalance;
 use App\Models\InventoryMovement;
@@ -26,7 +27,7 @@ class OperationsController extends Controller
     public function index(Request $request): Response
     {
         $tab = $request->string('tab')->toString() ?: 'posisi';
-        if (!in_array($tab, ['posisi', 'checklist', 'logs'], true)) {
+        if (!in_array($tab, ['posisi', 'checklist', 'logs', 'laporan'], true)) {
             $tab = 'posisi';
         }
         $user = auth()->user();
@@ -38,6 +39,7 @@ class OperationsController extends Controller
             'bbm' => $this->bbmProps(),
             'checklist' => $this->checklistProps(),
             'logs' => $this->logsProps(),
+            'laporan' => $this->laporanProps(),
             default => $this->posisiProps(),
         };
 
@@ -46,6 +48,38 @@ class OperationsController extends Controller
             'canManage' => $canManage,
             ...$props,
         ]);
+    }
+
+    /**
+     * Data utk tab "Laporan Kapal" — form pelaporan onboard yang dikirim
+     * lewat mesin sinkronisasi (/api/sync/push), jalan online ATAU offline.
+     * Otoritas tiap domain ditegakkan server-side (SyncService).
+     */
+    private function laporanProps(): array
+    {
+        $activeStatuses = [
+            'planned', 'document_preparation', 'internal_review', 'awaiting_external_approval',
+            'ready_for_departure', 'departed', 'in_transit', 'delayed',
+        ];
+
+        return [
+            'reportVoyages' => Voyage::whereIn('voyage_status', $activeStatuses)
+                ->orderByDesc('planned_departure')->orderByDesc('id')->limit(50)
+                ->get(['id', 'voyage_code', 'vessel_id', 'voyage_status', 'origin', 'destination', 'dsr_mt', 'dsr_date', 'updated_at'])
+                ->map(fn ($v) => [
+                    'id' => $v->id,
+                    'voyage_code' => $v->voyage_code,
+                    'vessel_id' => $v->vessel_id,
+                    'voyage_status' => $v->voyage_status,
+                    'origin' => $v->origin,
+                    'destination' => $v->destination,
+                    'dsr_mt' => $v->dsr_mt,
+                    'dsr_date' => $v->dsr_date?->toDateString(),
+                    'updated_at' => $v->updated_at?->toIso8601String(),
+                ]),
+            'reportVessels' => Vessel::orderBy('vessel_name')->get(['id', 'vessel_name']),
+            'reportCrews' => Crew::where('status', 'aktif')->orderBy('name')->get(['id', 'name', 'rank']),
+        ];
     }
 
     private function posisiProps(): array

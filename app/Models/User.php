@@ -70,4 +70,43 @@ class User extends Authenticatable
                 RoleSlug::Finance->value,
             ]);
     }
+
+    /**
+     * Cek izin terkelola RBAC (katalog PermissionCatalog).
+     * true = role punya izin; false = terkelola tapi TIDAK diberikan (tolak);
+     * null = ability tidak dikelola RBAC -> jatuh ke Gate/policy lama.
+     */
+    public function checkPermission(string $ability): ?bool
+    {
+        if (! \App\Services\PermissionCatalog::isManaged($ability)
+            || ! \App\Services\PermissionCatalog::isInitialized()) {
+            return null;
+        }
+
+        return $this->hasPermission($ability);
+    }
+
+    public function hasPermission(string $code): bool
+    {
+        foreach ($this->roles as $role) {
+            if (in_array($code, $role->permissionCodes(), true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** @return list<string> Semua kode izin dari semua role user. */
+    public function permissionCodes(): array
+    {
+        $codes = [];
+        foreach ($this->roles as $role) {
+            foreach ($role->permissionCodes() as $code) {
+                $codes[$code] = true;
+            }
+        }
+
+        return array_keys($codes);
+    }
 }

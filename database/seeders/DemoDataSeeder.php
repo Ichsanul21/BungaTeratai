@@ -22,6 +22,7 @@ class DemoDataSeeder extends Seeder
     public function run(): void
     {
         $this->seedRolesAndUsers();
+        $this->call(\Database\Seeders\RbacPermissionSeeder::class);
         $this->seedCompanyAndSettings();
         $this->seedDocumentCategories();
         $this->seedDocumentRequirements();

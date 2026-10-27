@@ -11,8 +11,9 @@ import TabNav from '@/Components/ui/TabNav';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { classNames, daysUntil, formatDate, formatRupiah } from '@/lib/format';
 import { type PageProps } from '@/types';
+import { useSync } from '@/lib/sync/SyncProvider';
 import { Head, router, useForm } from '@inertiajs/react';
-import { Anchor, ArrowLeftRight, Briefcase, ClipboardList, Plus, Printer, ShieldCheck, UserRound, Users } from 'lucide-react';
+import { AlertTriangle, Anchor, ArrowLeftRight, Briefcase, CheckCircle2, ClipboardList, Clock, Plus, Printer, ShieldCheck, Trash2, UserRound, Users } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 
 // Fallback lama — server mengirim rankList (36 jabatan materi gAJI + kadet + lainnya)
@@ -52,6 +53,12 @@ export default function HrIndex({
     sijilRequests,
     reasonList,
     vesselReadiness,
+    horLogs,
+    horCrew,
+    horMonth,
+    horCrewId,
+    horAccess,
+    canHorManage,
 }: PageProps<{
     tab: string;
     crews?: Array<Record<string, any>>;
@@ -62,6 +69,12 @@ export default function HrIndex({
     sijilRequests?: Array<Record<string, any>>;
     reasonList?: Array<{ value: string; label: string }>;
     vesselReadiness?: Array<Record<string, any>>;
+    horLogs?: Array<Record<string, any>>;
+    horCrew?: Array<{ id: number; name: string; rank: string }>;
+    horMonth?: string;
+    horCrewId?: number | null;
+    horAccess?: boolean;
+    canHorManage?: boolean;
 }>) {
     // 36 jabatan materi gAJI (+ kadet/lainnya) dari server; fallback legacy
     const RANKS: [string, string][] = (rankList ?? LEGACY_RANKS.map(([value, label]) => ({ value, label })))
@@ -69,7 +82,7 @@ export default function HrIndex({
     const crewOptions = crews ?? [];
 
     const [modal, setModal] = useState<null | 'crew' | 'employee' | 'cert' | 'editCrew' | 'editCert' | 'editAssignment' | 'addAssignment' | 'editEmployee'
-        | 'signOff' | 'signOn' | 'mutasi' | 'sijil' | 'kadet'>(null);
+        | 'signOff' | 'signOn' | 'mutasi' | 'sijil' | 'kadet' | 'hor'>(null);
     const [certCrewId, setCertCrewId] = useState<number | null>(null);
     const [editCrew, setEditCrew] = useState<any>(null);
     const [editCert, setEditCert] = useState<{ crewId: number; cert: any } | null>(null);
@@ -129,6 +142,169 @@ export default function HrIndex({
     });
     const [kadetKind, setKadetKind] = useState<'on' | 'off'>('on');
 
+    // ===== Hours of Rest (MLC 2006) =====
+    const { engine } = useSync();
+    const HOR_VLABEL: Record<string, string> = {
+        rest_min_10h: 'Istirahat < 10 jam / 24 jam',
+        rest_block_min_6h: 'Tidak ada blok istirahat ≥ 6 jam',
+        work_max_14h: 'Kerja > 14 jam / 24 jam',
+        rest_min_77h_week: 'Istirahat mingguan < 77 jam',
+    };
+    const [horFilter, setHorFilter] = useState({
+        crew_id: String(horCrewId ?? ''),
+        month: horMonth ?? new Date().toISOString().slice(0, 7),
+    });
+    const [editHor, setEditHor] = useState<any>(null);
+    const horForm = useForm({
+        crew_id: '', log_date: '', notes: '', client_uuid: '',
+        rest_entries: [{ start: '00:00', end: '06:00' }] as Array<{ start: string; end: string }>,
+    });
+
+    const reloadHor = () => router.get('/sdm', {
+        tab: 'hor',
+        crew_id: horFilter.crew_id || undefined,
+        month: horFilter.month,
+    }, { preserveState: true, preserveScroll: true });
+
+    const openHorAdd = () => {
+        setEditHor(null);
+        horForm.setData({
+            crew_id: horFilter.crew_id,
+            log_date: new Date().toISOString().slice(0, 10),
+            notes: '',
+            client_uuid: typeof crypto !== 'undefined' && crypto.randomUUID
+                ? crypto.randomUUID()
+                : `hor-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+            rest_entries: [{ start: '00:00', end: '06:00' }],
+        });
+        setModal('hor');
+    };
+
+    const openHorEdit = (log: any) => {
+        setEditHor(log);
+        horForm.setData({
+            crew_id: String(log.crew_id),
+            log_date: log.log_date,
+            notes: log.notes ?? '',
+            client_uuid: log.client_uuid ?? '',
+            rest_entries: (log.rest_entries?.length ? log.rest_entries : [{ start: '00:00', end: '06:00' }]),
+        });
+        setModal('hor');
+    };
+
+    const submitHor = (e: FormEvent) => {
+        e.preventDefault();
+
+        // Offline: catatan masuk outbox sinkronisasi (client_uuid = idempoten),
+        // dikirim ke kantor begitu kembali online — aturan WLR dihitung server.
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            void engine.enqueue({
+                entity_type: 'hours_of_rest',
+                label: `Jam istirahat ${horForm.data.log_date}${editHor ? ' (ubah)' : ''}`,
+                priority: 'safety',
+                payload: {
+                    crew_id: Number(horForm.data.crew_id),
+                    log_date: horForm.data.log_date,
+                    rest_entries: horForm.data.rest_entries,
+                    notes: horForm.data.notes || undefined,
+                    client_uuid: horForm.data.client_uuid || undefined,
+                },
+            });
+            engine.notify(`Jam istirahat ${horForm.data.log_date} masuk antrean offline — otomatis terkirim saat online.`);
+            setModal(null);
+            setEditHor(null);
+            return;
+        }
+
+        const opts = { preserveScroll: true, onSuccess: () => { setModal(null); setEditHor(null); } };
+        if (editHor) {
+            horForm.put(`/sdm/hor/${editHor.id}`, opts);
+        } else {
+            horForm.post('/sdm/hor', opts);
+        }
+    };
+
+    const setHorEntry = (idx: number, field: 'start' | 'end', value: string) => {
+        horForm.setData('rest_entries', horForm.data.rest_entries.map((entry, i) => (
+            i === idx ? { ...entry, [field]: value } : entry
+        )));
+    };
+
+    // Pratinjau WLR di form (aturan sama dgn server)
+    const horPreview = (() => {
+        let rest = 0;
+        let longest = 0;
+        for (const entry of horForm.data.rest_entries) {
+            if (!/^\d{2}:\d{2}$/.test(entry.start) || !/^\d{2}:\d{2}$/.test(entry.end)) continue;
+            const [sh, sm] = entry.start.split(':').map(Number);
+            const [eh, em] = entry.end.split(':').map(Number);
+            const mins = eh * 60 + em - (sh * 60 + sm);
+            if (mins <= 0) continue;
+            rest += mins;
+            longest = Math.max(longest, mins);
+        }
+        rest = Math.min(rest, 1440);
+        const work = 1440 - rest;
+        const violations: string[] = [];
+        if (rest < 600) violations.push('rest_min_10h');
+        if (rest > 0 && longest < 360) violations.push('rest_block_min_6h');
+        if (work > 840) violations.push('work_max_14h');
+        return { rest, work, violations };
+    })();
+
+    const horLogsList = horLogs ?? [];
+    const horWeeks = (() => {
+        const [y, m] = horFilter.month.split('-').map(Number);
+        if (!y || !m) return [];
+        const daysInMonth = new Date(y, m, 0).getDate();
+        const byDate = new Map(horLogsList.map((l: any) => [l.log_date, l]));
+        const weeks: Array<{ label: string; range: string; restH: number; complete: boolean; ok: boolean }> = [];
+        for (let day = 1; day <= daysInMonth; day += 7) {
+            const endDay = Math.min(day + 6, daysInMonth);
+            let sum = 0;
+            let logged = 0;
+            let total = 0;
+            for (let d = day; d <= endDay; d++) {
+                total++;
+                const dateStr = `${horFilter.month}-${String(d).padStart(2, '0')}`;
+                const log = byDate.get(dateStr);
+                if (log) {
+                    logged++;
+                    sum += Number(log.total_rest_minutes ?? 0);
+                }
+            }
+            const restH = Math.round((sum / 60) * 10) / 10;
+            weeks.push({
+                label: `Minggu ${weeks.length + 1}`,
+                range: `${String(day).padStart(2, '0')}/${String(m).padStart(2, '0')} - ${String(endDay).padStart(2, '0')}/${String(m).padStart(2, '0')}`,
+                restH,
+                complete: logged === total,
+                ok: logged === total && restH >= 77,
+            });
+        }
+        return weeks;
+    })();
+
+    const horStats = {
+        recorded: horLogsList.length,
+        compliant: horLogsList.filter((l: any) => l.is_compliant).length,
+        violations: horLogsList.filter((l: any) => !l.is_compliant).length,
+        avgRest: horLogsList.length
+            ? Math.round((horLogsList.reduce((s: number, l: any) => s + Number(l.total_rest_minutes ?? 0), 0) / horLogsList.length / 60) * 10) / 10
+            : 0,
+    };
+
+    const horStatusBadge = (log: any) => {
+        if (log.is_compliant) {
+            return <Badge tone="success"><CheckCircle2 size={11} /> Patuh</Badge>;
+        }
+        return (
+            <Badge tone="danger">
+                <AlertTriangle size={11} /> Langgar: {(log.violations ?? []).map((v: string) => HOR_VLABEL[v] ?? v).join('; ')}
+            </Badge>
+        );
+    };
+
     const submitEditEmployee = (e: FormEvent) => {
         e.preventDefault();
         if (! editEmployee) return;
@@ -140,6 +316,7 @@ export default function HrIndex({
         { key: 'register', label: 'Register ON/OFF', icon: ClipboardList, count: movements?.length },
         { key: 'kadet', label: 'Kadet (Prala)', icon: Anchor, count: tab === 'kadet' ? crews?.length : undefined },
         { key: 'karyawan', label: 'Karyawan Kantor', icon: Briefcase, count: employees?.length },
+        ...(horAccess ? [{ key: 'hor', label: 'Hours of Rest', icon: Clock }] : []),
     ];
 
     const submitCrew = (e: FormEvent) => {
@@ -238,9 +415,12 @@ export default function HrIndex({
                         )}
                         {tab === 'kadet' && (
                             <>
-                                <SecondaryButton type="button" onClick={() => { setKadetKind('on'); setModal('kadet'); }}><Plus size={15} className="inline me-1" /> Kadet ON (Prala)</SecondaryButton>
+                                <SecondaryButton type="button" onClick={() => { setKadetKind('on'); setModal('kadet'); }}><Plus size={14} className="inline me-1" /> Kadet ON (Prala)</SecondaryButton>
                                 <PrimaryButton onClick={() => { setKadetKind('off'); setModal('kadet'); }}>Kadet OFF</PrimaryButton>
                             </>
+                        )}
+                        {tab === 'hor' && canHorManage && (
+                            <PrimaryButton onClick={openHorAdd}><Plus size={15} className="inline me-1" /> Catat Istirahat</PrimaryButton>
                         )}
             {tab === 'register' && (
                 <div className="space-y-5">
@@ -384,6 +564,141 @@ export default function HrIndex({
                 active={tab}
                 onChange={(key) => router.get('/sdm', { tab: key }, { preserveState: true })}
             />
+
+            {tab === 'hor' && horAccess && (
+                <div className="space-y-4">
+                    <Card
+                        title="Register Jam Istirahat Awak — Hours of Rest (MLC 2006 / SOLAS XI/1)"
+                        description="Wajib: ≥10 jam istirahat per 24 jam (satu blok ≥6 jam), maksimal 14 jam kerja per 24 jam, ≥77 jam istirahat per 7 hari. Dicatat onboard (mode offline) lalu disinkronkan ke kantor."
+                    >
+                        <div className="flex flex-wrap items-end gap-3">
+                            <div>
+                                <label className="text-xs font-medium text-muted">Awak</label>
+                                <select
+                                    value={horFilter.crew_id}
+                                    onChange={(e) => setHorFilter((f) => ({ ...f, crew_id: e.target.value }))}
+                                    className={classNames(INPUT_CLS, 'w-56')}
+                                >
+                                    <option value="">— semua awak —</option>
+                                    {(horCrew ?? []).map((c) => <option key={c.id} value={c.id}>{c.name} — {c.rank}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-xs font-medium text-muted">Bulan</label>
+                                <input
+                                    type="month"
+                                    value={horFilter.month}
+                                    onChange={(e) => setHorFilter((f) => ({ ...f, month: e.target.value }))}
+                                    className={classNames(INPUT_CLS, 'w-44')}
+                                />
+                            </div>
+                            <SecondaryButton type="button" onClick={reloadHor}>Terapkan</SecondaryButton>
+                            {horFilter.crew_id && (
+                                <button
+                                    type="button"
+                                    onClick={() => window.open(`/sdm/hor/cetak/${horFilter.crew_id}?month=${horFilter.month}`, '_blank')}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-hairline px-2.5 py-2 text-xs font-medium text-ink hover:border-primary/40"
+                                >
+                                    <Printer size={13} /> Cetak Register (PSC)
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                            {[
+                                { label: 'Hari tercatat', value: String(horStats.recorded), tone: 'text-ink' },
+                                { label: 'Patuh WLR', value: String(horStats.compliant), tone: 'text-ok' },
+                                { label: 'Langgar', value: String(horStats.violations), tone: horStats.violations > 0 ? 'text-primary' : 'text-muted' },
+                                { label: 'Rata² istirahat', value: `${horStats.avgRest} jam`, tone: 'text-ink' },
+                            ].map((s) => (
+                                <div key={s.label} className="rounded-lg bg-appbg px-3 py-2">
+                                    <div className="text-xs text-muted">{s.label}</div>
+                                    <div className={classNames('text-lg font-semibold', s.tone)}>{s.value}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </Card>
+
+                    {horWeeks.length > 0 && (
+                        <Card title="Kepatuhan Mingguan (77 jam / 7 hari)">
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                                {horWeeks.map((w) => (
+                                    <div key={w.label} className="rounded-lg border border-hairline px-3 py-2">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm font-medium text-ink">{w.label}</span>
+                                            {w.ok ? (
+                                                <Badge tone="success"><CheckCircle2 size={11} /> Patuh</Badge>
+                                            ) : (
+                                                <Badge tone="danger"><AlertTriangle size={11} /> {w.complete ? 'Langgar' : 'Belum lengkap'}</Badge>
+                                            )}
+                                        </div>
+                                        <div className="mt-1 text-xs text-muted">{w.range} · {w.restH} jam {w.complete ? '' : `(${w.restH}/77)`}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </Card>
+                    )}
+
+                    <Card
+                        title="Catatan Harian"
+                        actions={canHorManage && horFilter.crew_id ? (
+                            <PrimaryButton onClick={openHorAdd}><Plus size={14} className="inline me-1" /> Catat</PrimaryButton>
+                        ) : null}
+                    >
+                        {horLogsList.length === 0 ? (
+                            <EmptyState
+                                icon={Clock}
+                                title="Belum ada catatan jam istirahat"
+                                description="Pilih awak lalu klik “Catat Istirahat”. Saat offline, catatan masuk antrean sinkronisasi."
+                            />
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full text-sm">
+                                    <thead className="bg-appbg text-left text-xs uppercase tracking-wide text-muted">
+                                        <tr>{['Tanggal', 'Awak', 'Blok Istirahat', 'Istirahat', 'Kerja', 'Status WLR', ...(canHorManage ? ['Aksi'] : [])].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-hairline">
+                                        {horLogsList.map((log: any) => (
+                                            <tr key={log.id} className="hover:bg-appbg">
+                                                <td className="px-3 py-2 whitespace-nowrap">{formatDate(log.log_date)}</td>
+                                                <td className="px-3 py-2">{log.crew_name}</td>
+                                                <td className="px-3 py-2">
+                                                    {(log.rest_entries ?? []).length > 0
+                                                        ? (log.rest_entries as any[]).map((en, i) => `${en.start}-${en.end}`).join(', ')
+                                                        : '—'}
+                                                </td>
+                                                <td className="px-3 py-2">{Math.round(Number(log.total_rest_minutes) / 6) / 10} jam</td>
+                                                <td className="px-3 py-2">{Math.round(Number(log.total_work_minutes) / 6) / 10} jam</td>
+                                                <td className="px-3 py-2">{horStatusBadge(log)}</td>
+                                                {canHorManage && (
+                                                    <td className="px-3 py-2">
+                                                        <div className="flex gap-2">
+                                                            <button type="button" onClick={() => openHorEdit(log)} className="text-primary hover:underline" title="Ubah">
+                                                                <ShieldCheck size={14} />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setConfirmDel({ url: `/sdm/hor/${log.id}`, label: `Jam istirahat ${log.log_date}` })}
+                                                                className="text-primary hover:underline"
+                                                                title="Hapus"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                )}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                        <p className="mt-3 text-xs text-muted">
+                            Hari tanpa catatan berarti belum dilaporkan awak. Cetak register bulanan lewat tombol di atas untuk berkas inspeksi PSC.
+                        </p>
+                    </Card>
+                </div>
+            )}
 
             {tab === 'abk' && (
                 <>
@@ -1093,6 +1408,124 @@ export default function HrIndex({
                     <div className="mt-5 flex justify-end gap-3">
                         <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
                         <PrimaryButton disabled={kadetForm.processing}>{kadetKind === 'on' ? 'Catat Kadet ON' : 'Catat Kadet OFF'}</PrimaryButton>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Modal: Hours of Rest (catat/ubah blok istirahat) */}
+            <Modal show={modal === 'hor'} onClose={() => { setModal(null); setEditHor(null); }} maxWidth="lg">
+                <form onSubmit={submitHor} className="p-6">
+                    <h2 className="text-lg font-semibold text-ink">
+                        {editHor ? `Ubah Jam Istirahat — ${editHor.log_date}` : 'Catat Jam Istirahat Awak'}
+                    </h2>
+                    <p className="mt-1 text-xs text-muted">
+                        Aturan MLC 2006: istirahat ≥10 jam per 24 jam (satu blok ≥6 jam), kerja maksimal 14 jam per 24 jam.
+                        Jam memakai waktu kapal (WITA).
+                    </p>
+
+                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                            <label className="text-xs font-medium text-muted">Awak *</label>
+                            <select
+                                value={horForm.data.crew_id}
+                                onChange={(e) => horForm.setData('crew_id', e.target.value)}
+                                className={INPUT_CLS}
+                                required
+                            >
+                                <option value="">— pilih —</option>
+                                {(horCrew ?? []).map((c) => <option key={c.id} value={c.id}>{c.name} — {c.rank}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-muted">Tanggal *</label>
+                            <input
+                                type="date"
+                                value={horForm.data.log_date}
+                                onChange={(e) => horForm.setData('log_date', e.target.value)}
+                                className={INPUT_CLS}
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    <div className="mt-4">
+                        <div className="flex items-center justify-between">
+                            <label className="text-xs font-medium text-muted">Blok Istirahat (WITA) *</label>
+                            <button
+                                type="button"
+                                onClick={() => horForm.setData('rest_entries', [...horForm.data.rest_entries, { start: '', end: '' }])}
+                                className="text-xs font-medium text-primary hover:underline"
+                            >
+                                + Tambah blok
+                            </button>
+                        </div>
+                        <div className="mt-2 space-y-2">
+                            {horForm.data.rest_entries.map((entry, idx) => (
+                                <div key={idx} className="flex items-center gap-2">
+                                    <input
+                                        type="time"
+                                        value={entry.start}
+                                        onChange={(e) => setHorEntry(idx, 'start', e.target.value)}
+                                        className={classNames(INPUT_CLS, 'w-32')}
+                                        required
+                                    />
+                                    <span className="text-muted">s/d</span>
+                                    <input
+                                        type="time"
+                                        value={entry.end}
+                                        onChange={(e) => setHorEntry(idx, 'end', e.target.value)}
+                                        className={classNames(INPUT_CLS, 'w-32')}
+                                        required
+                                    />
+                                    {horForm.data.rest_entries.length > 1 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => horForm.setData('rest_entries', horForm.data.rest_entries.filter((_, i) => i !== idx))}
+                                            className="text-primary hover:underline"
+                                            title="Hapus blok"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className={classNames(
+                        'mt-4 rounded-lg px-3 py-2 text-sm',
+                        horPreview.violations.length === 0 ? 'bg-ok/10 text-ok' : 'bg-primary/10 text-primary',
+                    )}>
+                        {horPreview.violations.length === 0 ? (
+                            <span className="inline-flex items-center gap-1.5">
+                                <CheckCircle2 size={14} /> Patuh WLR — istirahat {Math.round((horPreview.rest / 60) * 10) / 10} jam, kerja {Math.round((horPreview.work / 60) * 10) / 10} jam.
+                            </span>
+                        ) : (
+                            <span className="inline-flex items-start gap-1.5">
+                                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                                <span>
+                                    Langgar WLR: {horPreview.violations.map((v) => HOR_VLABEL[v] ?? v).join('; ')}.
+                                    (istirahat {Math.round((horPreview.rest / 60) * 10) / 10} jam)
+                                </span>
+                            </span>
+                        )}
+                    </div>
+
+                    <div className="mt-3">
+                        <label className="text-xs font-medium text-muted">Catatan (opsional)</label>
+                        <input
+                            value={horForm.data.notes}
+                            onChange={(e) => horForm.setData('notes', e.target.value)}
+                            className={INPUT_CLS}
+                            placeholder="mis. istirahat terpecah saat penjagaan malam"
+                        />
+                    </div>
+
+                    <div className="mt-5 flex justify-end gap-3">
+                        <SecondaryButton type="button" onClick={() => { setModal(null); setEditHor(null); }}>Batal</SecondaryButton>
+                        <PrimaryButton disabled={horForm.processing}>
+                            {editHor ? 'Simpan Perubahan' : 'Catat Jam Istirahat'}
+                        </PrimaryButton>
                     </div>
                 </form>
             </Modal>

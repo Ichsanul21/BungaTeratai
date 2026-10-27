@@ -31,6 +31,7 @@ import {
     ArrowLeft,
     ChevronRight,
     ClipboardList,
+    Download,
     Edit,
     FileStack,
     Fuel,
@@ -521,6 +522,44 @@ export default function FleetShow({
     // const [confirmArchive, setConfirmArchive] = useState(false);
     // const [busy, setBusy] = useState(false);
 
+    // Berkas Offline (PSC): manifest dokumen aktif + checksum dari /api/sync/pack
+    // — diunduh sekali sebelum berlayar / saat inspeksi, dibuka tanpa internet.
+    const [packBusy, setPackBusy] = useState(false);
+    const [packMsg, setPackMsg] = useState<string | null>(null);
+
+    const downloadOfflinePack = async () => {
+        setPackBusy(true);
+        setPackMsg(null);
+        try {
+            const xsrfMatch = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
+            const xsrf = xsrfMatch ? decodeURIComponent(xsrfMatch[1]) : '';
+            const res = await fetch(`/api/sync/pack/${vessel.id}`, {
+                credentials: 'same-origin',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-XSRF-TOKEN': xsrf,
+                    Accept: 'application/json',
+                },
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = `Berkas-Offline-${String(vessel.vessel_name).replace(/[^A-Za-z0-9]+/g, '-')}-${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            URL.revokeObjectURL(url);
+            setPackMsg('Berkas offline terunduh — simpan di perangkat kapal.');
+        } catch {
+            setPackMsg('Gagal mengunduh (perlu login & koneksi).');
+        } finally {
+            setPackBusy(false);
+            window.setTimeout(() => setPackMsg(null), 6000);
+        }
+    };
+
     const pos = positionInfo(vessel.last_position_at);
     const activeCrews = crews.filter((c) => c.status === 'aktif').length;
 
@@ -984,6 +1023,25 @@ export default function FleetShow({
                     className="bt-anim"
                     style={{ animation: `bt-rise 0.45s ${EASE} 150ms both` }}
                 >
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-hairline bg-white px-4 py-3">
+                        <div className="text-sm text-muted">
+                            <span className="font-medium text-ink">Berkas Offline (PSC):</span>{' '}
+                            manifest dokumen aktif + masa berlaku + checksum — diunduh sebelum
+                            berlayar agar bisa ditunjukkan saat inspeksi tanpa internet.
+                        </div>
+                        <div className="flex items-center gap-3">
+                            {packMsg && <span className="text-xs font-medium text-ok">{packMsg}</span>}
+                            <button
+                                type="button"
+                                onClick={() => void downloadOfflinePack()}
+                                disabled={packBusy}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-hairline px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:border-primary/40 disabled:opacity-50"
+                            >
+                                <Download size={13} />
+                                {packBusy ? 'Menyiapkan…' : 'Unduh Berkas Offline'}
+                            </button>
+                        </div>
+                    </div>
                     <RegisterTable
                         meta={`${formatNumber(documents.length)} dokumen`}
                         legend={[

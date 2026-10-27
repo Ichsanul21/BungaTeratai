@@ -9,11 +9,13 @@ use App\Models\Crew;
 use App\Models\CrewAssignment;
 use App\Models\CrewCertificate;
 use App\Models\CrewMovement;
+use App\Models\HoursOfRestLog;
 use App\Models\OfficeEmployee;
 use App\Models\SijilRequest;
 use App\Services\AuditService;
 use App\Services\CrewComplianceService;
 use App\Services\Generators\DocumentGeneratorService;
+use App\Services\HoursOfRestService;
 use App\Services\NumberingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -99,6 +101,49 @@ class HrController extends Controller
                 'crews' => $kadets,
                 'vessels' => \App\Models\Vessel::orderBy('vessel_name')->get(['id', 'vessel_name']),
                 'rankList' => $this->rankOptions([CrewRank::KadetDeck, CrewRank::KadetMesin]),
+            ]);
+        }
+
+        if ($tab === 'hor') {
+            Gate::authorize('hor.view');
+
+            $crewId = $request->integer('crew_id') ?: null;
+            $monthInput = $request->string('month')->toString();
+            $month = preg_match('/^\d{4}-\d{2}$/', $monthInput) ? $monthInput : now()->format('Y-m');
+            $start = \Carbon\Carbon::parse($month.'-01');
+            $end = $start->copy()->endOfMonth();
+
+            $logs = HoursOfRestLog::with('crew')
+                ->when($crewId, fn ($q) => $q->where('crew_id', $crewId))
+                ->whereBetween('log_date', [$start->toDateString(), $end->toDateString()])
+                ->orderBy('log_date')->orderBy('id')
+                ->get()
+                ->map(fn ($l) => [
+                    'id' => $l->id,
+                    'client_uuid' => $l->client_uuid,
+                    'crew_id' => $l->crew_id,
+                    'crew_name' => $l->crew?->name ?? '—',
+                    'crew_rank' => $l->crew?->rank,
+                    'voyage_id' => $l->voyage_id,
+                    'log_date' => $l->log_date->toDateString(),
+                    'rest_entries' => $l->rest_entries ?? [],
+                    'total_rest_minutes' => $l->total_rest_minutes,
+                    'total_work_minutes' => $l->total_work_minutes,
+                    'is_compliant' => $l->is_compliant,
+                    'violations' => $l->violations ?? [],
+                    'notes' => $l->notes,
+                    'synced_at' => $l->synced_at?->toIso8601String(),
+                    'device_occurred_at' => $l->device_occurred_at?->toIso8601String(),
+                ]);
+
+            return Inertia::render('Hr/Index', [
+                'tab' => $tab,
+                'horLogs' => $logs,
+                'horCrew' => Crew::where('status', 'aktif')->orderBy('name')->get(['id', 'name', 'rank']),
+                'horMonth' => $month,
+                'horCrewId' => $crewId,
+                'horAccess' => Gate::allows('hor.view'),
+                'canHorManage' => Gate::allows('hor.manage'),
             ]);
         }
 
@@ -764,6 +809,128 @@ class HrController extends Controller
         return \Illuminate\Support\Facades\Storage::disk('local')->download(
             $result['path'],
             preg_replace('/[^A-Za-z0-9._-]+/', '_', 'Crew List '.$vessel->vessel_name).'.pdf'
+        );
+    }
+
+    // ------------------------------------------------------------------
+    // Hours of Rest (MLC 2006 / SOLAS XI/1)
+    // ------------------------------------------------------------------
+
+    /** Catat/ubah jam istirahat awak. client_uuid = idempotensi outbox offline. */
+    public function storeHor(Request $request)
+    {
+        Gate::authorize('hor.manage');
+
+        $data = $request->validate([
+            'crew_id' => ['required', 'exists:crews,id'],
+            'voyage_id' => ['nullable', 'exists:voyages,id'],
+            'log_date' => ['required', 'date'],
+            'rest_entries' => ['required', 'array', 'min:1', 'max:6'],
+            'rest_entries.*.start' => ['required', 'date_format:H:i'],
+            'rest_entries.*.end' => ['required', 'date_format:H:i'],
+            'notes' => ['nullable', 'string', 'max:500'],
+            'client_uuid' => ['nullable', 'string', 'max:36'],
+        ]);
+
+        $evaluation = app(HoursOfRestService::class)->evaluateDay($data['rest_entries']);
+
+        $existing = ! empty($data['client_uuid'])
+            ? HoursOfRestLog::where('client_uuid', $data['client_uuid'])->first()
+            : HoursOfRestLog::where('crew_id', $data['crew_id'])->where('log_date', $data['log_date'])->first();
+
+        $log = $existing ?? new HoursOfRestLog(['client_uuid' => $data['client_uuid'] ?? null]);
+        $log->forceFill([
+            'crew_id' => $data['crew_id'],
+            'voyage_id' => $data['voyage_id'] ?? null,
+            'log_date' => $data['log_date'],
+            'rest_entries' => $data['rest_entries'],
+            'total_rest_minutes' => $evaluation['rest'],
+            'total_work_minutes' => $evaluation['work'],
+            'is_compliant' => $evaluation['compliant'],
+            'violations' => $evaluation['violations'],
+            'entered_by' => auth()->id(),
+            'synced_at' => now(),
+            'device_occurred_at' => $log->device_occurred_at ?? now(),
+            'notes' => $data['notes'] ?? null,
+        ])->save();
+
+        AuditService::log(
+            $existing ? 'updated' : 'created',
+            'hours_of_rest',
+            $log->id,
+            null,
+            ['crew_id' => $log->crew_id, 'log_date' => $log->log_date->toDateString(), 'rest_minutes' => $log->total_rest_minutes],
+            'Jam istirahat awak '.($existing ? 'diperbarui' : 'dicatat').' — '.($evaluation['compliant'] ? 'patuh WLR' : 'LANGGAR: '.implode(', ', $evaluation['violations']))
+        );
+
+        return back()->with(
+            'success',
+            $evaluation['compliant']
+                ? 'Jam istirahat tercatat — patuh WLR ('.round($evaluation['rest'] / 60, 1).' jam istirahat).'
+                : 'Tercatat, tapi LANGGAR WLR: '.implode(', ', $evaluation['violations']).'.'
+        );
+    }
+
+    public function updateHor(Request $request, HoursOfRestLog $log)
+    {
+        Gate::authorize('hor.manage');
+
+        $data = $request->validate([
+            'crew_id' => ['required', 'exists:crews,id'],
+            'voyage_id' => ['nullable', 'exists:voyages,id'],
+            'log_date' => ['required', 'date'],
+            'rest_entries' => ['required', 'array', 'min:1', 'max:6'],
+            'rest_entries.*.start' => ['required', 'date_format:H:i'],
+            'rest_entries.*.end' => ['required', 'date_format:H:i'],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $evaluation = app(HoursOfRestService::class)->evaluateDay($data['rest_entries']);
+        $before = $log->only(['total_rest_minutes', 'is_compliant', 'violations']);
+
+        $log->forceFill([
+            'crew_id' => $data['crew_id'],
+            'voyage_id' => $data['voyage_id'] ?? null,
+            'log_date' => $data['log_date'],
+            'rest_entries' => $data['rest_entries'],
+            'total_rest_minutes' => $evaluation['rest'],
+            'total_work_minutes' => $evaluation['work'],
+            'is_compliant' => $evaluation['compliant'],
+            'violations' => $evaluation['violations'],
+            'notes' => $data['notes'] ?? null,
+        ])->save();
+
+        AuditService::log('updated', 'hours_of_rest', $log->id, $before,
+            $log->only(['total_rest_minutes', 'is_compliant', 'violations']),
+            'Jam istirahat diperbarui — '.($evaluation['compliant'] ? 'patuh WLR' : 'LANGGAR: '.implode(', ', $evaluation['violations'])));
+
+        return back()->with('success', 'Jam istirahat '.($log->log_date->toDateString()).' diperbarui.');
+    }
+
+    public function deleteHor(HoursOfRestLog $log)
+    {
+        Gate::authorize('hor.manage');
+
+        $log->delete();
+        AuditService::log('deleted', 'hours_of_rest', $log->id, null, null,
+            'Catatan jam istirahat dihapus (soft delete): '.$log->log_date->toDateString());
+
+        return back()->with('success', 'Catatan jam istirahat dihapus.');
+    }
+
+    /** Register jam istirahat 1 bulan utk awak — cetak inspeksi PSC (laporan, tanpa nomor). */
+    public function printHorRegister(Request $request, Crew $crew)
+    {
+        Gate::authorize('hor.view');
+
+        $monthInput = $request->string('month')->toString();
+        $month = preg_match('/^\d{4}-\d{2}$/', $monthInput) ? $monthInput : now()->format('Y-m');
+
+        $result = app(DocumentGeneratorService::class)->generateHorRegister($crew, $month);
+
+        return \Illuminate\Support\Facades\Storage::disk('local')->download(
+            $result['path'],
+            preg_replace('/[^A-Za-z0-9._-]+/', '_', 'Hours of Rest '.$crew->name.'-'.$month).'.pdf'
         );
     }
 }
