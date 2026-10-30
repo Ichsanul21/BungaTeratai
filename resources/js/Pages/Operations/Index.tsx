@@ -12,22 +12,17 @@ import TabNav from '@/Components/ui/TabNav';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { VOYAGE_STATUS_LABELS } from '@/Constants/navigation';
 import { classNames, formatDate, formatDateTime, formatNumber, formatRupiah } from '@/lib/format';
-import { useSync } from '@/lib/sync/SyncProvider';
 import { type PageProps } from '@/types';
 import { Head, router } from '@inertiajs/react';
 import {
     Activity,
-    ArrowLeftRight,
-    CheckCircle2,
     ClipboardCheck,
     ClipboardList,
     Cog,
     Fuel,
     Gauge,
-    LifeBuoy,
     MapPin,
     Plus,
-    Radio,
     Ship,
     Wrench,
 } from 'lucide-react';
@@ -189,9 +184,6 @@ export default function OperationsIndex({
     voyages,
     checklistVoyages,
     voyageEvents,
-    reportVoyages,
-    reportVessels,
-    reportCrews,
 }: PageProps<{
     tab: string;
     canManage: boolean;
@@ -205,15 +197,11 @@ export default function OperationsIndex({
     kpis?: { liter_bulan: number; biaya_bulan: number; anomali: number; trip_bulan: number };
     checklistVoyages?: Array<Record<string, any>>;
     voyageEvents?: Array<Record<string, any>>;
-    reportVoyages?: Array<Record<string, any>>;
-    reportVessels?: Array<{ id: number; vessel_name: string }>;
-    reportCrews?: Array<{ id: number; name: string; rank: string }>;
 }>) {
     const tabs = [
         { key: 'posisi', label: 'Posisi', icon: MapPin },
         { key: 'checklist', label: 'Checklist', icon: ClipboardList },
         { key: 'logs', label: 'Log Berangkat/Tiba', icon: Ship },
-        { key: 'laporan', label: 'Laporan Kapal', icon: Radio },
     ];
 
     const [bbmVesselId, setBbmVesselId] = useState('');
@@ -439,128 +427,6 @@ export default function OperationsIndex({
         );
     };
 
-    // ===== Laporan Kapal (channel sinkronisasi — jalan online ATAU offline) =====
-    const { state: syncState, engine } = useSync();
-    const [reportNote, setReportNote] = useState<string | null>(null);
-    const [dsrForm, setDsrForm] = useState({ voyage_id: '', dsr_mt: '', dsr_date: '', notes_progress: '' });
-    const [posForm, setPosForm] = useState({ vessel_id: '', lat: '', lng: '', speed_knots: '' });
-    const [fuelReportForm, setFuelReportForm] = useState({ vessel_id: '', trip_date: '', route: '', duration_hours: '', liters: '', cargo_type: '' });
-    const [safetyForm, setSafetyForm] = useState({ voyage_id: '', status: 'lulus', passenger_count: '', capacity: '', notes: '' });
-    const [crewReportForm, setCrewReportForm] = useState({ crew_id: '', vessel_id: '', type: 'sign_off', movement_date: '', reason: '', notes: '' });
-
-    const enqueueReport = async (
-        entity: string,
-        payload: Record<string, unknown>,
-        label: string,
-        priority: 'safety' | 'operational',
-        extra?: { base_updated_at?: string },
-    ) => {
-        await engine.enqueue({
-            entity_type: entity,
-            payload,
-            label,
-            priority,
-            base_updated_at: extra?.base_updated_at,
-        });
-        setReportNote(
-            navigator.onLine
-                ? `${label} — dikirim ke kantor.`
-                : `${label} — masuk antrean offline (${syncState.pending + 1} menunggu sinkron).`,
-        );
-        window.setTimeout(() => setReportNote(null), 6000);
-    };
-
-    const submitDsrReport = (e: FormEvent) => {
-        e.preventDefault();
-        const voyage = (reportVoyages ?? []).find((v) => String(v.id) === String(dsrForm.voyage_id));
-        if (!voyage) return;
-        void enqueueReport(
-            'voyage_progress',
-            {
-                voyage_id: voyage.id,
-                dsr_mt: dsrForm.dsr_mt ? Number(dsrForm.dsr_mt) : undefined,
-                dsr_date: dsrForm.dsr_date || undefined,
-                notes_progress: dsrForm.notes_progress || undefined,
-            },
-            `Progres ${voyage.voyage_code}`,
-            'operational',
-            { base_updated_at: voyage.updated_at },
-        ).then(() => setDsrForm((f) => ({ ...f, dsr_mt: '', dsr_date: '', notes_progress: '' })));
-    };
-
-    const submitPositionReport = (e: FormEvent) => {
-        e.preventDefault();
-        const vessel = (reportVessels ?? []).find((v) => String(v.id) === String(posForm.vessel_id));
-        if (!vessel) return;
-        void enqueueReport(
-            'vessel_position',
-            {
-                vessel_id: vessel.id,
-                lat: Number(posForm.lat),
-                lng: Number(posForm.lng),
-                speed_knots: posForm.speed_knots ? Number(posForm.speed_knots) : undefined,
-            },
-            `Posisi ${vessel.vessel_name}`,
-            'safety',
-        ).then(() => setPosForm((f) => ({ ...f, lat: '', lng: '', speed_knots: '' })));
-    };
-
-    const submitFuelReport = (e: FormEvent) => {
-        e.preventDefault();
-        const vessel = (reportVessels ?? []).find((v) => String(v.id) === String(fuelReportForm.vessel_id));
-        if (!vessel) return;
-        void enqueueReport(
-            'fuel_log',
-            {
-                vessel_id: vessel.id,
-                trip_date: fuelReportForm.trip_date || undefined,
-                route: fuelReportForm.route,
-                duration_hours: Number(fuelReportForm.duration_hours),
-                liters: Number(fuelReportForm.liters),
-                cargo_type: fuelReportForm.cargo_type || undefined,
-            },
-            `BBM ${vessel.vessel_name}`,
-            'operational',
-        ).then(() => setFuelReportForm((f) => ({ ...f, liters: '', duration_hours: '', route: '' })));
-    };
-
-    const submitSafetyReport = (e: FormEvent) => {
-        e.preventDefault();
-        const voyage = (reportVoyages ?? []).find((v) => String(v.id) === String(safetyForm.voyage_id));
-        if (!voyage) return;
-        void enqueueReport(
-            'voyage_safety_check',
-            {
-                voyage_id: voyage.id,
-                status: safetyForm.status,
-                passenger_count: safetyForm.passenger_count ? Number(safetyForm.passenger_count) : undefined,
-                capacity: safetyForm.capacity ? Number(safetyForm.capacity) : undefined,
-                notes: safetyForm.notes || undefined,
-            },
-            `Keselamatan ${voyage.voyage_code}`,
-            'safety',
-        ).then(() => setSafetyForm((f) => ({ ...f, notes: '', passenger_count: '' })));
-    };
-
-    const submitCrewReport = (e: FormEvent) => {
-        e.preventDefault();
-        const crew = (reportCrews ?? []).find((c) => String(c.id) === String(crewReportForm.crew_id));
-        if (!crew) return;
-        void enqueueReport(
-            'crew_movement',
-            {
-                crew_id: crew.id,
-                vessel_id: crewReportForm.vessel_id ? Number(crewReportForm.vessel_id) : undefined,
-                type: crewReportForm.type,
-                movement_date: crewReportForm.movement_date || undefined,
-                reason: crewReportForm.reason || undefined,
-                notes: crewReportForm.notes || undefined,
-            },
-            `${crewReportForm.type === 'sign_on' ? 'Sign ON' : 'Sign OFF'} ${crew.name}`,
-            'safety',
-        ).then(() => setCrewReportForm((f) => ({ ...f, reason: '', notes: '' })));
-    };
-
     return (
         <AuthenticatedLayout>
             <Head title="Operations" />
@@ -575,380 +441,6 @@ export default function OperationsIndex({
                 active={tab}
                 onChange={(key) => router.get('/operasional', { tab: key }, { preserveState: true })}
             />
-
-            {tab === 'laporan' && (
-                <div className="space-y-4">
-                    <Card
-                        title="Laporan Dari Kapal — Channel Sinkronisasi"
-                        description="Form ini memakai mesin sinkronisasi yang sama dengan mode offline: saat sinyal hilang, laporan masuk antrean lokal (IndexedDB) dan otomatis terkirim ke kantor saat kembali online. Otoritas & validasi ditegakkan server."
-                    >
-                        <div className="flex flex-wrap items-center gap-2 text-xs">
-                            <span
-                                className={classNames(
-                                    'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium ring-1 ring-inset',
-                                    syncState.mode === 'offline'
-                                        ? 'bg-warn/15 text-warn ring-warn/40'
-                                        : syncState.mode === 'metered'
-                                            ? 'bg-warn/15 text-warn ring-warn/40'
-                                            : 'bg-ok/10 text-ok ring-ok/30',
-                                )}
-                            >
-                                {syncState.mode === 'offline' ? (
-                                    <>Offline — antrean {syncState.pending}</>
-                                ) : syncState.mode === 'metered' ? (
-                                    <>Mode VSAT — antrean {syncState.pending}</>
-                                ) : (
-                                    <>Online — antrean {syncState.pending}</>
-                                )}
-                            </span>
-                            {reportNote && (
-                                <span className="inline-flex items-center gap-1.5 text-ok">
-                                    <CheckCircle2 size={13} /> {reportNote}
-                                </span>
-                            )}
-                        </div>
-                    </Card>
-
-                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                        {/* DSR & progres perjalanan */}
-                        <Card title="DSR & Progres Perjalanan" description="Dilaporkan kapal — kirim saat bongkar/muat selesai.">
-                            <form onSubmit={submitDsrReport} className="space-y-3">
-                                <div>
-                                    <label className="text-xs font-medium text-muted">Perjalanan *</label>
-                                    <select
-                                        required
-                                        value={dsrForm.voyage_id}
-                                        onChange={(e) => setDsrForm((f) => ({ ...f, voyage_id: e.target.value }))}
-                                        className="block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
-                                    >
-                                        <option value="">— pilih voyage —</option>
-                                        {(reportVoyages ?? []).map((v) => (
-                                            <option key={v.id} value={v.id}>
-                                                {v.voyage_code} · {v.origin} → {v.destination}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="text-xs font-medium text-muted">DSR (MT)</label>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            value={dsrForm.dsr_mt}
-                                            onChange={(e) => setDsrForm((f) => ({ ...f, dsr_mt: e.target.value }))}
-                                            className="block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
-                                            placeholder="7539.27"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-muted">Tanggal DSR</label>
-                                        <input
-                                            type="date"
-                                            value={dsrForm.dsr_date}
-                                            onChange={(e) => setDsrForm((f) => ({ ...f, dsr_date: e.target.value }))}
-                                            className="block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="text-xs font-medium text-muted">Catatan progres</label>
-                                    <input
-                                        value={dsrForm.notes_progress}
-                                        onChange={(e) => setDsrForm((f) => ({ ...f, notes_progress: e.target.value }))}
-                                        className="block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
-                                        placeholder="mis. Bongkar selesai 90% di Taboneo"
-                                    />
-                                </div>
-                                <div className="flex justify-end">
-                                    <PrimaryButton disabled={syncState.syncing}>Kirim Laporan</PrimaryButton>
-                                </div>
-                            </form>
-                        </Card>
-
-                        {/* Posisi kapal */}
-                        <Card title="Posisi Kapal" description="Laporan posisi manual (bukan AIS live) — prioritas keselamatan.">
-                            <form onSubmit={submitPositionReport} className="space-y-3">
-                                <div>
-                                    <label className="text-xs font-medium text-muted">Kapal *</label>
-                                    <select
-                                        required
-                                        value={posForm.vessel_id}
-                                        onChange={(e) => setPosForm((f) => ({ ...f, vessel_id: e.target.value }))}
-                                        className="block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
-                                    >
-                                        <option value="">— pilih kapal —</option>
-                                        {(reportVessels ?? []).map((v) => (
-                                            <option key={v.id} value={v.id}>{v.vessel_name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="grid grid-cols-3 gap-3">
-                                    <div>
-                                        <label className="text-xs font-medium text-muted">Lintang *</label>
-                                        <input
-                                            required
-                                            type="number"
-                                            step="0.0000001"
-                                            value={posForm.lat}
-                                            onChange={(e) => setPosForm((f) => ({ ...f, lat: e.target.value }))}
-                                            className="block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
-                                            placeholder="-3.3166667"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-muted">Bujur *</label>
-                                        <input
-                                            required
-                                            type="number"
-                                            step="0.0000001"
-                                            value={posForm.lng}
-                                            onChange={(e) => setPosForm((f) => ({ ...f, lng: e.target.value }))}
-                                            className="block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
-                                            placeholder="114.5900033"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-muted">Kecepatan (kn)</label>
-                                        <input
-                                            type="number"
-                                            step="0.1"
-                                            value={posForm.speed_knots}
-                                            onChange={(e) => setPosForm((f) => ({ ...f, speed_knots: e.target.value }))}
-                                            className="block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="flex justify-end">
-                                    <PrimaryButton disabled={syncState.syncing}><MapPin size={14} className="inline me-1" /> Kirim Posisi</PrimaryButton>
-                                </div>
-                            </form>
-                        </Card>
-
-                        {/* Bahan bakar */}
-                        <Card title="Bahan Bakar (dari kapal)" description="Biaya tetap dihitung kantor — kapal hanya melaporkan pemakaian.">
-                            <form onSubmit={submitFuelReport} className="space-y-3">
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="text-xs font-medium text-muted">Kapal *</label>
-                                        <select
-                                            required
-                                            value={fuelReportForm.vessel_id}
-                                            onChange={(e) => setFuelReportForm((f) => ({ ...f, vessel_id: e.target.value }))}
-                                            className="block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
-                                        >
-                                            <option value="">— pilih —</option>
-                                            {(reportVessels ?? []).map((v) => (
-                                                <option key={v.id} value={v.id}>{v.vessel_name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-muted">Tanggal</label>
-                                        <input
-                                            type="date"
-                                            value={fuelReportForm.trip_date}
-                                            onChange={(e) => setFuelReportForm((f) => ({ ...f, trip_date: e.target.value }))}
-                                            className="block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-muted">Rute *</label>
-                                        <input
-                                            required
-                                            value={fuelReportForm.route}
-                                            onChange={(e) => setFuelReportForm((f) => ({ ...f, route: e.target.value }))}
-                                            className="block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
-                                            placeholder="Samarinda – Taboneo"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-muted">Muatan</label>
-                                        <input
-                                            value={fuelReportForm.cargo_type}
-                                            onChange={(e) => setFuelReportForm((f) => ({ ...f, cargo_type: e.target.value }))}
-                                            className="block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
-                                            placeholder="batu bara"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-muted">Durasi (jam) *</label>
-                                        <input
-                                            required
-                                            type="number"
-                                            step="0.1"
-                                            value={fuelReportForm.duration_hours}
-                                            onChange={(e) => setFuelReportForm((f) => ({ ...f, duration_hours: e.target.value }))}
-                                            className="block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-muted">Liters *</label>
-                                        <input
-                                            required
-                                            type="number"
-                                            step="0.01"
-                                            value={fuelReportForm.liters}
-                                            onChange={(e) => setFuelReportForm((f) => ({ ...f, liters: e.target.value }))}
-                                            className="block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="flex justify-end">
-                                    <PrimaryButton disabled={syncState.syncing}><Fuel size={14} className="inline me-1" /> Kirim Laporan BBM</PrimaryButton>
-                                </div>
-                            </form>
-                        </Card>
-
-                        {/* Keselamatan */}
-                        <Card title="Pemeriksaan Keselamatan" description="Checklist safety saat berangkat/tiba — masuk voyage_events.">
-                            <form onSubmit={submitSafetyReport} className="space-y-3">
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="text-xs font-medium text-muted">Perjalanan *</label>
-                                        <select
-                                            required
-                                            value={safetyForm.voyage_id}
-                                            onChange={(e) => setSafetyForm((f) => ({ ...f, voyage_id: e.target.value }))}
-                                            className="block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
-                                        >
-                                            <option value="">— pilih voyage —</option>
-                                            {(reportVoyages ?? []).map((v) => (
-                                                <option key={v.id} value={v.id}>{v.voyage_code}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-muted">Status *</label>
-                                        <select
-                                            value={safetyForm.status}
-                                            onChange={(e) => setSafetyForm((f) => ({ ...f, status: e.target.value }))}
-                                            className="block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
-                                        >
-                                            <option value="lulus">Lulus</option>
-                                            <option value="tidak">Tidak lulus</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-muted">Penumpang (bila ada)</label>
-                                        <input
-                                            type="number"
-                                            value={safetyForm.passenger_count}
-                                            onChange={(e) => setSafetyForm((f) => ({ ...f, passenger_count: e.target.value }))}
-                                            className="block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-muted">Kapasitas</label>
-                                        <input
-                                            type="number"
-                                            value={safetyForm.capacity}
-                                            onChange={(e) => setSafetyForm((f) => ({ ...f, capacity: e.target.value }))}
-                                            className="block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="text-xs font-medium text-muted">Catatan</label>
-                                    <input
-                                        value={safetyForm.notes}
-                                        onChange={(e) => setSafetyForm((f) => ({ ...f, notes: e.target.value }))}
-                                        className="block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
-                                    />
-                                </div>
-                                <div className="flex justify-end">
-                                    <PrimaryButton disabled={syncState.syncing}><LifeBuoy size={14} className="inline me-1" /> Kirim Pemeriksaan</PrimaryButton>
-                                </div>
-                            </form>
-                        </Card>
-
-                        {/* Gerbak awak */}
-                        <Card
-                            title="Gerbang Awak (Sign ON / Sign OFF)"
-                            description="Dilaporkan dari kapal; perwira wajib diverifikasi kantor (aturan pengganti tetap di kantor)."
-                        >
-                            <form onSubmit={submitCrewReport} className="space-y-3">
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="text-xs font-medium text-muted">Awak *</label>
-                                        <select
-                                            required
-                                            value={crewReportForm.crew_id}
-                                            onChange={(e) => setCrewReportForm((f) => ({ ...f, crew_id: e.target.value }))}
-                                            className="block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
-                                        >
-                                            <option value="">— pilih —</option>
-                                            {(reportCrews ?? []).map((c) => (
-                                                <option key={c.id} value={c.id}>{c.name} — {c.rank}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-muted">Jenis *</label>
-                                        <select
-                                            value={crewReportForm.type}
-                                            onChange={(e) => setCrewReportForm((f) => ({ ...f, type: e.target.value }))}
-                                            className="block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
-                                        >
-                                            <option value="sign_off">Sign OFF</option>
-                                            <option value="sign_on">Sign ON</option>
-                                            <option value="kadet_on">Kadet ON</option>
-                                            <option value="kadet_off">Kadet OFF</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-muted">Kapal</label>
-                                        <select
-                                            value={crewReportForm.vessel_id}
-                                            onChange={(e) => setCrewReportForm((f) => ({ ...f, vessel_id: e.target.value }))}
-                                            className="block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
-                                        >
-                                            <option value="">— ikut penempatan —</option>
-                                            {(reportVessels ?? []).map((v) => (
-                                                <option key={v.id} value={v.id}>{v.vessel_name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-muted">Tanggal</label>
-                                        <input
-                                            type="date"
-                                            value={crewReportForm.movement_date}
-                                            onChange={(e) => setCrewReportForm((f) => ({ ...f, movement_date: e.target.value }))}
-                                            className="block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="text-xs font-medium text-muted">Alasan (untuk OFF)</label>
-                                    <input
-                                        value={crewReportForm.reason}
-                                        onChange={(e) => setCrewReportForm((f) => ({ ...f, reason: e.target.value }))}
-                                        className="block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
-                                        placeholder="mis. permohonan sendiri"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-medium text-muted">Catatan</label>
-                                    <input
-                                        value={crewReportForm.notes}
-                                        onChange={(e) => setCrewReportForm((f) => ({ ...f, notes: e.target.value }))}
-                                        className="block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
-                                    />
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <a href="/sdm?tab=hor" className="text-xs font-medium text-primary hover:underline">
-                                        Jam istirahat awak → tab Hours of Rest
-                                    </a>
-                                    <PrimaryButton disabled={syncState.syncing}>
-                                        <ArrowLeftRight size={14} className="inline me-1" /> Kirim Gerbak
-                                    </PrimaryButton>
-                                </div>
-                            </form>
-                        </Card>
-                    </div>
-                </div>
-            )}
 
             {tab === 'posisi' && (
                 <div className="space-y-5">
@@ -1102,39 +594,9 @@ export default function OperationsIndex({
                                     </div>
                                 </dl>
                                 <section className="mt-6 border-t border-hairline pt-5">
-                                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                                        <div>
-                                            <h3 className="text-base font-semibold text-ink">Riwayat & operasional kapal</h3>
-                                            <p className="text-xs text-muted">Kondisi, servis, dan BBM khusus {selectedVessel.vessel_name}.</p>
-                                        </div>
-                                        {canManage && (
-                                            <div className="flex flex-wrap gap-2">
-                                                <SecondaryButton type="button" onClick={() => setEntryModal('condition')}>
-                                                    <Activity size={15} className="mr-1.5" /> Input Kondisi
-                                                </SecondaryButton>
-                                                <SecondaryButton type="button" onClick={() => {
-                                                    setServiceItems([]);
-                                                    setServiceCost('');
-                                                    setEntryModal('service');
-                                                }}>
-                                                    <Wrench size={15} className="mr-1.5" /> Catat Servis
-                                                </SecondaryButton>
-                                                <SecondaryButton type="button" onClick={() => {
-                                                    setBbmVesselId(String(selectedVessel.id));
-                                                    setBbmVoyageId('');
-                                                    setFuelErrors({});
-                                                    setTripDate('');
-                                                    setTripRoute('');
-                                                    setDuration('');
-                                                    setLiters('');
-                                                    setPricePerLiter('');
-                                                    setExplanation('');
-                                                    setEntryModal('fuel');
-                                                }}>
-                                                    <Fuel size={15} className="mr-1.5" /> Catat BBM
-                                                </SecondaryButton>
-                                            </div>
-                                        )}
+                                    <div className="mb-4">
+                                        <h3 className="text-base font-semibold text-ink">Riwayat & operasional kapal</h3>
+                                        <p className="text-xs text-muted">Kondisi, servis, dan BBM khusus {selectedVessel.vessel_name}.</p>
                                     </div>
                                     {historyLoading ? (
                                         <p className="rounded-lg bg-appbg p-4 text-sm text-muted">Memuat riwayat kapal...</p>
@@ -1148,7 +610,14 @@ export default function OperationsIndex({
                                     ) : (
                                         <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
                                             <section className="rounded-lg border border-hairline p-4">
-                                                <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-ink"><Activity size={16} /> Kondisi</h4>
+                                                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                                    <h4 className="flex items-center gap-2 text-sm font-semibold text-ink"><Activity size={16} /> Kondisi</h4>
+                                                    {canManage && (
+                                                        <SecondaryButton type="button" onClick={() => setEntryModal('condition')}>
+                                                            <Activity size={15} className="mr-1.5" /> Input Kondisi
+                                                        </SecondaryButton>
+                                                    )}
+                                                </div>
                                                 {vesselHistory.conditions.length === 0 ? (
                                                     <p className="text-sm text-muted">Belum ada pemeriksaan kondisi.</p>
                                                 ) : (
@@ -1171,7 +640,18 @@ export default function OperationsIndex({
                                                 )}
                                             </section>
                                             <section className="rounded-lg border border-hairline p-4">
-                                                <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-ink"><Wrench size={16} /> Servis</h4>
+                                                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                                    <h4 className="flex items-center gap-2 text-sm font-semibold text-ink"><Wrench size={16} /> Servis</h4>
+                                                    {canManage && (
+                                                        <SecondaryButton type="button" onClick={() => {
+                                                            setServiceItems([]);
+                                                            setServiceCost('');
+                                                            setEntryModal('service');
+                                                        }}>
+                                                            <Wrench size={15} className="mr-1.5" /> Catat Servis
+                                                        </SecondaryButton>
+                                                    )}
+                                                </div>
                                                 {vesselHistory.services.length === 0 ? (
                                                     <p className="text-sm text-muted">Belum ada riwayat servis.</p>
                                                 ) : (
@@ -1194,7 +674,25 @@ export default function OperationsIndex({
                                                 )}
                                             </section>
                                             <section className="rounded-lg border border-hairline p-4">
-                                                <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-ink"><Fuel size={16} /> Monitoring BBM</h4>
+                                                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                                    <h4 className="flex items-center gap-2 text-sm font-semibold text-ink"><Fuel size={16} /> Monitoring BBM</h4>
+                                                    {canManage && (
+                                                        <SecondaryButton type="button" onClick={() => {
+                                                            setBbmVesselId(String(selectedVessel.id));
+                                                            setBbmVoyageId('');
+                                                            setFuelErrors({});
+                                                            setTripDate('');
+                                                            setTripRoute('');
+                                                            setDuration('');
+                                                            setLiters('');
+                                                            setPricePerLiter('');
+                                                            setExplanation('');
+                                                            setEntryModal('fuel');
+                                                        }}>
+                                                            <Fuel size={15} className="mr-1.5" /> Catat BBM
+                                                        </SecondaryButton>
+                                                    )}
+                                                </div>
                                                 {vesselHistory.logs.length === 0 ? (
                                                     <p className="text-sm text-muted">Belum ada catatan BBM.</p>
                                                 ) : (

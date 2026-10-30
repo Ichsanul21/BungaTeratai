@@ -16,7 +16,6 @@ import {
     Clock,
     Fuel,
     Ship,
-    Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -86,14 +85,6 @@ export default function NotificationsIndex({
     const markAll = () => {
         setBusy(true);
         router.post('/notifikasi/read-all', {}, {
-            onFinish: () => setBusy(false),
-            preserveScroll: true,
-        });
-    };
-
-    const deleteAllRead = () => {
-        setBusy(true);
-        router.post('/notifikasi/delete-read', {}, {
             onFinish: () => setBusy(false),
             preserveScroll: true,
         });
@@ -286,9 +277,8 @@ export default function NotificationsIndex({
                         </p>
                     </div>
 
-                    {/* Aksi massal: tombol utama krem pekat, tombol sekunder
-                        kaca, senada dengan kontrol filter dashboard. Logika
-                        router sama persis dengan versi sebelumnya. */}
+                    {/* Aksi massal: tandai semua sebagai dibaca; notifikasi
+                        adalah histori permanen sehingga tidak bisa dihapus. */}
                     <div className="flex flex-col gap-2.5 sm:flex-row xl:shrink-0">
                         {counts.unread > 0 && (
                             <button
@@ -300,14 +290,6 @@ export default function NotificationsIndex({
                                 <CheckCheck size={16} /> Tandai semua dibaca
                             </button>
                         )}
-                        <button
-                            type="button"
-                            onClick={deleteAllRead}
-                            disabled={busy}
-                            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-medium text-cream backdrop-blur-sm transition-colors duration-200 hover:border-white/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/60 disabled:opacity-50"
-                        >
-                            <Trash2 size={16} /> Hapus yang sudah dibaca
-                        </button>
                     </div>
                 </div>
 
@@ -500,18 +482,6 @@ export default function NotificationsIndex({
                                                                         <CheckCheck size={13} /> Tandai dibaca
                                                                     </button>
                                                                 )}
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() =>
-                                                                        router.delete(
-                                                                            `/notifikasi/${n.id}`,
-                                                                            { preserveScroll: true },
-                                                                        )
-                                                                    }
-                                                                    className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg px-2 py-1 text-xs font-medium text-muted transition-colors duration-150 hover:bg-primary-tint/60 hover:text-primary"
-                                                                >
-                                                                    <Trash2 size={13} /> Hapus
-                                                                </button>
                                                             </div>
                                                         </div>
                                                     </div>
