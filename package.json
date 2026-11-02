@@ -7,7 +7,6 @@
         "dev": "vite"
     },
     "devDependencies": {
-        "@headlessui/react": "^2.0.0",
         "@inertiajs/react": "^2.0.0",
         "@tailwindcss/forms": "^0.5.3",
         "@tailwindcss/vite": "^4.0.0",
@@ -28,7 +27,11 @@
         "vite-plugin-pwa": "^2.0.0"
     },
     "dependencies": {
+        "@ant-design/icons": "^6.3.4",
+        "@headlessui/react": "^2.2.10",
         "@types/leaflet": "^1.9.22",
+        "antd": "^6.6.8",
+        "dayjs": "^1.11.23",
         "dexie": "^4.4.7",
         "laravel-echo": "^2.6.1",
         "leaflet": "^1.9.4",

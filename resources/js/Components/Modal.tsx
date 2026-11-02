@@ -14,6 +14,8 @@ export default function Modal({
     stacked = false,
     closeable = true,
     onClose = () => {},
+    title,
+    footer,
 }: PropsWithChildren<{
     show: boolean;
     maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
@@ -21,6 +23,8 @@ export default function Modal({
     stacked?: boolean;
     closeable?: boolean;
     onClose: CallableFunction;
+    title?: React.ReactNode;
+    footer?: React.ReactNode;
 }>) {
     const close = () => {
         if (closeable) {
@@ -64,13 +68,25 @@ export default function Modal({
                     leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
                 >
                     <DialogPanel
-                        className={`relative ${stacked ? 'z-[1101]' : 'z-[1001]'} mb-0 transform overflow-hidden bg-white shadow-xl transition-all sm:mx-auto sm:w-full ${
+                        className={`relative ${stacked ? 'z-[1101]' : 'z-[1100]'} mb-0 transform overflow-hidden rounded-lg bg-white shadow-xl transition-all sm:mx-auto sm:w-full ${
                             fullScreen
                                 ? 'h-[calc(100dvh-1rem)] max-w-none rounded-lg sm:h-[calc(100dvh-2rem)]'
                                 : `rounded-lg ${maxWidthClass}`
                         }`}
                     >
-                        {children}
+                        {title && (
+                            <div className="border-b border-[#E7E1D9] px-6 py-4">
+                                <h2 className="text-lg font-semibold text-[#1C1B1A]">{title}</h2>
+                            </div>
+                        )}
+                        <div className={fullScreen ? 'h-[calc(100%-8rem)] overflow-y-auto' : ''}>
+                            {children}
+                        </div>
+                        {footer && (
+                            <div className="border-t border-[#E7E1D9] px-6 py-4">
+                                {footer}
+                            </div>
+                        )}
                     </DialogPanel>
                 </TransitionChild>
             </Dialog>

@@ -30,6 +30,9 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { divIcon } from 'leaflet';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import { Button, Col, Divider, Input, InputNumber, Progress, Row, Select as AntSelect, Skeleton, Tag, Timeline, Tooltip, Typography } from 'antd';
+
+const { Text } = Typography;
 
 const FUEL_TONES: Record<string, BadgeTone> = {
     normal: 'success',
@@ -83,7 +86,7 @@ function VesselMarker({
     );
 }
 
-function Select({
+function FormSelect({
     label,
     name,
     options,
@@ -98,7 +101,7 @@ function Select({
 
     return (
         <div>
-            <label className="text-xs font-medium text-muted">
+            <label className="text-xs font-medium text-[#8A8580]">
                 {label}
                 {required && ' *'}
             </label>
@@ -140,7 +143,7 @@ function TextInputField({
 }) {
     return (
         <div>
-            <label className="text-xs font-medium text-muted">
+            <label className="text-xs font-medium text-[#8A8580]">
                 {label}
                 {required && ' *'}
             </label>
@@ -152,10 +155,9 @@ function TextInputField({
                     value={value}
                     onChange={(event) => onChange?.(event.target.value)}
                     placeholder={placeholder}
-                    className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
                 />
             ) : (
-                <input
+                <Input
                     name={name}
                     type={type}
                     step={step}
@@ -163,10 +165,10 @@ function TextInputField({
                     value={value}
                     onChange={(event) => onChange?.(event.target.value)}
                     placeholder={placeholder}
-                    className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
+                    status={error ? 'error' : undefined}
                 />
             )}
-            {error && <p className="mt-1 text-xs font-medium text-primary">{error}</p>}
+            {error && <p className="mt-1 text-xs font-medium text-[#C1121F]">{error}</p>}
         </div>
     );
 }
@@ -448,7 +450,7 @@ export default function OperationsIndex({
                         {positionedVessels.length === 0 ? (
                             <EmptyState icon={MapPin} title="Belum ada posisi kapal" />
                         ) : (
-                            <div className="relative h-[420px] overflow-hidden rounded-lg border border-hairline">
+                            <div className="relative h-[420px] overflow-hidden rounded-lg border border-[#E7E1D9]" style={{ isolation: 'isolate' }}>
                                 <MapContainer
                                     center={[
                                         Number(positionedVessels[0].last_lat),
@@ -475,12 +477,12 @@ export default function OperationsIndex({
                                     ))}
                                 </MapContainer>
                                 {!mapHasLoaded && !mapHasError && (
-                                    <p className="absolute bottom-3 left-3 rounded bg-white/95 px-3 py-2 text-xs text-muted shadow">
+                                    <p className="absolute bottom-3 left-3 rounded bg-white/95 px-3 py-2 text-xs text-[#8A8580] shadow">
                                         Memuat peta...
                                     </p>
                                 )}
                                 {mapHasError && (
-                                    <p role="alert" className="absolute bottom-3 left-3 rounded bg-white/95 px-3 py-2 text-xs text-primary shadow">
+                                    <p role="alert" className="absolute bottom-3 left-3 rounded bg-white/95 px-3 py-2 text-xs text-[#C1121F] shadow">
                                         Peta tidak dapat dimuat. Data posisi tetap tersedia pada daftar kapal.
                                     </p>
                                 )}
@@ -491,43 +493,42 @@ export default function OperationsIndex({
                         {(vessels ?? []).length === 0 ? (
                             <EmptyState icon={Ship} title="Belum ada kapal terdaftar" />
                         ) : (
-                            <ul className="divide-y divide-hairline">
+                            <div className="divide-y divide-[#E7E1D9]">
                                 {(vessels ?? []).map((v) => (
-                                    <li key={v.id}>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                selectVessel(v);
-                                                if (v.last_lat !== null && v.last_lat !== undefined &&
-                                                    v.last_lng !== null && v.last_lng !== undefined) {
-                                                    setSelectedVesselId(v.id);
-                                                }
-                                            }}
-                                            className="flex w-full flex-wrap items-center gap-3 py-3 text-left hover:bg-appbg/60"
-                                        >
-                                            <span className="min-w-0 flex-1">
-                                                <span className="block truncate text-sm font-semibold text-ink">{v.vessel_name}</span>
-                                                <span className="block text-xs text-muted">
-                                                    {v.voyage
-                                                        ? `${v.voyage.voyage_code} · ${v.voyage.origin} → ${v.voyage.destination}`
-                                                        : 'Tidak ada perjalanan aktif'}
-                                                </span>
-                                            </span>
-                                            <Badge tone={v.voyage ? 'info' : 'neutral'}>
+                                    <button
+                                        key={v.id}
+                                        type="button"
+                                        onClick={() => {
+                                            selectVessel(v);
+                                            if (v.last_lat !== null && v.last_lat !== undefined &&
+                                                v.last_lng !== null && v.last_lng !== undefined) {
+                                                setSelectedVesselId(v.id);
+                                            }
+                                        }}
+                                        className="flex w-full flex-wrap items-center gap-3 py-3 text-left hover:bg-[#FAF7F2]/60"
+                                    >
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block truncate text-sm font-semibold text-[#1C1B1A]">{v.vessel_name}</span>
+                                            <span className="block text-xs text-[#8A8580]">
                                                 {v.voyage
-                                                    ? VOYAGE_STATUS_LABELS[v.voyage.voyage_status] ?? v.voyage.voyage_status
-                                                    : 'Tidak ada perjalanan'}
-                                            </Badge>
-                                            <span className="text-xs text-muted">
-                                                {v.last_lat !== null && v.last_lat !== undefined &&
-                                                v.last_lng !== null && v.last_lng !== undefined
-                                                    ? `${v.last_lat}, ${v.last_lng}`
-                                                    : 'Posisi belum tercatat'}
+                                                    ? `${v.voyage.voyage_code} · ${v.voyage.origin} → ${v.voyage.destination}`
+                                                    : 'Tidak ada perjalanan aktif'}
                                             </span>
-                                        </button>
-                                    </li>
+                                        </span>
+                                        <Badge tone={v.voyage ? 'info' : 'neutral'}>
+                                            {v.voyage
+                                                ? VOYAGE_STATUS_LABELS[v.voyage.voyage_status] ?? v.voyage.voyage_status
+                                                : 'Tidak ada perjalanan'}
+                                        </Badge>
+                                        <span className="text-xs text-[#8A8580]">
+                                            {v.last_lat !== null && v.last_lat !== undefined &&
+                                            v.last_lng !== null && v.last_lng !== undefined
+                                                ? `${v.last_lat}, ${v.last_lng}`
+                                                : 'Posisi belum tercatat'}
+                                        </span>
+                                    </button>
                                 ))}
-                            </ul>
+                            </div>
                         )}
                     </Card>
 
@@ -541,10 +542,10 @@ export default function OperationsIndex({
                     >
                         {selectedVessel && (
                             <div className="h-full overflow-y-auto p-4 sm:p-6">
-                                <div className="mb-5 flex items-start justify-between gap-4 border-b border-hairline pb-4">
+                                <div className="mb-5 flex items-start justify-between gap-4 border-b border-[#E7E1D9] pb-4">
                                     <div>
-                                        <h2 className="text-xl font-semibold text-ink">{selectedVessel.vessel_name}</h2>
-                                        <p className="text-sm text-muted">
+                                        <h2 className="text-xl font-semibold text-[#1C1B1A]">{selectedVessel.vessel_name}</h2>
+                                        <p className="text-sm text-[#8A8580]">
                                             {selectedVessel.vessel_type === 'lainnya' && selectedVessel.vessel_type_custom
                                                 ? selectedVessel.vessel_type_custom
                                                 : String(selectedVessel.vessel_type).replaceAll('_', ' ')}
@@ -552,201 +553,219 @@ export default function OperationsIndex({
                                             {selectedVessel.operational_status}
                                         </p>
                                     </div>
-                                    <SecondaryButton type="button" onClick={() => {
+                                    <SecondaryButton onClick={() => {
                                         setSelectedVesselId(null);
                                         setEntryModal(null);
                                     }}>Tutup</SecondaryButton>
                                 </div>
-                                <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-                                    <div>
-                                        <dt className="text-xs text-muted">Posisi terakhir</dt>
-                                        <dd className="font-medium text-ink">
-                                            {selectedVessel.last_lat ?? '—'}, {selectedVessel.last_lng ?? '—'}
-                                        </dd>
-                                    </div>
-                                    <div>
-                                        <dt className="text-xs text-muted">Waktu update</dt>
-                                        <dd className="font-medium text-ink">{formatDateTime(selectedVessel.last_position_at)}</dd>
-                                    </div>
-                                    <div>
-                                        <dt className="text-xs text-muted">Kondisi terakhir</dt>
-                                        <dd className="font-medium text-ink">
-                                            {selectedVessel.condition
-                                                ? `Skor ${selectedVessel.condition.score}/100 · ${formatDate(selectedVessel.condition.checked_at)}`
-                                                : 'Belum ada pemeriksaan'}
-                                        </dd>
-                                    </div>
-                                    <div>
-                                        <dt className="text-xs text-muted">BBM terakhir</dt>
-                                        <dd className="font-medium text-ink">
-                                            {selectedVessel.fuel
-                                                ? `${formatNumber(selectedVessel.fuel.liters, 2)} L · ${FUEL_TEXT[selectedVessel.fuel.analysis_status] ?? selectedVessel.fuel.analysis_status} · ${formatDate(selectedVessel.fuel.trip_date)}`
-                                                : 'Belum ada catatan BBM'}
-                                        </dd>
-                                    </div>
-                                    <div className="sm:col-span-2">
-                                        <dt className="text-xs text-muted">Status perjalanan</dt>
-                                        <dd className="font-medium text-ink">
-                                            {selectedVessel.voyage
-                                                ? `${selectedVessel.voyage.voyage_code} · ${VOYAGE_STATUS_LABELS[selectedVessel.voyage.voyage_status] ?? selectedVessel.voyage.voyage_status} · ${selectedVessel.voyage.origin} → ${selectedVessel.voyage.destination}`
-                                                : 'Tidak ada perjalanan aktif'}
-                                        </dd>
-                                    </div>
-                                </dl>
-                                <section className="mt-6 border-t border-hairline pt-5">
+                                <Row gutter={12}>
+                                    <Col xs={12} sm={12}>
+                                        <div>
+                                            <Text type="secondary" className="text-xs">Posisi terakhir</Text>
+                                            <p className="font-medium text-[#1C1B1A]">
+                                                {selectedVessel.last_lat ?? '—'}, {selectedVessel.last_lng ?? '—'}
+                                            </p>
+                                        </div>
+                                    </Col>
+                                    <Col xs={12} sm={12}>
+                                        <div>
+                                            <Text type="secondary" className="text-xs">Waktu update</Text>
+                                            <p className="font-medium text-[#1C1B1A]">{formatDateTime(selectedVessel.last_position_at)}</p>
+                                        </div>
+                                    </Col>
+                                    <Col xs={12} sm={12}>
+                                        <div>
+                                            <Text type="secondary" className="text-xs">Kondisi terakhir</Text>
+                                            <p className="font-medium text-[#1C1B1A]">
+                                                {selectedVessel.condition
+                                                    ? `Skor ${selectedVessel.condition.score}/100 · ${formatDate(selectedVessel.condition.checked_at)}`
+                                                    : 'Belum ada pemeriksaan'}
+                                            </p>
+                                        </div>
+                                    </Col>
+                                    <Col xs={12} sm={12}>
+                                        <div>
+                                            <Text type="secondary" className="text-xs">BBM terakhir</Text>
+                                            <p className="font-medium text-[#1C1B1A]">
+                                                {selectedVessel.fuel
+                                                    ? `${formatNumber(selectedVessel.fuel.liters, 2)} L · ${FUEL_TEXT[selectedVessel.fuel.analysis_status] ?? selectedVessel.fuel.analysis_status} · ${formatDate(selectedVessel.fuel.trip_date)}`
+                                                    : 'Belum ada catatan BBM'}
+                                            </p>
+                                        </div>
+                                    </Col>
+                                    <Col xs={24}>
+                                        <div>
+                                            <Text type="secondary" className="text-xs">Status perjalanan</Text>
+                                            <p className="font-medium text-[#1C1B1A]">
+                                                {selectedVessel.voyage
+                                                    ? `${selectedVessel.voyage.voyage_code} · ${VOYAGE_STATUS_LABELS[selectedVessel.voyage.voyage_status] ?? selectedVessel.voyage.voyage_status} · ${selectedVessel.voyage.origin} → ${selectedVessel.voyage.destination}`
+                                                    : 'Tidak ada perjalanan aktif'}
+                                            </p>
+                                        </div>
+                                    </Col>
+                                </Row>
+                                <section className="mt-6 border-t border-[#E7E1D9] pt-5">
                                     <div className="mb-4">
-                                        <h3 className="text-base font-semibold text-ink">Riwayat & operasional kapal</h3>
-                                        <p className="text-xs text-muted">Kondisi, servis, dan BBM khusus {selectedVessel.vessel_name}.</p>
+                                        <h3 className="text-base font-semibold text-[#1C1B1A]">Riwayat & operasional kapal</h3>
+                                        <p className="text-xs text-[#8A8580]">Kondisi, servis, dan BBM khusus {selectedVessel.vessel_name}.</p>
                                     </div>
                                     {historyLoading ? (
-                                        <p className="rounded-lg bg-appbg p-4 text-sm text-muted">Memuat riwayat kapal...</p>
+                                        <div className="space-y-3">
+                                            <Skeleton active paragraph={{ rows: 3 }} />
+                                        </div>
                                     ) : historyError ? (
-                                        <div role="alert" className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm text-primary">
+                                        <div role="alert" className="rounded-lg border border-[#C1121F]/30 p-4 text-sm text-[#C1121F]" style={{ background: '#C1121F0D' }}>
                                             {historyError}
                                             <button type="button" className="ml-2 font-semibold underline" onClick={() => setHistoryRefresh((current) => current + 1)}>
                                                 Coba lagi
                                             </button>
                                         </div>
                                     ) : (
-                                        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-                                            <section className="rounded-lg border border-hairline p-4">
-                                                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                                                    <h4 className="flex items-center gap-2 text-sm font-semibold text-ink"><Activity size={16} /> Kondisi</h4>
-                                                    {canManage && (
-                                                        <SecondaryButton type="button" onClick={() => setEntryModal('condition')}>
-                                                            <Activity size={15} className="mr-1.5" /> Input Kondisi
-                                                        </SecondaryButton>
-                                                    )}
-                                                </div>
-                                                {vesselHistory.conditions.length === 0 ? (
-                                                    <p className="text-sm text-muted">Belum ada pemeriksaan kondisi.</p>
-                                                ) : (
-                                                    <ul className="max-h-80 space-y-2 overflow-y-auto">
-                                                        {vesselHistory.conditions.map((condition) => (
-                                                            <li key={condition.id} className="rounded-md bg-appbg p-3 text-sm">
-                                                                <div className="flex justify-between gap-2">
-                                                                    <strong>Skor {condition.score}/100</strong>
-                                                                    <span className="text-xs text-muted">{formatDateTime(condition.checked_at)}</span>
+                                        <Row gutter={16}>
+                                            <Col xs={24} xl={8}>
+                                                <section className="rounded-lg border border-[#E7E1D9] p-4">
+                                                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                                        <h4 className="flex items-center gap-2 text-sm font-semibold text-[#1C1B1A]"><Activity size={16} /> Kondisi</h4>
+                                                        {canManage && (
+                                                            <SecondaryButton onClick={() => setEntryModal('condition')} icon={<Activity size={15} />}>
+                                                                Input Kondisi
+                                                            </SecondaryButton>
+                                                        )}
+                                                    </div>
+                                                    {vesselHistory.conditions.length === 0 ? (
+                                                        <p className="text-sm text-[#8A8580]">Belum ada pemeriksaan kondisi.</p>
+                                                    ) : (
+                                                        <div className="max-h-80 space-y-2 overflow-y-auto">
+                                                            {vesselHistory.conditions.map((condition) => (
+                                                                <div key={condition.id} className="rounded-md p-3 text-sm" style={{ background: '#FAF7F2' }}>
+                                                                    <div className="flex justify-between gap-2">
+                                                                        <strong>Skor {condition.score}/100</strong>
+                                                                        <span className="text-xs text-[#8A8580]">{formatDateTime(condition.checked_at)}</span>
+                                                                    </div>
+                                                                    {condition.notes && <p className="mt-1 text-xs text-[#8A8580]">{condition.notes}</p>}
+                                                                    <p className="mt-1 text-xs text-[#8A8580]">Pemeriksa: {condition.checked_by_name ?? '—'}</p>
+                                                                    {canManage && <div className="mt-2 flex gap-3 text-xs font-medium">
+                                                                        <button type="button" className="text-[#C1121F] hover:underline" onClick={() => setEditCondition({ ...condition, checked_at: String(condition.checked_at).slice(0, 10) })}>Edit</button>
+                                                                        <button type="button" className="text-[#C1121F] hover:underline" onClick={() => setConfirmDel({ url: `/operasional/kondisi/${condition.id}`, label: `pemeriksaan kondisi ${selectedVessel.vessel_name}` })}>Hapus</button>
+                                                                    </div>}
                                                                 </div>
-                                                                {condition.notes && <p className="mt-1 text-xs text-muted">{condition.notes}</p>}
-                                                                <p className="mt-1 text-xs text-muted">Pemeriksa: {condition.checked_by_name ?? '—'}</p>
-                                                                {canManage && <div className="mt-2 flex gap-3 text-xs font-medium">
-                                                                    <button type="button" className="text-primary hover:underline" onClick={() => setEditCondition({ ...condition, checked_at: String(condition.checked_at).slice(0, 10) })}>Edit</button>
-                                                                    <button type="button" className="text-primary hover:underline" onClick={() => setConfirmDel({ url: `/operasional/kondisi/${condition.id}`, label: `pemeriksaan kondisi ${selectedVessel.vessel_name}` })}>Hapus</button>
-                                                                </div>}
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                )}
-                                            </section>
-                                            <section className="rounded-lg border border-hairline p-4">
-                                                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                                                    <h4 className="flex items-center gap-2 text-sm font-semibold text-ink"><Wrench size={16} /> Servis</h4>
-                                                    {canManage && (
-                                                        <SecondaryButton type="button" onClick={() => {
-                                                            setServiceItems([]);
-                                                            setServiceCost('');
-                                                            setEntryModal('service');
-                                                        }}>
-                                                            <Wrench size={15} className="mr-1.5" /> Catat Servis
-                                                        </SecondaryButton>
+                                                            ))}
+                                                        </div>
                                                     )}
-                                                </div>
-                                                {vesselHistory.services.length === 0 ? (
-                                                    <p className="text-sm text-muted">Belum ada riwayat servis.</p>
-                                                ) : (
-                                                    <ul className="max-h-80 space-y-2 overflow-y-auto">
-                                                        {vesselHistory.services.map((service) => (
-                                                            <li key={service.id} className="rounded-md bg-appbg p-3 text-sm">
-                                                                <div className="flex justify-between gap-2">
-                                                                    <strong>{service.title}</strong>
-                                                                    <Badge tone={service.status === 'selesai' ? 'success' : service.status === 'proses' ? 'warning' : 'neutral'}>{service.status}</Badge>
+                                                </section>
+                                            </Col>
+                                            <Col xs={24} xl={8}>
+                                                <section className="rounded-lg border border-[#E7E1D9] p-4">
+                                                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                                        <h4 className="flex items-center gap-2 text-sm font-semibold text-[#1C1B1A]"><Wrench size={16} /> Servis</h4>
+                                                        {canManage && (
+                                                            <SecondaryButton onClick={() => {
+                                                                setServiceItems([]);
+                                                                setServiceCost('');
+                                                                setEntryModal('service');
+                                                            }} icon={<Wrench size={15} />}>
+                                                                Catat Servis
+                                                            </SecondaryButton>
+                                                        )}
+                                                    </div>
+                                                    {vesselHistory.services.length === 0 ? (
+                                                        <p className="text-sm text-[#8A8580]">Belum ada riwayat servis.</p>
+                                                    ) : (
+                                                        <div className="max-h-80 space-y-2 overflow-y-auto">
+                                                            {vesselHistory.services.map((service) => (
+                                                                <div key={service.id} className="rounded-md p-3 text-sm" style={{ background: '#FAF7F2' }}>
+                                                                    <div className="flex justify-between gap-2">
+                                                                        <strong>{service.title}</strong>
+                                                                        <Badge tone={service.status === 'selesai' ? 'success' : service.status === 'proses' ? 'warning' : 'neutral'}>{service.status}</Badge>
+                                                                    </div>
+                                                                    <p className="mt-1 text-xs text-[#8A8580]">{formatDate(service.start_date)} – {formatDate(service.end_date)} · {formatRupiah(service.cost)}</p>
+                                                                    {service.workshop && <p className="text-xs text-[#8A8580]">{service.workshop}</p>}
+                                                                    {canManage && <div className="mt-2 flex gap-3 text-xs font-medium">
+                                                                        <button type="button" className="text-[#C1121F] hover:underline" onClick={() => setEditService({ ...service, start_date: String(service.start_date).slice(0, 10), end_date: service.end_date ? String(service.end_date).slice(0, 10) : '' })}>Edit</button>
+                                                                        <button type="button" className="text-[#C1121F] hover:underline" onClick={() => setConfirmDel({ url: `/operasional/servis/${service.id}`, label: `servis "${service.title}"` })}>Hapus</button>
+                                                                    </div>}
                                                                 </div>
-                                                                <p className="mt-1 text-xs text-muted">{formatDate(service.start_date)} – {formatDate(service.end_date)} · {formatRupiah(service.cost)}</p>
-                                                                {service.workshop && <p className="text-xs text-muted">{service.workshop}</p>}
-                                                                {canManage && <div className="mt-2 flex gap-3 text-xs font-medium">
-                                                                    <button type="button" className="text-primary hover:underline" onClick={() => setEditService({ ...service, start_date: String(service.start_date).slice(0, 10), end_date: service.end_date ? String(service.end_date).slice(0, 10) : '' })}>Edit</button>
-                                                                    <button type="button" className="text-primary hover:underline" onClick={() => setConfirmDel({ url: `/operasional/servis/${service.id}`, label: `servis "${service.title}"` })}>Hapus</button>
-                                                                </div>}
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                )}
-                                            </section>
-                                            <section className="rounded-lg border border-hairline p-4">
-                                                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                                                    <h4 className="flex items-center gap-2 text-sm font-semibold text-ink"><Fuel size={16} /> Monitoring BBM</h4>
-                                                    {canManage && (
-                                                        <SecondaryButton type="button" onClick={() => {
-                                                            setBbmVesselId(String(selectedVessel.id));
-                                                            setBbmVoyageId('');
-                                                            setFuelErrors({});
-                                                            setTripDate('');
-                                                            setTripRoute('');
-                                                            setDuration('');
-                                                            setLiters('');
-                                                            setPricePerLiter('');
-                                                            setExplanation('');
-                                                            setEntryModal('fuel');
-                                                        }}>
-                                                            <Fuel size={15} className="mr-1.5" /> Catat BBM
-                                                        </SecondaryButton>
+                                                            ))}
+                                                        </div>
                                                     )}
-                                                </div>
-                                                {vesselHistory.logs.length === 0 ? (
-                                                    <p className="text-sm text-muted">Belum ada catatan BBM.</p>
-                                                ) : (
-                                                    <ul className="max-h-80 space-y-2 overflow-y-auto">
-                                                        {vesselHistory.logs.map((fuel) => (
-                                                            <li key={fuel.id} className="rounded-md bg-appbg p-3 text-sm">
-                                                                <div className="flex justify-between gap-2">
-                                                                    <strong>{fuel.route}</strong>
-                                                                    <Badge tone={FUEL_TONES[fuel.analysis_status] ?? 'neutral'}>{FUEL_TEXT[fuel.analysis_status] ?? fuel.analysis_status}</Badge>
+                                                </section>
+                                            </Col>
+                                            <Col xs={24} xl={8}>
+                                                <section className="rounded-lg border border-[#E7E1D9] p-4">
+                                                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                                        <h4 className="flex items-center gap-2 text-sm font-semibold text-[#1C1B1A]"><Fuel size={16} /> Monitoring BBM</h4>
+                                                        {canManage && (
+                                                            <SecondaryButton onClick={() => {
+                                                                setBbmVesselId(String(selectedVessel.id));
+                                                                setBbmVoyageId('');
+                                                                setFuelErrors({});
+                                                                setTripDate('');
+                                                                setTripRoute('');
+                                                                setDuration('');
+                                                                setLiters('');
+                                                                setPricePerLiter('');
+                                                                setExplanation('');
+                                                                setEntryModal('fuel');
+                                                            }} icon={<Fuel size={15} />}>
+                                                                Catat BBM
+                                                            </SecondaryButton>
+                                                        )}
+                                                    </div>
+                                                    {vesselHistory.logs.length === 0 ? (
+                                                        <p className="text-sm text-[#8A8580]">Belum ada catatan BBM.</p>
+                                                    ) : (
+                                                        <div className="max-h-80 space-y-2 overflow-y-auto">
+                                                            {vesselHistory.logs.map((fuel) => (
+                                                                <div key={fuel.id} className="rounded-md p-3 text-sm" style={{ background: '#FAF7F2' }}>
+                                                                    <div className="flex justify-between gap-2">
+                                                                        <strong>{fuel.route}</strong>
+                                                                        <Badge tone={FUEL_TONES[fuel.analysis_status] ?? 'neutral'}>{FUEL_TEXT[fuel.analysis_status] ?? fuel.analysis_status}</Badge>
+                                                                    </div>
+                                                                    <p className="mt-1 text-xs text-[#8A8580]">{formatDate(fuel.trip_date)} · {formatNumber(fuel.liters, 2)} L · {formatNumber(fuel.lph, 1)} L/jam · {formatRupiah(fuel.cost)}</p>
+                                                                    {fuel.explanation_note && <p className="mt-1 text-xs text-[#8A8580]">{fuel.explanation_note}</p>}
+                                                                    {canManage && <div className="mt-2 flex gap-3 text-xs font-medium">
+                                                                        <button type="button" className="text-[#C1121F] hover:underline" onClick={() => setEditFuel({ ...fuel, trip_date: String(fuel.trip_date).slice(0, 10), explanation: fuel.explanation_note ?? '', price_per_liter: Number(fuel.liters) > 0 ? (Number(fuel.cost) / Number(fuel.liters)).toString() : '' })}>Edit</button>
+                                                                        <button type="button" className="text-[#C1121F] hover:underline" onClick={() => setConfirmDel({ url: `/operasional/bbm/${fuel.id}`, label: `log BBM ${selectedVessel.vessel_name} (${fuel.route})` })}>Hapus</button>
+                                                                    </div>}
                                                                 </div>
-                                                                <p className="mt-1 text-xs text-muted">{formatDate(fuel.trip_date)} · {formatNumber(fuel.liters, 2)} L · {formatNumber(fuel.lph, 1)} L/jam · {formatRupiah(fuel.cost)}</p>
-                                                                {fuel.explanation_note && <p className="mt-1 text-xs text-muted">{fuel.explanation_note}</p>}
-                                                                {canManage && <div className="mt-2 flex gap-3 text-xs font-medium">
-                                                                    <button type="button" className="text-primary hover:underline" onClick={() => setEditFuel({ ...fuel, trip_date: String(fuel.trip_date).slice(0, 10), explanation: fuel.explanation_note ?? '', price_per_liter: Number(fuel.liters) > 0 ? (Number(fuel.cost) / Number(fuel.liters)).toString() : '' })}>Edit</button>
-                                                                    <button type="button" className="text-primary hover:underline" onClick={() => setConfirmDel({ url: `/operasional/bbm/${fuel.id}`, label: `log BBM ${selectedVessel.vessel_name} (${fuel.route})` })}>Hapus</button>
-                                                                </div>}
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                )}
-                                            </section>
-                                        </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </section>
+                                            </Col>
+                                        </Row>
                                     )}
                                 </section>
                                 {canManage && (
-                                    <form onSubmit={submitPosition} className="mt-6 border-t border-hairline pt-5">
-                                        <h3 className="mb-3 text-sm font-semibold text-ink">Update posisi manual</h3>
-                                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    <form onSubmit={submitPosition} className="mt-6 border-t border-[#E7E1D9] pt-5">
+                                        <h3 className="mb-3 text-sm font-semibold text-[#1C1B1A]">Update posisi manual</h3>
+                                        <Row gutter={12}>
                                             {(['lat', 'lng'] as const).map((field) => (
-                                                <div key={field}>
-                                                    <label htmlFor={`position-${field}`} className="text-xs font-medium text-muted">
+                                                <Col key={field} xs={12}>
+                                                    <label className="text-xs font-medium text-[#8A8580]">
                                                         {field === 'lat' ? 'Latitude' : 'Longitude'}
                                                     </label>
-                                                    <input
-                                                        id={`position-${field}`}
+                                                    <InputNumber
                                                         type="number"
-                                                        step="any"
+                                                        step={field === 'lat' ? 0.000001 : 0.000001}
                                                         min={field === 'lat' ? -90 : -180}
                                                         max={field === 'lat' ? 90 : 180}
                                                         required
-                                                        value={positionForm[field]}
-                                                        onChange={(event) => setPositionForm((current) => ({
+                                                        value={positionForm[field] ? Number(positionForm[field]) : undefined}
+                                                        onChange={(value) => setPositionForm((current) => ({
                                                             ...current,
-                                                            [field]: event.target.value,
+                                                            [field]: value !== null ? String(value) : '',
                                                         }))}
-                                                        className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
+                                                        style={{ width: '100%' }}
+                                                        status={positionErrors[field] ? 'error' : undefined}
                                                     />
                                                     {positionErrors[field] && (
-                                                        <p className="mt-1 text-xs text-primary">{positionErrors[field]}</p>
+                                                        <p className="mt-1 text-xs text-[#C1121F]">{positionErrors[field]}</p>
                                                     )}
-                                                </div>
+                                                </Col>
                                             ))}
-                                        </div>
-                                        <p className="mt-2 text-xs text-muted">
+                                        </Row>
+                                        <p className="mt-2 text-xs text-[#8A8580]">
                                             Pembaruan ini dicatat sebagai posisi manual dan bukan data AIS/GPS live.
                                         </p>
                                         <div className="mt-4 flex justify-end">
@@ -765,139 +784,154 @@ export default function OperationsIndex({
                                     <div className="max-h-[90dvh] overflow-y-auto p-5 sm:p-6">
                                         <div className="mb-4 flex items-start justify-between gap-4">
                                             <div>
-                                                <h3 className="text-lg font-semibold text-ink">
+                                                <h3 className="text-lg font-semibold text-[#1C1B1A]">
                                                     {entryModal === 'condition' ? 'Pemeriksaan Kondisi' : entryModal === 'service' ? 'Catat Servis' : 'Catat Trip BBM'}
                                                 </h3>
-                                                <p className="text-sm text-muted">{selectedVessel.vessel_name}</p>
+                                                <p className="text-sm text-[#8A8580]">{selectedVessel.vessel_name}</p>
                                             </div>
-                                            <SecondaryButton type="button" onClick={() => setEntryModal(null)}>Tutup</SecondaryButton>
+                                            <SecondaryButton onClick={() => setEntryModal(null)}>Tutup</SecondaryButton>
                                         </div>
                                         {entryModal === 'condition' && (
-                                            <form onSubmit={submitCondition} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                            <form onSubmit={submitCondition}>
                                                 <input type="hidden" name="vessel_id" value={selectedVessel.id} />
-                                                <TextInputField label="Tanggal Pemeriksaan" name="checked_at" type="date" required />
-                                                {['mesin', 'navigasi', 'keselamatan', 'dek', 'kamar'].map((field) => (
-                                                    <Select
-                                                        key={field}
-                                                        label={field.charAt(0).toUpperCase() + field.slice(1)}
-                                                        name={field}
-                                                        required
-                                                        options={[
-                                                            { value: 'baik', label: 'Baik' },
-                                                            { value: 'cukup', label: 'Cukup' },
-                                                            { value: 'perlu_perbaikan', label: 'Perlu Perbaikan' },
-                                                        ]}
-                                                    />
-                                                ))}
-                                                <TextInputField label="Skor (0–100)" name="score" type="number" required />
-                                                <div className="sm:col-span-2">
-                                                    <label className="text-xs font-medium text-muted">Catatan</label>
-                                                    <textarea name="notes" rows={3} className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
-                                                </div>
-                                                <div className="sm:col-span-2 flex justify-end">
-                                                    <PrimaryButton>Simpan Pemeriksaan</PrimaryButton>
-                                                </div>
+                                                <Row gutter={12}>
+                                                    <Col xs={12}><TextInputField label="Tanggal Pemeriksaan" name="checked_at" type="date" required /></Col>
+                                                    {['mesin', 'navigasi', 'keselamatan', 'dek', 'kamar'].map((field) => (
+                                                        <Col xs={12} key={field}>
+                                                            <FormSelect
+                                                                label={field.charAt(0).toUpperCase() + field.slice(1)}
+                                                                name={field}
+                                                                required
+                                                                options={[
+                                                                    { value: 'baik', label: 'Baik' },
+                                                                    { value: 'cukup', label: 'Cukup' },
+                                                                    { value: 'perlu_perbaikan', label: 'Perlu Perbaikan' },
+                                                                ]}
+                                                            />
+                                                        </Col>
+                                                    ))}
+                                                    <Col xs={12}><TextInputField label="Skor (0–100)" name="score" type="number" required /></Col>
+                                                    <Col xs={24}>
+                                                        <label className="text-xs font-medium text-[#8A8580]">Catatan</label>
+                                                        <Input.TextArea name="notes" rows={3} />
+                                                    </Col>
+                                                    <Col xs={24} className="mt-3 flex justify-end">
+                                                        <PrimaryButton htmlType="submit">Simpan Pemeriksaan</PrimaryButton>
+                                                    </Col>
+                                                </Row>
                                             </form>
                                         )}
                                         {entryModal === 'service' && (
-                                            <form onSubmit={submitService} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                            <form onSubmit={submitService}>
                                                 <input type="hidden" name="vessel_id" value={selectedVessel.id} />
-                                                <Select label="Jenis" name="type" required options={[
-                                                    { value: 'rutin', label: 'Rutin' },
-                                                    { value: 'urgent', label: 'Urgent' },
-                                                    { value: 'drydock', label: 'Drydock' },
-                                                    { value: 'pemeriksaan', label: 'Pemeriksaan' },
-                                                ]} />
-                                                <Select label="Status" name="status" required options={[
-                                                    { value: 'rencana', label: 'Rencana' },
-                                                    { value: 'proses', label: 'Proses' },
-                                                    { value: 'selesai', label: 'Selesai (stok dipotong)' },
-                                                ]} />
-                                                <TextInputField label="Judul Pekerjaan" name="title" required />
-                                                <TextInputField label="Bengkel" name="workshop" />
-                                                <TextInputField label="Mulai" name="start_date" type="date" required />
-                                                <TextInputField label="Selesai" name="end_date" type="date" />
-                                                <div>
-                                                    <label className="text-xs font-medium text-muted">Biaya (Rp)</label>
-                                                    <NumericInput decimalPlaces={2} value={serviceCost} onChange={(event) => setServiceCost(event.target.value)} className="mt-1 block w-full" />
-                                                </div>
-                                                <div className="sm:col-span-2">
-                                                    <label className="text-xs font-medium text-muted">Sparepart dipakai</label>
-                                                    {serviceItems.map((row, index) => (
-                                                        <div key={index} className="mt-2 flex gap-2">
-                                                            <SearchableSelect
-                                                                value={row.item_id}
-                                                                options={[
-                                                                    { value: '', label: '— pilih item —' },
-                                                                    ...historyItems.map((item) => ({
-                                                                        value: String(item.id),
-                                                                        label: `${item.sku} · ${item.name} (kantor: ${formatNumber(item.stok_kantor, 0)})`,
-                                                                    })),
-                                                                ]}
-                                                                onChange={(value) => setServiceItems((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, item_id: value } : item))}
-                                                                className="flex-1"
-                                                            />
-                                                            <NumericInput decimalPlaces={2} min={0} placeholder="Qty" value={row.qty} onChange={(event) => setServiceItems((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, qty: event.target.value } : item))} className="w-24 rounded-md border-gray-300 text-sm shadow-sm" />
-                                                        </div>
-                                                    ))}
-                                                    <button type="button" onClick={() => setServiceItems((current) => [...current, { item_id: '', qty: '' }])} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                                                        <Plus size={13} /> Tambah item
-                                                    </button>
-                                                </div>
-                                                <div className="sm:col-span-2 flex justify-end">
-                                                    <PrimaryButton>Simpan Servis</PrimaryButton>
-                                                </div>
+                                                <Row gutter={12}>
+                                                    <Col xs={12}>
+                                                        <FormSelect label="Jenis" name="type" required options={[
+                                                            { value: 'rutin', label: 'Rutin' },
+                                                            { value: 'urgent', label: 'Urgent' },
+                                                            { value: 'drydock', label: 'Drydock' },
+                                                            { value: 'pemeriksaan', label: 'Pemeriksaan' },
+                                                        ]} />
+                                                    </Col>
+                                                    <Col xs={12}>
+                                                        <FormSelect label="Status" name="status" required options={[
+                                                            { value: 'rencana', label: 'Rencana' },
+                                                            { value: 'proses', label: 'Proses' },
+                                                            { value: 'selesai', label: 'Selesai (stok dipotong)' },
+                                                        ]} />
+                                                    </Col>
+                                                    <Col xs={12}><TextInputField label="Judul Pekerjaan" name="title" required /></Col>
+                                                    <Col xs={12}><TextInputField label="Bengkel" name="workshop" /></Col>
+                                                    <Col xs={12}><TextInputField label="Mulai" name="start_date" type="date" required /></Col>
+                                                    <Col xs={12}><TextInputField label="Selesai" name="end_date" type="date" /></Col>
+                                                    <Col xs={12}>
+                                                        <label className="text-xs font-medium text-[#8A8580]">Biaya (Rp)</label>
+                                                        <NumericInput decimalPlaces={2} value={serviceCost} onChange={(event) => setServiceCost(event.target.value)} />
+                                                    </Col>
+                                                    <Col xs={24}>
+                                                        <label className="text-xs font-medium text-[#8A8580]">Sparepart dipakai</label>
+                                                        {serviceItems.map((row, index) => (
+                                                            <div key={index} className="mt-2 flex gap-2">
+                                                                <SearchableSelect
+                                                                    value={row.item_id}
+                                                                    options={[
+                                                                        { value: '', label: '— pilih item —' },
+                                                                        ...historyItems.map((item) => ({
+                                                                            value: String(item.id),
+                                                                            label: `${item.sku} · ${item.name} (kantor: ${formatNumber(item.stok_kantor, 0)})`,
+                                                                        })),
+                                                                    ]}
+                                                                    onChange={(value) => setServiceItems((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, item_id: value } : item))}
+                                                                    className="flex-1"
+                                                                />
+                                                                <NumericInput decimalPlaces={2} min={0} placeholder="Qty" value={row.qty} onChange={(event) => setServiceItems((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, qty: event.target.value } : item))} className="w-24" />
+                                                            </div>
+                                                        ))}
+                                                        <button type="button" onClick={() => setServiceItems((current) => [...current, { item_id: '', qty: '' }])} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-[#C1121F] hover:underline">
+                                                            <Plus size={13} /> Tambah item
+                                                        </button>
+                                                    </Col>
+                                                    <Col xs={24} className="mt-3 flex justify-end">
+                                                        <PrimaryButton htmlType="submit">Simpan Servis</PrimaryButton>
+                                                    </Col>
+                                                </Row>
                                             </form>
                                         )}
                                         {entryModal === 'fuel' && (
-                                            <form onSubmit={submitFuel} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                            <form onSubmit={submitFuel}>
                                                 <input type="hidden" name="vessel_id" value={selectedVessel.id} />
                                                 <input type="hidden" name="cost" value={totalFuelCost.toFixed(2)} />
-                                                <div>
-                                                    <label className="text-xs font-medium text-muted">Perjalanan / Voyage (Opsional)</label>
-                                                    <SearchableSelect
-                                                        name="voyage_id"
-                                                        value={bbmVoyageId}
-                                                        onChange={setBbmVoyageId}
-                                                        placeholder="Cari perjalanan..."
-                                                        options={[
-                                                            { value: '', label: '— tanpa kaitan perjalanan spesifik —' },
-                                                            ...historyVoyages.map((voyage) => ({ value: String(voyage.id), label: voyage.voyage_code })),
-                                                        ]}
-                                                    />
-                                                </div>
-                                                <TextInputField label="Tanggal" name="trip_date" type="date" value={tripDate} onChange={(value) => updateFuelField('trip_date', value, setTripDate)} error={fuelErrors.trip_date} />
-                                                <TextInputField label="Rute" name="route" value={tripRoute} onChange={(value) => updateFuelField('route', value, setTripRoute)} error={fuelErrors.route} placeholder="mis. Samarinda -> Bontang" />
-                                                <TextInputField label="Durasi (jam)" name="duration_hours" type="number" step="0.01" value={duration} onChange={(value) => updateFuelField('duration_hours', value, setDuration)} error={fuelErrors.duration_hours} />
-                                                <TextInputField label="Jarak (mil)" name="distance_nm" type="number" step="0.01" />
-                                                <div>
-                                                    <label className="text-xs font-medium text-muted">Liter *</label>
-                                                    <NumericInput name="liters" decimalPlaces={2} value={liters} onChange={(event) => updateFuelField('liters', event.target.value, setLiters)} className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
-                                                    {fuelErrors.liters && <p className="mt-1 text-xs font-medium text-primary">{fuelErrors.liters}</p>}
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs font-medium text-muted">Harga per Liter (Rp) *</label>
-                                                    <NumericInput name="price_per_liter" decimalPlaces={2} value={pricePerLiter} onChange={(event) => updateFuelField('price_per_liter', event.target.value, setPricePerLiter)} className="mt-1 block w-full" />
-                                                    {fuelErrors.price_per_liter && <p className="mt-1 text-xs font-medium text-primary">{fuelErrors.price_per_liter}</p>}
-                                                </div>
-                                                <p className="rounded-md bg-appbg px-3 py-2 text-sm text-ink sm:col-span-2">Total biaya BBM: <strong>{formatRupiah(totalFuelCost)}</strong></p>
-                                                <TextInputField label="Kecepatan (knot)" name="speed_knots" type="number" step="0.1" />
-                                                <TextInputField label="Keterlambatan (jam)" name="delay_hours" type="number" step="0.1" />
-                                                <TextInputField label="Kondisi Cuaca" name="weather_condition" placeholder="mis. cerah, gelombang tenang, hujan..." />
-                                                {liveAnalysis && (
-                                                    <div className="rounded-md border border-hairline p-3 sm:col-span-2">
-                                                        <p className="text-sm font-semibold text-ink">Preview: <Badge tone={FUEL_TONES[liveAnalysis.status] ?? 'neutral'}>{FUEL_TEXT[liveAnalysis.status] ?? liveAnalysis.status}</Badge> ({liveAnalysis.diff > 0 ? '+' : ''}{formatNumber(liveAnalysis.diff, 1)}%)</p>
-                                                        <p className="text-xs text-muted">{formatNumber(liveAnalysis.lph, 1)} L/jam{liveAnalysis.baseline ? ` vs baseline ${formatNumber(liveAnalysis.baseline, 0)} L/jam` : ' · baseline belum ditetapkan'}</p>
-                                                    </div>
-                                                )}
-                                                <div className="sm:col-span-2">
-                                                    <label className="text-xs font-medium text-muted">Catatan penjelasan (wajib bila Tidak Normal)</label>
-                                                    <textarea name="explanation" rows={2} value={explanation} onChange={(event) => updateFuelField('explanation', event.target.value, setExplanation)} className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
-                                                    {fuelErrors.explanation && <p className="mt-1 text-xs font-medium text-primary">{fuelErrors.explanation}</p>}
-                                                </div>
-                                                <div className="sm:col-span-2 flex justify-end">
-                                                    <PrimaryButton disabled={Object.values(fuelErrors).some(Boolean)}>Simpan Trip</PrimaryButton>
-                                                </div>
+                                                <Row gutter={12}>
+                                                    <Col xs={12}>
+                                                        <label className="text-xs font-medium text-[#8A8580]">Perjalanan / Voyage (Opsional)</label>
+                                                        <SearchableSelect
+                                                            name="voyage_id"
+                                                            value={bbmVoyageId}
+                                                            onChange={setBbmVoyageId}
+                                                            placeholder="Cari perjalanan..."
+                                                            options={[
+                                                                { value: '', label: '— tanpa kaitan perjalanan spesifik —' },
+                                                                ...historyVoyages.map((voyage) => ({ value: String(voyage.id), label: voyage.voyage_code })),
+                                                            ]}
+                                                        />
+                                                    </Col>
+                                                    <Col xs={12}><TextInputField label="Tanggal" name="trip_date" type="date" value={tripDate} onChange={(value) => updateFuelField('trip_date', value, setTripDate)} error={fuelErrors.trip_date} /></Col>
+                                                    <Col xs={12}><TextInputField label="Rute" name="route" value={tripRoute} onChange={(value) => updateFuelField('route', value, setTripRoute)} error={fuelErrors.route} placeholder="mis. Samarinda -> Bontang" /></Col>
+                                                    <Col xs={12}><TextInputField label="Durasi (jam)" name="duration_hours" type="number" step="0.01" value={duration} onChange={(value) => updateFuelField('duration_hours', value, setDuration)} error={fuelErrors.duration_hours} /></Col>
+                                                    <Col xs={12}><TextInputField label="Jarak (mil)" name="distance_nm" type="number" step="0.01" /></Col>
+                                                    <Col xs={12}>
+                                                        <label className="text-xs font-medium text-[#8A8580]">Liter *</label>
+                                                        <NumericInput name="liters" decimalPlaces={2} value={liters} onChange={(event) => updateFuelField('liters', event.target.value, setLiters)} />
+                                                        {fuelErrors.liters && <p className="mt-1 text-xs font-medium text-[#C1121F]">{fuelErrors.liters}</p>}
+                                                    </Col>
+                                                    <Col xs={12}>
+                                                        <label className="text-xs font-medium text-[#8A8580]">Harga per Liter (Rp) *</label>
+                                                        <NumericInput name="price_per_liter" decimalPlaces={2} value={pricePerLiter} onChange={(event) => updateFuelField('price_per_liter', event.target.value, setPricePerLiter)} />
+                                                        {fuelErrors.price_per_liter && <p className="mt-1 text-xs font-medium text-[#C1121F]">{fuelErrors.price_per_liter}</p>}
+                                                    </Col>
+                                                    <Col xs={24}>
+                                                        <div className="rounded-md px-3 py-2 text-sm text-[#1C1B1A]" style={{ background: '#FAF7F2' }}>Total biaya BBM: <strong>{formatRupiah(totalFuelCost)}</strong></div>
+                                                    </Col>
+                                                    <Col xs={12}><TextInputField label="Kecepatan (knot)" name="speed_knots" type="number" step="0.1" /></Col>
+                                                    <Col xs={12}><TextInputField label="Keterlambatan (jam)" name="delay_hours" type="number" step="0.1" /></Col>
+                                                    <Col xs={12}><TextInputField label="Kondisi Cuaca" name="weather_condition" placeholder="mis. cerah, gelombang tenang, hujan..." /></Col>
+                                                    {liveAnalysis && (
+                                                        <Col xs={24}>
+                                                            <div className="rounded-md border border-[#E7E1D9] p-3">
+                                                                <p className="text-sm font-semibold text-[#1C1B1A]">Preview: <Badge tone={FUEL_TONES[liveAnalysis.status] ?? 'neutral'}>{FUEL_TEXT[liveAnalysis.status] ?? liveAnalysis.status}</Badge> ({liveAnalysis.diff > 0 ? '+' : ''}{formatNumber(liveAnalysis.diff, 1)}%)</p>
+                                                                <p className="text-xs text-[#8A8580]">{formatNumber(liveAnalysis.lph, 1)} L/jam{liveAnalysis.baseline ? ` vs baseline ${formatNumber(liveAnalysis.baseline, 0)} L/jam` : ' · baseline belum ditetapkan'}</p>
+                                                            </div>
+                                                        </Col>
+                                                    )}
+                                                    <Col xs={24}>
+                                                        <label className="text-xs font-medium text-[#8A8580]">Catatan penjelasan (wajib bila Tidak Normal)</label>
+                                                        <Input.TextArea name="explanation" rows={2} value={explanation} onChange={(event) => updateFuelField('explanation', event.target.value, setExplanation)} status={fuelErrors.explanation ? 'error' : undefined} />
+                                                        {fuelErrors.explanation && <p className="mt-1 text-xs font-medium text-[#C1121F]">{fuelErrors.explanation}</p>}
+                                                    </Col>
+                                                    <Col xs={24} className="mt-3 flex justify-end">
+                                                        <PrimaryButton htmlType="submit" disabled={Object.values(fuelErrors).some(Boolean)}>Simpan Trip</PrimaryButton>
+                                                    </Col>
+                                                </Row>
                                             </form>
                                         )}
                                     </div>
@@ -906,483 +940,6 @@ export default function OperationsIndex({
                         )}
                     </Modal>
                 </div>
-            )}
-
-            {tab === 'kondisi' && (
-                <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-                    <Card title="Form Pemeriksaan Kondisi" className={canManage ? '' : 'hidden'}>
-                        <form onSubmit={submitCondition} className="space-y-3">
-                            <Select
-                                label="Vessel"
-                                name="vessel_id"
-                                required
-                                options={[
-                                    { value: '', label: '— pilih vessel —' },
-                                    ...(vessels ?? []).map((v) => ({ value: v.id, label: v.vessel_name })),
-                                ]}
-                            />
-                            <TextInputField label="Tanggal Pemeriksaan" name="checked_at" type="date" required />
-                            {['mesin', 'navigasi', 'keselamatan', 'dek', 'kamar'].map((k) => (
-                                <Select
-                                    key={k}
-                                    label={k.charAt(0).toUpperCase() + k.slice(1)}
-                                    name={k}
-                                    required
-                                    options={[
-                                        { value: 'baik', label: 'Baik' },
-                                        { value: 'cukup', label: 'Cukup' },
-                                        { value: 'perlu_perbaikan', label: 'Perlu Perbaikan' },
-                                    ]}
-                                />
-                            ))}
-                            <TextInputField label="Skor (0–100)" name="score" type="number" required />
-                            <div>
-                                <label className="text-xs font-medium text-muted">Catatan</label>
-                                <textarea
-                                    name="notes"
-                                    rows={2}
-                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
-                                />
-                            </div>
-                            <PrimaryButton>Simpan Pemeriksaan</PrimaryButton>
-                        </form>
-                    </Card>
-                    <Card title="Riwayat Pemeriksaan" className="xl:col-span-2">
-                        {(conditions ?? []).length === 0 ? (
-                            <EmptyState icon={Activity} title="Belum ada pemeriksaan" />
-                        ) : (
-                            <ul className="space-y-2.5">
-                                {(conditions ?? []).map((c) => (
-                                    <li key={c.id} className="rounded-lg border border-hairline p-3 text-sm">
-                                        <div className="flex items-center justify-between">
-                                            <span className="font-medium text-ink">{c.vessel_name}</span>
-                                            <span
-                                                className={classNames(
-                                                    'rounded-full px-2 py-0.5 text-xs font-semibold',
-                                                    c.score >= 85
-                                                        ? 'bg-ok/10 text-ok'
-                                                        : c.score >= 70
-                                                          ? 'bg-warn/10 text-warn'
-                                                          : 'bg-primary/10 text-primary',
-                                                )}
-                                            >
-                                                Skor {c.score}
-                                            </span>
-                                        </div>
-                                        <p className="text-xs text-muted">
-                                            {formatDateTime(c.checked_at)} · {c.checked_by_name ?? '—'}
-                                        </p>
-                                        {c.notes && <p className="mt-1 text-sm text-ink">{c.notes}</p>}
-                                        {canManage && (
-                                            <div className="mt-2 flex gap-3 text-xs font-medium">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setEditCondition({ ...c, checked_at: String(c.checked_at).slice(0, 10) })}
-                                                    className="text-primary hover:underline"
-                                                >
-                                                    Edit
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setConfirmDel({ url: `/operasional/kondisi/${c.id}`, label: `pemeriksaan kondisi ${c.vessel_name}` })}
-                                                    className="text-primary hover:underline"
-                                                >
-                                                    Hapus
-                                                </button>
-                                            </div>
-                                        )}
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                    </Card>
-                </div>
-            )}
-
-            {tab === 'servis' && (
-                <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-                    <Card title="Catat Servis" className={canManage ? '' : 'hidden'}>
-                        <form onSubmit={submitService} className="space-y-3">
-                            <Select
-                                label="Vessel"
-                                name="vessel_id"
-                                required
-                                options={[
-                                    { value: '', label: '— pilih vessel —' },
-                                    ...(vessels ?? []).map((v) => ({ value: v.id, label: v.vessel_name })),
-                                ]}
-                            />
-                            <Select
-                                label="Jenis"
-                                name="type"
-                                required
-                                options={[
-                                    { value: 'rutin', label: 'Rutin' },
-                                    { value: 'urgent', label: 'Urgent' },
-                                    { value: 'drydock', label: 'Drydock' },
-                                    { value: 'pemeriksaan', label: 'Pemeriksaan' },
-                                ]}
-                            />
-                            <TextInputField label="Judul Pekerjaan" name="title" required />
-                            <TextInputField label="Mulai" name="start_date" type="date" required />
-                            <TextInputField label="Selesai" name="end_date" type="date" />
-                            <TextInputField label="Bengkel" name="workshop" />
-                            <div>
-                                <label className="text-xs font-medium text-muted">Biaya (Rp)</label>
-                                <NumericInput
-                                    decimalPlaces={2}
-                                    value={serviceCost}
-                                    onChange={(e) => setServiceCost(e.target.value)}
-                                    className="mt-1 block w-full"
-                                />
-                            </div>
-                            <Select
-                                label="Status"
-                                name="status"
-                                required
-                                options={[
-                                    { value: 'rencana', label: 'Rencana' },
-                                    { value: 'proses', label: 'Proses' },
-                                    { value: 'selesai', label: 'Selesai (stok dipotong)' },
-                                ]}
-                            />
-                            <div>
-                                <label className="text-xs font-medium text-muted">Sparepart dipakai</label>
-                                {serviceItems.map((row, idx) => (
-                                    <div key={idx} className="mt-2 flex gap-2">
-                                        <SearchableSelect
-                                            value={row.item_id}
-                                            options={[
-                                                { value: '', label: '— pilih item —' },
-                                                ...(items ?? []).map((item) => ({
-                                                    value: String(item.id),
-                                                    label: `${item.sku} · ${item.name} (kantor: ${formatNumber(item.stok_kantor, 0)})`,
-                                                })),
-                                            ]}
-                                            onChange={(value) =>
-                                                setServiceItems((prev) =>
-                                                    prev.map((p, i) => (i === idx ? { ...p, item_id: value } : p)),
-                                                )
-                                            }
-                                            className="flex-1"
-                                        />
-                                        <NumericInput
-                                            decimalPlaces={2}
-                                            min={0}
-                                            placeholder="Qty"
-                                            value={row.qty}
-                                            onChange={(e) =>
-                                                setServiceItems((prev) =>
-                                                    prev.map((p, i) => (i === idx ? { ...p, qty: e.target.value } : p)),
-                                                )
-                                            }
-                                            className="w-24 rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
-                                        />
-                                    </div>
-                                ))}
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setServiceItems((prev) => [...prev, { item_id: '', qty: '' }])
-                                    }
-                                    className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                                >
-                                    <Plus size={13} /> Tambah item
-                                </button>
-                            </div>
-                            <PrimaryButton>Simpan Servis</PrimaryButton>
-                        </form>
-                    </Card>
-                    <Card title="Riwayat Servis" className="xl:col-span-2">
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full text-sm">
-                                <thead className="bg-appbg text-left text-xs uppercase tracking-wide text-muted">
-                                    <tr>
-                                        {['Kapal', 'Pekerjaan', 'Jenis', 'Periode', 'Biaya', 'Status', ...(canManage ? ['Aksi'] : [])].map((h) => (
-                                            <th key={h} className="px-3 py-2">
-                                                {h}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-hairline">
-                                    {(services ?? []).map((s) => (
-                                        <tr key={s.id}>
-                                            <td className="px-3 py-2 font-medium text-ink">{s.vessel_name}</td>
-                                            <td className="px-3 py-2 text-ink">{s.title}</td>
-                                            <td className="px-3 py-2 capitalize text-muted">{s.type}</td>
-                                            <td className="px-3 py-2 text-xs text-muted">
-                                                {formatDate(s.start_date)} → {formatDate(s.end_date)}
-                                            </td>
-                                            <td className="px-3 py-2 tabular-nums">{formatRupiah(s.cost)}</td>
-                                            <td className="px-3 py-2">
-                                                <Badge
-                                                    tone={s.status === 'selesai' ? 'success' : s.status === 'proses' ? 'warning' : 'neutral'}
-                                                >
-                                                    {s.status}
-                                                </Badge>
-                                            </td>
-                                            {canManage && (
-                                                <td className="px-3 py-2">
-                                                    <div className="flex gap-2 text-xs font-medium">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setEditService({ ...s, start_date: String(s.start_date).slice(0, 10), end_date: s.end_date ? String(s.end_date).slice(0, 10) : '' })}
-                                                            className="text-primary hover:underline"
-                                                        >
-                                                            Edit
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setConfirmDel({ url: `/operasional/servis/${s.id}`, label: `servis "${s.title}"` })}
-                                                            className="text-primary hover:underline"
-                                                        >
-                                                            Hapus
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            )}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </Card>
-                </div>
-            )}
-
-            {tab === 'bbm' && (
-                <>
-                    <div className="mb-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
-                        {[
-                            ['Liter Bulan Ini', formatNumber(kpis?.liter_bulan ?? 0, 2) + ' L'],
-                            ['Biaya Bulan Ini', formatRupiah(kpis?.biaya_bulan ?? 0)],
-                            ['Trip Bulan Ini', kpis?.trip_bulan ?? 0],
-                            ['Anomali (Tidak Normal)', kpis?.anomali ?? 0],
-                        ].map(([k, v]) => (
-                            <div key={k as string} className="rounded-xl border border-hairline bg-white p-4">
-                                <p className="text-xs uppercase tracking-wide text-muted">{k}</p>
-                                <p className="mt-1 text-xl font-semibold tabular-nums text-ink">{v}</p>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-                        <Card title="Input Trip BBM" className={canManage ? '' : 'hidden'}>
-                            <form onSubmit={submitFuel} className="space-y-3">
-                                <div>
-                                    <label className="text-xs font-medium text-muted">Vessel *</label>
-                                    <SearchableSelect
-                                        name="vessel_id"
-                                        value={bbmVesselId}
-                                        onChange={(value) => {
-                                            setBbmVesselId(value);
-                                            setFuelErrors((current) => ({
-                                                ...current,
-                                                vessel_id: value ? '' : 'Pilih kapal.',
-                                            }));
-                                        }}
-                                        options={[
-                                            { value: '', label: '— pilih vessel —' },
-                                            ...(vessels ?? []).map((v) => ({
-                                                value: String(v.id),
-                                                label: `${v.vessel_name} (baseline ${formatNumber(v.fuel_baseline_lph, 1)} L/jam)`,
-                                            })),
-                                        ]}
-                                    />
-                                    {fuelErrors.vessel_id && (
-                                        <p className="mt-1 text-xs font-medium text-primary">{fuelErrors.vessel_id}</p>
-                                    )}
-                                </div>
-                                <div>
-                                    <label className="text-xs font-medium text-muted">Perjalanan / Voyage (Opsional)</label>
-                                    <SearchableSelect
-                                        name="voyage_id"
-                                        value={bbmVoyageId}
-                                        onChange={setBbmVoyageId}
-                                        placeholder="Cari perjalanan..."
-                                        options={[
-                                            { value: '', label: '— tanpa kaitan perjalanan spesifik —' },
-                                            ...(voyages ?? []).map((voyage) => ({
-                                                value: String(voyage.id),
-                                                label: voyage.voyage_code,
-                                            })),
-                                        ]}
-                                    />
-                                </div>
-                                <TextInputField
-                                    label="Tanggal"
-                                    name="trip_date"
-                                    type="date"
-                                    value={tripDate}
-                                    onChange={(value) => updateFuelField('trip_date', value, setTripDate)}
-                                    error={fuelErrors.trip_date}
-                                />
-                                <TextInputField
-                                    label="Rute"
-                                    name="route"
-                                    value={tripRoute}
-                                    onChange={(value) => updateFuelField('route', value, setTripRoute)}
-                                    error={fuelErrors.route}
-                                    placeholder="mis. Samarinda -> Bontang"
-                                />
-                                <div className="grid grid-cols-2 gap-3">
-                                    <TextInputField
-                                        label="Durasi (jam)"
-                                        name="duration_hours"
-                                        type="number"
-                                        step="0.01"
-                                        value={duration}
-                                        onChange={(value) => updateFuelField('duration_hours', value, setDuration)}
-                                        error={fuelErrors.duration_hours}
-                                    />
-                                    <TextInputField label="Jarak (mil)" name="distance_nm" type="number" step="0.01" />
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="text-xs font-medium text-muted">Liter *</label>
-                                        <NumericInput
-                                            name="liters"
-                                            decimalPlaces={2}
-                                            value={liters}
-                                            onChange={(e) => updateFuelField('liters', e.target.value, setLiters)}
-                                            className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
-                                        />
-                                        {fuelErrors.liters && <p className="mt-1 text-xs font-medium text-primary">{fuelErrors.liters}</p>}
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-muted">Harga per Liter (Rp) *</label>
-                                        <NumericInput
-                                            name="price_per_liter"
-                                            decimalPlaces={2}
-                                            value={pricePerLiter}
-                                            onChange={(e) => updateFuelField('price_per_liter', e.target.value, setPricePerLiter)}
-                                            className="mt-1 block w-full"
-                                        />
-                                        {fuelErrors.price_per_liter && <p className="mt-1 text-xs font-medium text-primary">{fuelErrors.price_per_liter}</p>}
-                                    </div>
-                                    <input type="hidden" name="cost" value={totalFuelCost.toFixed(2)} />
-                                </div>
-                                <p className="rounded-md bg-appbg px-3 py-2 text-sm text-ink">
-                                    Total biaya BBM: <strong>{formatRupiah(totalFuelCost)}</strong>
-                                </p>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <TextInputField label="Kecepatan (knot)" name="speed_knots" type="number" step="0.1" />
-                                    <TextInputField label="Keterlambatan (jam)" name="delay_hours" type="number" step="0.1" />
-                                </div>
-                                <TextInputField label="Kondisi Cuaca" name="weather_condition" placeholder="mis. cerah, gelombang tenang, hujan..." />
-                                {liveAnalysis && (
-                                    <div
-                                        className={classNames(
-                                            'rounded-lg border p-3 text-sm',
-                                            liveAnalysis.status === 'normal'
-                                                ? 'border-ok/40 bg-ok/5'
-                                                : liveAnalysis.status === 'waspada'
-                                                  ? 'border-warn/40 bg-warn/5'
-                                                  : 'border-primary/40 bg-primary-tint',
-                                        )}
-                                    >
-                                        <p className="font-semibold">
-                                            Analisis live:{' '}
-                                            <span
-                                                className={classNames(
-                                                    liveAnalysis.status === 'normal'
-                                                        ? 'text-ok'
-                                                        : liveAnalysis.status === 'waspada'
-                                                          ? 'text-warn'
-                                                          : 'text-primary',
-                                                )}
-                                            >
-                                                {FUEL_TEXT[liveAnalysis.status]}
-                                            </span>{' '}
-                                            ({liveAnalysis.diff > 0 ? '+' : ''}
-                                            {formatNumber(liveAnalysis.diff, 1)}%)
-                                        </p>
-                                        <p className="text-xs text-muted">
-                                            {formatNumber(liveAnalysis.lph, 1)} L/jam
-                                            {liveAnalysis.baseline
-                                                ? ` vs baseline ${formatNumber(liveAnalysis.baseline, 0)} L/jam`
-                                                : ' · baseline belum ditetapkan'}
-                                        </p>
-                                    </div>
-                                )}
-                                <div>
-                                    <label className="text-xs font-medium text-muted">
-                                        Catatan penjelasan (wajib bila Tidak Normal)
-                                    </label>
-                                    <textarea
-                                        name="explanation"
-                                        rows={2}
-                                        value={explanation}
-                                        onChange={(e) => updateFuelField('explanation', e.target.value, setExplanation)}
-                                        className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
-                                    />
-                                    {fuelErrors.explanation && <p className="mt-1 text-xs font-medium text-primary">{fuelErrors.explanation}</p>}
-                                </div>
-                                <PrimaryButton disabled={Object.values(fuelErrors).some(Boolean)}>Simpan Trip</PrimaryButton>
-                            </form>
-                        </Card>
-                        <Card title="Log Trip" description="Konsumsi vs baseline (L/jam)." className="xl:col-span-2">
-                            <div className="max-h-[560px] overflow-y-auto">
-                                <ul className="space-y-2">
-                                    {(logs ?? []).map((f) => (
-                                        <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-hairline px-3 py-2.5 text-sm">
-                                            <div>
-                                                <p className="font-medium text-ink">
-                                                    {f.vessel_name} · {f.route}
-                                                </p>
-                                                <p className="text-xs text-muted">
-                                                    {formatDate(f.trip_date)} · {formatNumber(f.duration_hours, 1)} jam ·{' '}
-                                                    {formatNumber(f.liters, 2)} L · {formatNumber(f.lph, 1)} L/jam
-                                                    {f.baseline_lph
-                                                        ? ` (baseline ${formatNumber(f.baseline_lph, 1)})`
-                                                        : ''}
-                                                    {f.speed_knots ? ` · ${formatNumber(f.speed_knots, 1)} knot` : ''}
-                                                    {f.weather_condition ? ` · ${f.weather_condition}` : ''}
-                                                    {f.delay_hours ? ` · kendala ${formatNumber(f.delay_hours, 1)} jam` : ''}
-                                                </p>
-                                                {f.explanation_note && (
-                                                    <p className="mt-0.5 text-xs italic text-muted">
-                                                        "{f.explanation_note}"
-                                                    </p>
-                                                )}
-                                            </div>
-                                            <Badge tone={FUEL_TONES[f.analysis_status] ?? 'neutral'}>
-                                                {FUEL_TEXT[f.analysis_status] ?? f.analysis_status} (
-                                                {f.analysis_diff_pct > 0 ? '+' : ''}
-                                                {formatNumber(f.analysis_diff_pct, 1)}%)
-                                            </Badge>
-                                            {canManage && (
-                                                <div className="flex gap-2 text-xs font-medium">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setEditFuel({
-                                                            ...f,
-                                                            trip_date: String(f.trip_date).slice(0, 10),
-                                                            explanation: f.explanation_note ?? '',
-                                                            price_per_liter: Number(f.liters) > 0
-                                                                ? (Number(f.cost) / Number(f.liters)).toString()
-                                                                : '',
-                                                        })}
-                                                        className="text-primary hover:underline"
-                                                    >
-                                                        Edit
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setConfirmDel({ url: `/operasional/bbm/${f.id}`, label: `log BBM ${f.vessel_name} (${f.route})` })}
-                                                        className="text-primary hover:underline"
-                                                    >
-                                                        Hapus
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </Card>
-                    </div>
-                </>
             )}
 
             {tab === 'checklist' && (
@@ -1400,34 +957,32 @@ export default function OperationsIndex({
                             return (
                                 <div
                                     key={v.id}
-                                    className="flex flex-wrap items-center gap-4 rounded-xl border border-hairline bg-white p-4 shadow-sm"
+                                    className="flex flex-wrap items-center gap-4 rounded-xl border border-[#E7E1D9] bg-white p-4 shadow-sm"
                                 >
                                     <div className="min-w-0 flex-1">
-                                        <p className="font-semibold text-ink">
+                                        <p className="font-semibold text-[#1C1B1A]">
                                             {v.voyage_code} · {v.vessel_name}
                                         </p>
-                                        <p className="text-xs text-muted">
+                                        <p className="text-xs text-[#8A8580]">
                                             Jadwal {formatDateTime(v.planned_departure)} ·{' '}
                                             {v.kondisional} item kondisional
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <div className="h-2 w-28 overflow-hidden rounded-full bg-appbg">
-                                            <div
-                                                className={classNames(
-                                                    'h-full rounded-full',
-                                                    pct >= 100 ? 'bg-ok' : pct >= 60 ? 'bg-warn' : 'bg-primary',
-                                                )}
-                                                style={{ width: `${pct}%` }}
-                                            />
-                                        </div>
-                                        <span className="text-sm font-semibold tabular-nums text-ink">
+                                        <Progress
+                                            percent={Math.round(pct)}
+                                            size="small"
+                                            strokeColor={pct >= 100 ? '#2F8F68' : pct >= 60 ? '#D99A2B' : '#C1121F'}
+                                            style={{ width: 112 }}
+                                            format={() => null}
+                                        />
+                                        <span className="text-sm font-semibold tabular-nums text-[#1C1B1A]">
                                             {v.wajib_terpenuhi}/{v.wajib_total}
                                         </span>
                                     </div>
                                     <a
                                         href={`/perjalanan/${v.id}`}
-                                        className="text-sm font-medium text-primary hover:underline"
+                                        className="text-sm font-medium text-[#C1121F] hover:underline"
                                     >
                                         Buka checklist →
                                     </a>
@@ -1443,23 +998,26 @@ export default function OperationsIndex({
                     {(voyageEvents ?? []).length === 0 ? (
                         <EmptyState icon={Ship} title="Belum ada log" />
                     ) : (
-                        <ol className="relative ms-3 space-y-5 border-s border-hairline ps-5">
-                            {(voyageEvents ?? []).map((e) => (
-                                <li key={e.id} className="relative">
-                                    <span className="absolute -start-[27px] top-1 h-3.5 w-3.5 rounded-full border-2 border-white bg-primary" />
-                                    <p className="text-sm font-semibold text-ink">
-                                        {e.voyage_code} · {e.vessel_name}
-                                    </p>
-                                    <p className="text-sm text-muted">{e.description}</p>
-                                    <p className="text-xs text-muted">
-                                        {formatDateTime(e.occurred_at)} · {e.user_name ?? 'Sistem'}
-                                    </p>
-                                </li>
-                            ))}
-                        </ol>
+                        <Timeline
+                            items={(voyageEvents ?? []).map((e) => ({
+                                color: '#C1121F',
+                                children: (
+                                    <div key={e.id}>
+                                        <p className="text-sm font-semibold text-[#1C1B1A]">
+                                            {e.voyage_code} · {e.vessel_name}
+                                        </p>
+                                        <p className="text-sm text-[#8A8580]">{e.description}</p>
+                                        <p className="text-xs text-[#8A8580]">
+                                            {formatDateTime(e.occurred_at)} · {e.user_name ?? 'Sistem'}
+                                        </p>
+                                    </div>
+                                ),
+                            }))}
+                        />
                     )}
                 </Card>
             )}
+
             {/* Modal Edit Kondisi */}
             {editCondition && (
                 <Modal show={!!editCondition} onClose={() => setEditCondition(null)} maxWidth="md" stacked>
@@ -1484,20 +1042,19 @@ export default function OperationsIndex({
                             );
                         }}
                     >
-                        <h2 className="text-lg font-semibold text-ink">Edit Pemeriksaan Kondisi</h2>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className="text-xs font-medium text-muted">Tanggal</label>
-                                <input
+                        <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit Pemeriksaan Kondisi</h2>
+                        <Row gutter={12}>
+                            <Col xs={12}>
+                                <label className="text-xs font-medium text-[#8A8580]">Tanggal</label>
+                                <Input
                                     type="date"
                                     value={editCondition.checked_at}
                                     onChange={(e) => setEditCondition({ ...editCondition, checked_at: e.target.value })}
-                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
                                 />
-                            </div>
+                            </Col>
                             {['mesin', 'navigasi', 'keselamatan', 'dek', 'kamar'].map((k) => (
-                                <div key={k}>
-                                    <label className="text-xs font-medium capitalize text-muted">{k}</label>
+                                <Col xs={12} key={k}>
+                                    <label className="text-xs font-medium capitalize text-[#8A8580]">{k}</label>
                                     <SearchableSelect
                                         value={editCondition.checklist?.[k] ?? 'baik'}
                                         options={[
@@ -1510,30 +1067,28 @@ export default function OperationsIndex({
                                             checklist: { ...editCondition.checklist, [k]: value },
                                         })}
                                     />
-                                </div>
+                                </Col>
                             ))}
-                            <div>
-                                <label className="text-xs font-medium text-muted">Skor (0–100)</label>
+                            <Col xs={12}>
+                                <label className="text-xs font-medium text-[#8A8580]">Skor (0–100)</label>
                                 <NumericInput
                                     decimalPlaces={0}
                                     value={editCondition.score}
                                     onChange={(e) => setEditCondition({ ...editCondition, score: Number(e.target.value) })}
-                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
                                 />
-                            </div>
-                            <div className="col-span-2">
-                                <label className="text-xs font-medium text-muted">Catatan</label>
-                                <textarea
+                            </Col>
+                            <Col xs={24}>
+                                <label className="text-xs font-medium text-[#8A8580]">Catatan</label>
+                                <Input.TextArea
                                     value={editCondition.notes ?? ''}
                                     onChange={(e) => setEditCondition({ ...editCondition, notes: e.target.value })}
                                     rows={2}
-                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
                                 />
-                            </div>
-                        </div>
+                            </Col>
+                        </Row>
                         <div className="mt-4 flex justify-end gap-3">
-                            <SecondaryButton type="button" onClick={() => setEditCondition(null)}>Batal</SecondaryButton>
-                            <PrimaryButton>Simpan</PrimaryButton>
+                            <SecondaryButton onClick={() => setEditCondition(null)}>Batal</SecondaryButton>
+                            <PrimaryButton htmlType="submit">Simpan</PrimaryButton>
                         </div>
                     </form>
                 </Modal>
@@ -1564,13 +1119,13 @@ export default function OperationsIndex({
                             );
                         }}
                     >
-                        <h2 className="text-lg font-semibold text-ink">Edit Catatan Servis</h2>
-                        <p className="text-xs text-muted">
+                        <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit Catatan Servis</h2>
+                        <p className="text-xs text-[#8A8580]">
                             Bila status diubah ke/atau tetap "selesai", stok sparepart dipotong ulang secara otomatis (pemotongan lama dipulihkan).
                         </p>
-                        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                            <div>
-                                <label className="text-xs font-medium text-muted">Jenis</label>
+                        <Row gutter={12}>
+                            <Col xs={12} md={8}>
+                                <label className="text-xs font-medium text-[#8A8580]">Jenis</label>
                                 <SearchableSelect
                                     value={editService.type}
                                     options={[
@@ -1581,9 +1136,9 @@ export default function OperationsIndex({
                                     ]}
                                     onChange={(value) => setEditService({ ...editService, type: value })}
                                 />
-                            </div>
-                            <div>
-                                <label className="text-xs font-medium text-muted">Status</label>
+                            </Col>
+                            <Col xs={12} md={8}>
+                                <label className="text-xs font-medium text-[#8A8580]">Status</label>
                                 <SearchableSelect
                                     value={editService.status}
                                     options={[
@@ -1593,56 +1148,51 @@ export default function OperationsIndex({
                                     ]}
                                     onChange={(value) => setEditService({ ...editService, status: value })}
                                 />
-                            </div>
-                            <div className="col-span-2 md:col-span-3">
-                                <label className="text-xs font-medium text-muted">Judul Pekerjaan</label>
-                                <input
+                            </Col>
+                            <Col xs={24} md={24}>
+                                <label className="text-xs font-medium text-[#8A8580]">Judul Pekerjaan</label>
+                                <Input
                                     value={editService.title}
                                     onChange={(e) => setEditService({ ...editService, title: e.target.value })}
-                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
                                 />
-                            </div>
-                            <div>
-                                <label className="text-xs font-medium text-muted">Mulai</label>
-                                <input
+                            </Col>
+                            <Col xs={12} md={8}>
+                                <label className="text-xs font-medium text-[#8A8580]">Mulai</label>
+                                <Input
                                     type="date"
                                     value={editService.start_date}
                                     onChange={(e) => setEditService({ ...editService, start_date: e.target.value })}
-                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
                                 />
-                            </div>
-                            <div>
-                                <label className="text-xs font-medium text-muted">Selesai</label>
-                                <input
+                            </Col>
+                            <Col xs={12} md={8}>
+                                <label className="text-xs font-medium text-[#8A8580]">Selesai</label>
+                                <Input
                                     type="date"
                                     value={editService.end_date ?? ''}
                                     onChange={(e) => setEditService({ ...editService, end_date: e.target.value })}
-                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
                                 />
-                            </div>
-                            <div>
-                                <label className="text-xs font-medium text-muted">Bengkel</label>
-                                <input
+                            </Col>
+                            <Col xs={12} md={8}>
+                                <label className="text-xs font-medium text-[#8A8580]">Bengkel</label>
+                                <Input
                                     value={editService.workshop ?? ''}
                                     onChange={(e) => setEditService({ ...editService, workshop: e.target.value })}
-                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
                                 />
-                            </div>
-                            <div>
-                                <label className="text-xs font-medium text-muted">Biaya (Rp)</label>
+                            </Col>
+                            <Col xs={12} md={8}>
+                                <label className="text-xs font-medium text-[#8A8580]">Biaya (Rp)</label>
                                 <NumericInput
                                     decimalPlaces={2}
                                     value={editService.cost ?? 0}
                                     onChange={(e) => setEditService({ ...editService, cost: e.target.value })}
-                                    className="mt-1 block w-full"
                                 />
-                            </div>
-                        </div>
+                            </Col>
+                        </Row>
                         <div>
-                            <label className="text-xs font-medium text-muted">Sparepart dipakai</label>
+                            <label className="text-xs font-medium text-[#8A8580]">Sparepart dipakai</label>
                             {(editService.items ?? []).map((it: any, idx: number) => (
                                 <div key={idx} className="mt-2 flex items-center gap-2 text-sm">
-                                    <span className="flex-1 text-ink">{it.item_name}</span>
+                                    <span className="flex-1 text-[#1C1B1A]">{it.item_name}</span>
                                     <NumericInput
                                         decimalPlaces={2}
                                         value={it.qty}
@@ -1651,12 +1201,12 @@ export default function OperationsIndex({
                                             next[idx] = { ...it, qty: e.target.value };
                                             setEditService({ ...editService, items: next });
                                         }}
-                                        className="w-24 rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                        className="w-24"
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setEditService({ ...editService, items: editService.items.filter((_: any, i: number) => i !== idx) })}
-                                        className="text-xs text-primary hover:underline"
+                                        className="text-xs text-[#C1121F] hover:underline"
                                     >
                                         Hapus
                                     </button>
@@ -1670,14 +1220,14 @@ export default function OperationsIndex({
                                         items: [...(editService.items ?? []), { item_id: historyItems[0]?.id, item_name: historyItems[0]?.name, qty: 1 }],
                                     })
                                 }
-                                className="mt-2 text-xs font-medium text-primary hover:underline"
+                                className="mt-2 text-xs font-medium text-[#C1121F] hover:underline"
                             >
                                 + Tambah item dari inventory
                             </button>
                         </div>
                         <div className="mt-4 flex justify-end gap-3">
-                            <SecondaryButton type="button" onClick={() => setEditService(null)}>Batal</SecondaryButton>
-                            <PrimaryButton>Simpan</PrimaryButton>
+                            <SecondaryButton onClick={() => setEditService(null)}>Batal</SecondaryButton>
+                            <PrimaryButton htmlType="submit">Simpan</PrimaryButton>
                         </div>
                     </form>
                 </Modal>
@@ -1707,37 +1257,34 @@ export default function OperationsIndex({
                             );
                         }}
                     >
-                        <h2 className="text-lg font-semibold text-ink">Edit Log BBM</h2>
-                        <p className="text-xs text-muted">Analisis Normal/Waspada/Tidak Normal dihitung ulang otomatis saat disimpan.</p>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className="text-xs font-medium text-muted">Tanggal</label>
-                                <input
+                        <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit Log BBM</h2>
+                        <p className="text-xs text-[#8A8580]">Analisis Normal/Waspada/Tidak Normal dihitung ulang otomatis saat disimpan.</p>
+                        <Row gutter={12}>
+                            <Col xs={12}>
+                                <label className="text-xs font-medium text-[#8A8580]">Tanggal</label>
+                                <Input
                                     type="date"
                                     value={editFuel.trip_date}
                                     onChange={(e) => setEditFuel({ ...editFuel, trip_date: e.target.value })}
-                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
                                 />
-                            </div>
-                            <div className="col-span-2">
-                                <label className="text-xs font-medium text-muted">Rute</label>
-                                <input
+                            </Col>
+                            <Col xs={24}>
+                                <label className="text-xs font-medium text-[#8A8580]">Rute</label>
+                                <Input
                                     value={editFuel.route}
                                     onChange={(e) => setEditFuel({ ...editFuel, route: e.target.value })}
-                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
                                 />
-                            </div>
-                            <div>
-                                <label className="text-xs font-medium text-muted">Durasi (jam)</label>
+                            </Col>
+                            <Col xs={12}>
+                                <label className="text-xs font-medium text-[#8A8580]">Durasi (jam)</label>
                                 <NumericInput
                                     decimalPlaces={2}
                                     value={editFuel.duration_hours}
                                     onChange={(e) => setEditFuel({ ...editFuel, duration_hours: e.target.value })}
-                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
                                 />
-                            </div>
-                            <div>
-                                <label className="text-xs font-medium text-muted">Liter</label>
+                            </Col>
+                            <Col xs={12}>
+                                <label className="text-xs font-medium text-[#8A8580]">Liter</label>
                                 <NumericInput
                                     decimalPlaces={2}
                                     value={editFuel.liters}
@@ -1750,20 +1297,18 @@ export default function OperationsIndex({
                                             cost: Number((litersValue * priceValue).toFixed(2)),
                                         });
                                     }}
-                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
                                 />
-                            </div>
-                            <div>
-                                <label className="text-xs font-medium text-muted">Jarak (mil)</label>
+                            </Col>
+                            <Col xs={12}>
+                                <label className="text-xs font-medium text-[#8A8580]">Jarak (mil)</label>
                                 <NumericInput
                                     decimalPlaces={2}
                                     value={editFuel.distance_nm ?? ''}
                                     onChange={(e) => setEditFuel({ ...editFuel, distance_nm: e.target.value })}
-                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
                                 />
-                            </div>
-                            <div>
-                                <label className="text-xs font-medium text-muted">Harga per Liter (Rp)</label>
+                            </Col>
+                            <Col xs={12}>
+                                <label className="text-xs font-medium text-[#8A8580]">Harga per Liter (Rp)</label>
                                 <NumericInput
                                     decimalPlaces={6}
                                     value={editFuel.price_per_liter ?? ''}
@@ -1776,31 +1321,28 @@ export default function OperationsIndex({
                                             cost: Number((priceValue * litersValue).toFixed(2)),
                                         });
                                     }}
-                                    className="mt-1 block w-full"
                                 />
-                                <p className="mt-1 text-xs text-muted">
+                                <p className="mt-1 text-xs text-[#8A8580]">
                                     Total biaya BBM: {formatRupiah(editFuel.cost ?? 0)}
                                 </p>
-                            </div>
-                            <div className="col-span-2">
-                                <label className="text-xs font-medium text-muted">Penjelasan (wajib bila Tidak Normal)</label>
-                                <textarea
+                            </Col>
+                            <Col xs={24}>
+                                <label className="text-xs font-medium text-[#8A8580]">Penjelasan (wajib bila Tidak Normal)</label>
+                                <Input.TextArea
                                     value={editFuel.explanation ?? ''}
                                     onChange={(e) => setEditFuel({ ...editFuel, explanation: e.target.value })}
                                     rows={2}
-                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
                                 />
-                            </div>
-                        </div>
+                            </Col>
+                        </Row>
                         <div className="mt-4 flex justify-end gap-3">
-                            <SecondaryButton type="button" onClick={() => setEditFuel(null)}>Batal</SecondaryButton>
-                            <PrimaryButton>Simpan</PrimaryButton>
+                            <SecondaryButton onClick={() => setEditFuel(null)}>Batal</SecondaryButton>
+                            <PrimaryButton htmlType="submit">Simpan</PrimaryButton>
                         </div>
                     </form>
                 </Modal>
             )}
 
-            {/* Konfirmasi Hapus (kondisi/servis/bbm) */}
             <ConfirmModal
                 show={!!confirmDel}
                 title="Hapus data ini?"

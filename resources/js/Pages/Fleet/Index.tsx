@@ -1,21 +1,22 @@
 import Badge, { type BadgeTone } from '@/Components/ui/Badge';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { classNames, formatNumber } from '@/lib/format';
+import { formatNumber } from '@/lib/format';
 import { type PageProps } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import {
     Anchor,
-    ChevronRight,
     Plus,
     Power,
     RotateCcw,
-    Search,
     SearchX,
     Ship,
     ShipWheel,
     Wrench,
 } from 'lucide-react';
-import { FormEvent, useState } from 'react';
+import { Button, Col, Input, Progress, Row, Select, Space, Tag, Typography } from 'antd';
+import { useState } from 'react';
+
+const { Text } = Typography;
 
 interface VesselRow {
     id: number;
@@ -57,34 +58,25 @@ const STATUS_LABELS: Record<string, string> = {
     mangkrak: 'Mangkrak',
 };
 
-// Chip jenis kapal pada panel saringan: kode tetap dipakai sebagai nilai
-// filter persis seperti semula, "Semua" mewakili tanpa filter.
-const TYPE_CHIPS: Array<{ code: string; label: string }> = [
-    { code: '', label: 'Semua' },
-    ...Object.entries(TYPE_LABELS).map(([code, label]) => ({ code, label })),
+const STATUS_OPTIONS = [
+    { value: '', label: 'Semua Status' },
+    { value: 'aktif', label: 'Aktif' },
+    { value: 'dalam_perbaikan', label: 'Dalam Perbaikan' },
+    { value: 'dock', label: 'Dock' },
+    { value: 'mangkrak', label: 'Mangkrak' },
 ];
 
-// Tab status operasional: pil berikon menggantikan dropdown lama, kunci
-// tetap sama dengan nilai filter asli sehingga URL bisa dibagikan.
-const STATUS_TABS: Array<{ key: string; label: string; icon: any }> = [
-    { key: '', label: 'Semua', icon: Ship },
-    { key: 'aktif', label: 'Aktif', icon: Anchor },
-    { key: 'dalam_perbaikan', label: 'Dalam Perbaikan', icon: Wrench },
-    { key: 'dock', label: 'Dock', icon: ShipWheel },
-    { key: 'mangkrak', label: 'Mangkrak', icon: Power },
+const TYPE_OPTIONS = [
+    { value: '', label: 'Semua Jenis' },
+    { value: 'tugboat', label: 'Tugboat' },
+    { value: 'tongkang', label: 'Tongkang' },
+    { value: 'kapal_penumpang', label: 'Kapal Penumpang' },
+    { value: 'lainnya', label: 'Lainnya' },
 ];
 
-// Tekstur grain halus untuk panel hero, senada dengan login, sidebar,
-// dashboard, notifikasi, dan document center.
 const GRAIN = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E")`;
 
 const EASE = 'cubic-bezier(0.22,1,0.36,1)';
-
-// Kelas bersama untuk kepala dan sel meja register, mengikuti pola
-// halaman dokumen agar kedua register terasa satu keluarga.
-const TH_BASE =
-    'px-4 py-3 font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-muted';
-const TD_CLS = 'px-4 py-3.5 align-middle';
 
 function statusTone(status: string): BadgeTone {
     if (status === 'aktif') return 'success';
@@ -92,18 +84,6 @@ function statusTone(status: string): BadgeTone {
     return 'danger';
 }
 
-// Rel kiri hanya dipasang pada kapal yang tidak beroperasi agar meja
-// tetap tenang namun masalah langsung terlihat saat memindai, persis
-// pola rel dokumen bermasalah pada halaman dokumen.
-function statusRail(status: string): string {
-    if (status === 'dalam_perbaikan') return 'before:bg-warn';
-    if (status === 'dock' || status === 'mangkrak') return 'before:bg-primary';
-    return '';
-}
-
-// Ubah timestamp posisi menjadi label relatif, plus penanda masih segar
-// (di bawah 24 jam). Timestamp Laravel memakai spasi, diganti "T" agar
-// aman diparse Date() di semua browser termasuk Safari.
 function positionInfo(value?: string): { label: string; fresh: boolean } | null {
     if (!value) return null;
     const date = new Date(value.includes('T') ? value : value.replace(' ', 'T'));
@@ -124,77 +104,6 @@ function positionInfo(value?: string): { label: string; fresh: boolean } | null 
     return { label, fresh: Date.now() - time < 86400000 };
 }
 
-function SpecsCell({ row }: { row: VesselRow }) {
-    const utama = [
-        row.gt != null ? `GT ${formatNumber(row.gt)}` : null,
-        row.dwt != null ? `DWT ${formatNumber(row.dwt, 2)}` : null,
-    ]
-        .filter(Boolean)
-        .join(' · ');
-    const kapasitas =
-        row.capacity_value != null
-            ? `${formatNumber(row.capacity_value, 2)}${row.capacity_unit ? ` ${row.capacity_unit}` : ''}`
-            : null;
-
-    if (!utama && !kapasitas) {
-        return <span className="text-xs text-muted">Belum dilengkapi</span>;
-    }
-
-    return (
-        <div>
-            {utama && <p className="font-mono text-[13px] text-ink">{utama}</p>}
-            {kapasitas && <p className="mt-0.5 text-xs text-muted">Kapasitas {kapasitas}</p>}
-        </div>
-    );
-}
-
-// Bilah kelengkapan dokumen dengan garis penanda ambang 90%: kapal di
-// bawah garis ini masuk hitungan "perlu tindak lanjut" di hero.
-function CompletenessCell({ pct, missing }: { pct: number; missing: number }) {
-    const width = Math.min(100, Math.max(0, pct));
-    const tone =
-        pct >= 90 ? 'bg-ok' : pct >= 70 ? 'bg-warn' : 'bg-primary';
-    const text =
-        pct >= 90 ? 'text-ok' : pct >= 70 ? 'text-warn' : 'text-primary';
-    return (
-        <div className="w-40 max-w-full">
-            <div className="flex items-center gap-2.5">
-                <div className="relative h-1.5 min-w-0 flex-1">
-                    <div className="h-full overflow-hidden rounded-full bg-appbg ring-1 ring-inset ring-hairline">
-                        <div
-                            className={classNames('h-full rounded-full', tone)}
-                            style={{ width: `${width}%` }}
-                        />
-                    </div>
-                    <span
-                        title="Ambang tindak lanjut dokumen: 90%"
-                        aria-hidden="true"
-                        className="absolute left-[90%] top-1/2 h-3.5 w-px -translate-y-1/2 bg-ink/25"
-                    />
-                </div>
-                <span
-                    className={classNames(
-                        'shrink-0 font-mono text-[13px] font-semibold tabular-nums',
-                        text,
-                    )}
-                >
-                    {formatNumber(pct, 1)}%
-                </span>
-            </div>
-            <p
-                className={classNames(
-                    'mt-1 text-xs',
-                    missing > 0 ? 'text-muted' : 'text-ok',
-                )}
-            >
-                {missing > 0 ? `${missing} dokumen kurang` : 'Lengkap'}
-            </p>
-        </div>
-    );
-}
-
-// Ubin metrik kaca di panel hero, pola yang sama dengan ubin ringkasan
-// pada halaman notifikasi dan document center.
 function HeroMetric({
     label,
     value,
@@ -207,19 +116,17 @@ function HeroMetric({
     gold?: boolean;
 }) {
     return (
-        <div className="min-w-0 rounded-xl border border-white/[0.12] bg-white/[0.07] p-4 backdrop-blur-sm">
-            <p className="truncate font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-cream/60">
+        <div className="min-w-0 rounded-xl border border-[#E7E1D9] bg-[#FAF7F2] p-4">
+            <p className="truncate font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#8A8580]">
                 {label}
             </p>
             <p
-                className={classNames(
-                    'mt-2 text-2xl font-semibold tabular-nums tracking-tight',
-                    gold ? 'text-gold' : 'text-cream',
-                )}
+                className="mt-2 text-2xl font-semibold tabular-nums tracking-tight"
+                style={{ color: gold ? '#D4A96A' : '#1C1B1A' }}
             >
                 {value}
             </p>
-            <p className="mt-2 truncate text-[11px] text-cream/60">{sub}</p>
+            <p className="mt-2 truncate text-[11px] text-[#8A8580]">{sub}</p>
         </div>
     );
 }
@@ -240,8 +147,6 @@ export default function FleetIndex({
     const activeStatus = (filters.status as string) ?? '';
     const activeType = (filters.type as string) ?? '';
 
-    // Jumlah filter aktif untuk chip "N filter aktif + Reset", dihitung
-    // dari nilai yang benar-benar dikenal server.
     const activeFilterCount = ['search', 'type', 'status'].filter(
         (k) => (filters[k] ?? '') !== '',
     ).length;
@@ -258,11 +163,11 @@ export default function FleetIndex({
         );
     };
 
-    const apply = (e: FormEvent) => {
-        e.preventDefault();
+    const applySearch = (value: string) => {
+        setSearch(value);
         router.get(
             '/armada',
-            { ...filters, search: search || undefined },
+            { ...filters, search: value || undefined },
             { preserveState: true, preserveScroll: true, replace: true },
         );
     };
@@ -272,29 +177,162 @@ export default function FleetIndex({
         router.get('/armada', {}, { preserveState: true, preserveScroll: true, replace: true });
     };
 
-    // Jumlah pada tab hanya ditampilkan bila angkanya otoritatif dari
-    // server (total dan aktif); status lain dibiarkan tanpa angka.
-    const tabCount = (key: string): number | undefined =>
-        key === '' ? stats.total : key === 'aktif' ? stats.aktif : undefined;
-
-    // Judul dinamis: angka paling penting terbaca sebelum menelusuri
-    // daftar, pola yang sama dengan pita Pusat Notifikasi.
     const headline =
         stats.total === 0 ? (
             'Registry armada masih kosong.'
         ) : stats.perlu_tinjau > 0 ? (
             <>
-                <span className="text-gold">{formatNumber(stats.perlu_tinjau)}</span> kapal
+                <span style={{ color: '#D4A96A' }}>{formatNumber(stats.perlu_tinjau)}</span> kapal
                 menunggu tindak lanjut dokumen.
             </>
         ) : stats.aktif < stats.total ? (
             <>
-                <span className="text-gold">{formatNumber(stats.aktif)}</span> dari{' '}
+                <span style={{ color: '#D4A96A' }}>{formatNumber(stats.aktif)}</span> dari{' '}
                 {formatNumber(stats.total)} kapal siap beroperasi.
             </>
         ) : (
             'Seluruh armada siap beroperasi.'
         );
+
+    const columns = [
+        {
+            title: 'Kapal',
+            key: 'vessel_name',
+            render: (_: any, row: VesselRow) => (
+                <div>
+                    <Link
+                        href={`/armada/${row.id}`}
+                        className="text-sm font-semibold hover:underline"
+                        style={{ color: '#1C1B1A' }}
+                    >
+                        {row.vessel_name}
+                    </Link>
+                    <p className="mt-0.5 text-xs" style={{ color: '#8A8580' }}>
+                        {row.vessel_type === 'lainnya' && row.vessel_type_custom
+                            ? row.vessel_type_custom
+                            : TYPE_LABELS[row.vessel_type] ?? row.vessel_type}
+                        {' · '}
+                        {NAV_LABELS[row.navigation_type] ?? row.navigation_type}
+                        {row.year_built ? ` · ${row.year_built}` : ''}
+                        {row.registration_number ? ` · Reg. ${row.registration_number}` : ''}
+                    </p>
+                </div>
+            ),
+        },
+        {
+            title: 'Spesifikasi',
+            key: 'specs',
+            render: (_: any, row: VesselRow) => {
+                const utama = [
+                    row.gt != null ? `GT ${formatNumber(row.gt)}` : null,
+                    row.dwt != null ? `DWT ${formatNumber(row.dwt, 2)}` : null,
+                ].filter(Boolean).join(' · ');
+                const kapasitas = row.capacity_value != null
+                    ? `${formatNumber(row.capacity_value, 2)}${row.capacity_unit ? ` ${row.capacity_unit}` : ''}`
+                    : null;
+                if (!utama && !kapasitas) {
+                    return <span className="text-xs" style={{ color: '#8A8580' }}>Belum dilengkapi</span>;
+                }
+                return (
+                    <div>
+                        {utama && <p className="font-mono text-[13px]" style={{ color: '#1C1B1A' }}>{utama}</p>}
+                        {kapasitas && <p className="mt-0.5 text-xs" style={{ color: '#8A8580' }}>Kapasitas {kapasitas}</p>}
+                    </div>
+                );
+            },
+        },
+        {
+            title: 'Pangkalan',
+            key: 'base_location',
+            render: (_: any, row: VesselRow) => {
+                const pos = positionInfo(row.last_position_at);
+                return (
+                    <div>
+                        {row.base_location ? (
+                            <p className="text-sm" style={{ color: '#1C1B1A' }}>{row.base_location}</p>
+                        ) : (
+                            <p className="text-xs" style={{ color: '#8A8580' }}>Belum diatur</p>
+                        )}
+                        {pos && (
+                            <p className="mt-0.5 flex items-center gap-1.5 font-mono text-[11px]" style={{ color: '#8A8580' }}>
+                                <span
+                                    aria-hidden="true"
+                                    className="h-1.5 w-1.5 rounded-full"
+                                    style={{ background: pos.fresh ? '#2F8F68' : '#8A8580' }}
+                                />
+                                Posisi terakhir {pos.label}
+                            </p>
+                        )}
+                    </div>
+                );
+            },
+        },
+        {
+            title: 'Status',
+            key: 'operational_status',
+            render: (_: any, row: VesselRow) => (
+                <Badge tone={statusTone(row.operational_status)}>
+                    {STATUS_LABELS[row.operational_status] ?? row.operational_status}
+                </Badge>
+            ),
+        },
+        {
+            title: 'Kelengkapan Dokumen',
+            key: 'doc_completeness',
+            render: (_: any, row: VesselRow) => {
+                const pct = row.doc_completeness;
+                const missing = row.missing_count;
+                const strokeColor = pct >= 90 ? '#2F8F68' : pct >= 70 ? '#D99A2B' : '#C1121F';
+                return (
+                    <div className="w-40 max-w-full">
+                        <div className="flex items-center gap-2.5">
+                            <Progress
+                                percent={Math.min(100, Math.max(0, pct))}
+                                showInfo={false}
+                                strokeColor={strokeColor}
+                                trailColor="#FAF7F2"
+                                size="small"
+                                className="flex-1"
+                            />
+                            <span
+                                className="shrink-0 font-mono text-[13px] font-semibold tabular-nums"
+                                style={{ color: strokeColor }}
+                            >
+                                {formatNumber(pct, 1)}%
+                            </span>
+                        </div>
+                        <p className="mt-1 text-xs" style={{ color: missing > 0 ? '#8A8580' : '#2F8F68' }}>
+                            {missing > 0 ? `${missing} dokumen kurang` : 'Lengkap'}
+                        </p>
+                    </div>
+                );
+            },
+        },
+        {
+            title: 'Perjalanan',
+            key: 'voyage_count',
+            align: 'center' as const,
+            render: (_: any, row: VesselRow) => (
+                <span className="text-sm font-semibold tabular-nums" style={{ color: '#1C1B1A' }}>
+                    {formatNumber(row.voyage_count)}
+                </span>
+            ),
+        },
+        {
+            title: '',
+            key: 'actions',
+            align: 'right' as const,
+            render: (_: any, row: VesselRow) => (
+                <Link
+                    href={`/armada/${row.id}`}
+                    className="text-sm font-semibold hover:underline"
+                    style={{ color: '#C1121F' }}
+                >
+                    Detail
+                </Link>
+            ),
+        },
+    ];
 
     return (
         <AuthenticatedLayout>
@@ -317,77 +355,35 @@ export default function FleetIndex({
                     0%, 100% { opacity: 0.55; }
                     50% { opacity: 1; }
                 }
-                .bt-scroll { scrollbar-width: thin; scrollbar-color: rgba(28,27,26,0.22) transparent; }
-                .bt-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
-                .bt-scroll::-webkit-scrollbar-thumb { background: rgba(28,27,26,0.2); border-radius: 9999px; }
-                .bt-scroll::-webkit-scrollbar-track { background: transparent; }
                 @media (prefers-reduced-motion: reduce) {
                     .bt-anim, .bt-anim * { animation: none !important; }
                 }
             `}</style>
 
-            {/* ===== 00 · Pita registry armada =====
-                Panel gelap burgundy-merah yang membawa identitas halaman
-                login, sidebar, dashboard, notifikasi, dan document center
-                ke Fleet Management: aurora, grain, rim emas, watermark
-                kapal (senada ikon armada pada sidebar), judul dinamis,
-                aksi utama, serta empat ubin ringkasan armada. */}
             <section
-                className="bt-anim relative mb-6 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-sidebar via-primary-hover to-primary shadow-[0_24px_60px_-24px_rgba(69,16,22,0.55)]"
-                style={{ animation: `bt-rise 0.55s ${EASE} both` }}
+                className="bt-anim relative mb-6 overflow-hidden rounded-2xl border border-[#E7E1D9] bg-white shadow-[0_1px_3px_rgba(28,27,26,0.04),0_8px_24px_-8px_rgba(28,27,26,0.06)]"
+                style={{
+                    animation: `bt-rise 0.55s ${EASE} both`,
+                }}
             >
-                {/* Kedalaman panel: cahaya merah kiri-atas, cahaya emas
-                    kanan-bawah, grain kertas, dan watermark kemudi. */}
-                <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-0 overflow-hidden"
-                >
-                    <div
-                        className="bt-anim absolute -left-24 -top-32 h-80 w-80 rounded-full blur-3xl"
-                        style={{
-                            background:
-                                'radial-gradient(circle at center, rgba(193,18,31,0.4), transparent 65%)',
-                            animation: 'bt-drift-a 26s ease-in-out infinite',
-                        }}
-                    />
-                    <div
-                        className="bt-anim absolute -bottom-36 -right-28 h-96 w-96 rounded-full blur-3xl"
-                        style={{
-                            background:
-                                'radial-gradient(circle at center, rgba(212,169,106,0.22), transparent 70%)',
-                            animation: 'bt-drift-b 34s ease-in-out infinite',
-                        }}
-                    />
-                    <div
-                        className="absolute inset-0 opacity-[0.06] mix-blend-overlay"
-                        style={{ backgroundImage: GRAIN }}
-                    />
-                    <Ship
-                        size={220}
-                        strokeWidth={0.7}
-                        className="absolute -right-10 -top-12 hidden rotate-[8deg] select-none text-white/[0.05] xl:block"
-                    />
+                <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+                    <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: GRAIN }} />
                 </div>
-                {/* Rim emas tipis di tepi atas, tanda tangan antar halaman. */}
-                <div
-                    aria-hidden="true"
-                    className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent"
-                />
 
                 <div className="relative flex flex-col gap-6 p-6 lg:p-7 xl:flex-row xl:items-end xl:justify-between">
                     <div className="min-w-0 max-w-2xl">
-                        <p className="flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-cream/60">
+                        <p className="flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-[#8A8580]">
                             <span
                                 aria-hidden="true"
-                                className="bt-anim h-2 w-2 rounded-full bg-gold"
-                                style={{ animation: 'bt-pulse-dot 2.4s ease-in-out infinite' }}
+                                className="bt-anim h-2 w-2 rounded-full"
+                                style={{ background: '#D4A96A', animation: 'bt-pulse-dot 2.4s ease-in-out infinite' }}
                             />
                             Registry Armada
                         </p>
-                        <h1 className="mt-3 text-2xl font-semibold tracking-tight text-cream sm:text-3xl">
+                        <h1 className="mt-3 text-2xl font-semibold tracking-tight text-[#1C1B1A] sm:text-3xl">
                             {headline}
                         </h1>
-                        <p className="mt-2 max-w-xl text-sm leading-relaxed text-cream/70">
+                        <p className="mt-2 max-w-xl text-sm leading-relaxed text-[#8A8580]">
                             Data induk seluruh kapal perusahaan: status operasional,
                             spesifikasi teknis, dan kelengkapan dokumen dalam satu
                             register terpadu.
@@ -398,7 +394,7 @@ export default function FleetIndex({
                         <div className="flex flex-col gap-2 sm:flex-row xl:shrink-0">
                             <Link
                                 href="/armada/create"
-                                className="inline-flex items-center justify-center gap-2 rounded-lg bg-cream px-3.5 py-2 text-sm font-semibold text-sidebar shadow-[0_12px_26px_-14px_rgba(212,169,106,0.55)] transition hover:bg-cream/90"
+                                className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#C1121F] px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-[#A00F19]"
                             >
                                 <Plus size={16} aria-hidden="true" />
                                 Tambah Kapal
@@ -407,207 +403,93 @@ export default function FleetIndex({
                     )}
                 </div>
 
-                {/* Empat ubin ringkasan: cermin angka di atas register.
-                    Setelah InputLabel diberi ekspor default, navigasi ke
-                    halaman tambah kapal kembali normal. */}
-                <div className="relative grid grid-cols-2 gap-3 border-t border-white/[0.08] p-6 pt-5 sm:gap-4 lg:grid-cols-4 lg:p-7 lg:pt-6">
-                    <HeroMetric
-                        label="Total Armada"
-                        value={formatNumber(stats.total)}
-                        sub="kapal terdaftar di registry"
-                    />
-                    <HeroMetric
-                        label="Siap Beroperasi"
-                        value={formatNumber(stats.aktif)}
-                        sub={`${activePct}% dari total armada`}
-                    />
-                    <HeroMetric
-                        label="Perlu Tindak Lanjut"
-                        value={formatNumber(stats.perlu_tinjau)}
-                        sub="kelengkapan dokumen di bawah 90%"
-                        gold={stats.perlu_tinjau > 0}
-                    />
-                    <HeroMetric
-                        label="Tidak Operasional"
-                        value={formatNumber(nonOperational)}
-                        sub="perbaikan · dock · mangkrak"
-                    />
+                <div className="relative grid grid-cols-2 gap-3 border-t border-[#E7E1D9] p-6 pt-5 sm:gap-4 lg:grid-cols-4 lg:p-7 lg:pt-6">
+                    <HeroMetric label="Total Armada" value={formatNumber(stats.total)} sub="kapal terdaftar di registry" />
+                    <HeroMetric label="Siap Beroperasi" value={formatNumber(stats.aktif)} sub={`${activePct}% dari total armada`} />
+                    <HeroMetric label="Perlu Tindak Lanjut" value={formatNumber(stats.perlu_tinjau)} sub="kelengkapan dokumen di bawah 90%" gold={stats.perlu_tinjau > 0} />
+                    <HeroMetric label="Tidak Operasional" value={formatNumber(nonOperational)} sub="perbaikan · dock · mangkrak" />
                 </div>
             </section>
 
-            {/* ===== 01 · Tab status operasional =====
-                Pil berikon menggantikan dropdown status lama, konsisten
-                dengan tab tampilan pada halaman dokumen dan tab filter
-                pada halaman notifikasi. */}
-            <nav
-                className="bt-anim bt-scroll mb-4 flex gap-1.5 overflow-x-auto pe-1"
-                style={{ animation: `bt-rise 0.45s ${EASE} 70ms both` }}
-                aria-label="Filter status armada"
-            >
-                {STATUS_TABS.map(({ key, label, icon: Icon }) => {
-                    const isActive = activeStatus === key;
-                    const count = tabCount(key);
-                    return (
-                        <button
-                            key={key || 'semua'}
-                            type="button"
-                            onClick={() => setFilter('status', key)}
-                            className={classNames(
-                                'inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors duration-200',
-                                isActive
-                                    ? 'border-primary bg-primary text-white shadow-[0_10px_24px_-12px_rgba(193,18,31,0.55)]'
-                                    : 'border-hairline bg-white text-muted hover:border-primary/40 hover:text-ink',
-                            )}
-                        >
-                            <Icon
-                                size={14}
-                                aria-hidden="true"
-                                className={isActive ? 'text-gold' : ''}
-                            />
-                            {label}
-                            {count !== undefined && (
-                                <span
-                                    className={classNames(
-                                        'rounded-full px-1.5 py-0.5 font-mono text-[10px] font-semibold leading-none',
-                                        isActive ? 'bg-white/20 text-white' : 'bg-appbg text-muted',
-                                    )}
-                                >
-                                    {formatNumber(count)}
-                                </span>
-                            )}
-                        </button>
-                    );
-                })}
-            </nav>
-
-            {/* ===== 02 · Panel saringan =====
-                Chip jenis kapal dan pencarian nama digabung dalam satu
-                kartu agar semua alat penyaringan hidup di satu tempat,
-                pola yang sama dengan panel saringan halaman dokumen. */}
             <div
-                className="bt-anim mb-5 rounded-2xl border border-hairline bg-white p-4 shadow-[0_18px_40px_-30px_rgba(28,27,26,0.35)]"
-                style={{ animation: `bt-rise 0.45s ${EASE} 110ms both` }}
+                className="bt-anim mb-5 rounded-2xl border p-4 shadow-[0_18px_40px_-30px_rgba(28,27,26,0.35)]"
+                style={{ animation: `bt-rise 0.45s ${EASE} 110ms both`, borderColor: '#E7E1D9', background: '#fff' }}
             >
-                <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="me-1 hidden font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-muted sm:inline">
-                        Jenis
-                    </span>
-                    {TYPE_CHIPS.map((t) => {
-                        const isActive = activeType === t.code;
-                        return (
-                            <button
-                                key={t.code || 'semua'}
-                                type="button"
-                                onClick={() => setFilter('type', t.code)}
-                                className={classNames(
-                                    'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-200',
-                                    isActive
-                                        ? 'border-primary bg-primary text-white shadow-[0_8px_18px_-10px_rgba(193,18,31,0.5)]'
-                                        : 'border-hairline bg-white text-muted hover:border-primary/40 hover:text-ink',
-                                )}
-                            >
-                                {t.label}
-                            </button>
-                        );
-                    })}
-                    {activeFilterCount > 0 && (
-                        <span className="ms-auto inline-flex items-center gap-2 whitespace-nowrap text-xs text-muted">
-                            <span className="font-mono">{activeFilterCount} filter aktif</span>
-                            <button
-                                type="button"
-                                onClick={resetFilters}
-                                className="font-medium text-primary transition-colors duration-150 hover:underline"
-                            >
-                                Reset
-                            </button>
-                        </span>
-                    )}
-                </div>
-                <div aria-hidden="true" className="my-3.5 h-px bg-hairline/60" />
-                <form onSubmit={apply} className="flex flex-wrap items-center gap-2">
-                    <div className="relative min-w-56 flex-1">
-                        <Search
-                            size={15}
-                            aria-hidden="true"
-                            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
-                        />
-                        <input
+                <Row gutter={[12, 12]} align="middle">
+                    <Col xs={24} sm={12} md={8}>
+                        <Input.Search
+                            placeholder="Cari nama kapal atau nomor registrasi…"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Cari nama kapal atau nomor registrasi…"
-                            aria-label="Cari kapal"
-                            className="h-9 w-full rounded-lg border border-hairline bg-white pl-9 pr-3 text-sm text-ink placeholder:text-muted/70 transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            onSearch={applySearch}
+                            enterButton="Terapkan"
+                            allowClear
+                            size="middle"
                         />
-                    </div>
-                    <button
-                        type="submit"
-                        className="h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover"
-                    >
-                        Terapkan
-                    </button>
-                </form>
+                    </Col>
+                    <Col xs={12} sm={6} md={4}>
+                        <Select
+                            value={activeType}
+                            onChange={(v) => setFilter('type', v)}
+                            options={TYPE_OPTIONS}
+                            className="w-full"
+                            placeholder="Jenis Kapal"
+                        />
+                    </Col>
+                    <Col xs={12} sm={6} md={4}>
+                        <Select
+                            value={activeStatus}
+                            onChange={(v) => setFilter('status', v)}
+                            options={STATUS_OPTIONS}
+                            className="w-full"
+                            placeholder="Status"
+                        />
+                    </Col>
+                    {activeFilterCount > 0 && (
+                        <Col xs={24} sm={24} md={8} className="text-right">
+                            <Space>
+                                <Text type="secondary" className="font-mono text-xs">
+                                    {activeFilterCount} filter aktif
+                                </Text>
+                                <Button type="link" size="small" onClick={resetFilters} icon={<RotateCcw size={13} />}>
+                                    Reset
+                                </Button>
+                            </Space>
+                        </Col>
+                    )}
+                </Row>
             </div>
 
-            {/* ===== 03 · Register =====
-                Meta hasil + legenda rel kiri di atas meja, meja kapal
-                dengan rel penanda kapal tidak beroperasi, kolom
-                spesifikasi mono, dan bilah kelengkapan dokumen. */}
             <section className="bt-anim" style={{ animation: `bt-rise 0.45s ${EASE} 150ms both` }}>
                 {vessels.length > 0 && (
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                        <p className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-muted">
+                        <p className="font-mono text-[11px] font-medium uppercase tracking-[0.14em]" style={{ color: '#8A8580' }}>
                             {formatNumber(vessels.length)} kapal ditemukan
-                        </p>
-                        <p className="flex items-center gap-3 text-[11px] text-muted">
-                            <span className="flex items-center gap-1.5">
-                                <span aria-hidden="true" className="h-3 w-[3px] rounded-full bg-warn" />
-                                dalam perbaikan
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                                <span aria-hidden="true" className="h-3 w-[3px] rounded-full bg-primary" />
-                                dock · mangkrak
-                            </span>
                         </p>
                     </div>
                 )}
 
                 {vessels.length === 0 ? (
                     isFilteredEmpty ? (
-                        <div className="rounded-2xl border border-dashed border-hairline bg-appbg/40 px-6 py-16 text-center">
-                            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-white text-muted shadow-sm ring-1 ring-inset ring-hairline">
-                                <SearchX size={20} aria-hidden="true" />
+                        <div className="rounded-2xl border border-dashed px-6 py-16 text-center" style={{ borderColor: '#E7E1D9', background: 'rgba(250,247,242,0.4)' }}>
+                            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm">
+                                <SearchX size={20} aria-hidden="true" style={{ color: '#8A8580' }} />
                             </span>
-                            <p className="mt-4 text-sm font-semibold text-ink">
-                                Tidak ada kapal cocok
-                            </p>
-                            <p className="mt-1 text-xs text-muted">
-                                Ubah kata kunci, jenis, atau status yang dipakai.
-                            </p>
-                            <button
-                                type="button"
-                                onClick={resetFilters}
-                                className="mt-5 inline-flex items-center gap-2 rounded-lg border border-hairline bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:border-primary/40 hover:text-primary"
-                            >
-                                <RotateCcw size={15} aria-hidden="true" />
+                            <p className="mt-4 text-sm font-semibold" style={{ color: '#1C1B1A' }}>Tidak ada kapal cocok</p>
+                            <p className="mt-1 text-xs" style={{ color: '#8A8580' }}>Ubah kata kunci, jenis, atau status yang dipakai.</p>
+                            <Button onClick={resetFilters} className="mt-5" icon={<RotateCcw size={15} />}>
                                 Hapus Filter
-                            </button>
+                            </Button>
                         </div>
                     ) : (
-                        <div className="rounded-2xl border border-dashed border-hairline bg-appbg/40 px-6 py-16 text-center">
-                            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-white text-muted shadow-sm ring-1 ring-inset ring-hairline">
-                                <Ship size={20} aria-hidden="true" />
+                        <div className="rounded-2xl border border-dashed px-6 py-16 text-center" style={{ borderColor: '#E7E1D9', background: 'rgba(250,247,242,0.4)' }}>
+                            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm">
+                                <Ship size={20} aria-hidden="true" style={{ color: '#8A8580' }} />
                             </span>
-                            <p className="mt-4 text-sm font-semibold text-ink">
-                                Belum ada kapal terdaftar
-                            </p>
-                            <p className="mt-1 text-xs text-muted">
-                                Tambahkan kapal pertama untuk memulai pendataan armada.
-                            </p>
+                            <p className="mt-4 text-sm font-semibold" style={{ color: '#1C1B1A' }}>Belum ada kapal terdaftar</p>
+                            <p className="mt-1 text-xs" style={{ color: '#8A8580' }}>Tambahkan kapal pertama untuk memulai pendataan armada.</p>
                             {canCreate && (
-                                <Link
-                                    href="/armada/create"
-                                    className="mt-5 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover"
-                                >
+                                <Link href="/armada/create" className="mt-5 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90" style={{ background: '#C1121F' }}>
                                     <Plus size={15} aria-hidden="true" />
                                     Tambah Kapal Pertama
                                 </Link>
@@ -615,133 +497,109 @@ export default function FleetIndex({
                         </div>
                     )
                 ) : (
-                    <div className="overflow-hidden rounded-2xl border border-hairline bg-white shadow-[0_20px_44px_-32px_rgba(28,27,26,0.4)]">
-                        <div className="bt-scroll overflow-x-auto">
-                            <table className="w-full min-w-[52rem] text-sm">
-                                <thead>
-                                    <tr className="border-b border-hairline bg-appbg/70">
-                                        <th scope="col" className={classNames(TH_BASE, 'text-left')}>
-                                            Kapal
-                                        </th>
-                                        <th scope="col" className={classNames(TH_BASE, 'text-left')}>
-                                            Spesifikasi
-                                        </th>
-                                        <th scope="col" className={classNames(TH_BASE, 'text-left')}>
-                                            Pangkalan
-                                        </th>
-                                        <th scope="col" className={classNames(TH_BASE, 'text-left')}>
-                                            Status
-                                        </th>
-                                        <th scope="col" className={classNames(TH_BASE, 'text-left')}>
-                                            Kelengkapan Dokumen
-                                        </th>
-                                        <th scope="col" className={classNames(TH_BASE, 'text-center')}>
-                                            Perjalanan
-                                        </th>
-                                        <th scope="col" className={classNames(TH_BASE, 'text-right')}>
-                                            <span className="sr-only">Aksi</span>
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-hairline">
-                                    {vessels.map((row) => {
-                                        const rail = statusRail(row.operational_status);
-                                        const pos = positionInfo(row.last_position_at);
-                                        return (
-                                            <tr
-                                                key={row.id}
-                                                id={`record-vessel-${row.id}`}
-                                                className="transition-colors duration-150 hover:bg-appbg/50"
-                                            >
-                                                <td
-                                                    className={classNames(
-                                                        'relative',
-                                                        TD_CLS,
-                                                        rail &&
-                                                            'before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:rounded-full',
-                                                        rail,
-                                                    )}
-                                                >
-                                                    <Link
-                                                        href={`/armada/${row.id}`}
-                                                        className="text-sm font-semibold text-ink transition-colors duration-150 hover:text-primary hover:underline"
-                                                    >
-                                                        {row.vessel_name}
-                                                    </Link>
-                                                    <p className="mt-0.5 text-xs text-muted">
-                                                        {row.vessel_type === 'lainnya' && row.vessel_type_custom
-                                                            ? row.vessel_type_custom
-                                                            : TYPE_LABELS[row.vessel_type] ?? row.vessel_type}
-                                                        {' · '}
-                                                        {NAV_LABELS[row.navigation_type] ??
-                                                            row.navigation_type}
-                                                        {row.year_built ? ` · ${row.year_built}` : ''}
-                                                        {row.registration_number
-                                                            ? ` · Reg. ${row.registration_number}`
-                                                            : ''}
+                    <div className="overflow-hidden rounded-2xl border bg-white shadow-[0_20px_44px_-32px_rgba(28,27,26,0.4)]" style={{ borderColor: '#E7E1D9' }}>
+                        <table className="w-full" style={{ minWidth: '52rem' }}>
+                            <thead>
+                                <tr className="border-b" style={{ borderColor: '#E7E1D9', background: 'rgba(250,247,242,0.7)' }}>
+                                    <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Kapal</th>
+                                    <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Spesifikasi</th>
+                                    <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Pangkalan</th>
+                                    <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Status</th>
+                                    <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Kelengkapan Dokumen</th>
+                                    <th className="px-4 py-3 text-center font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Perjalanan</th>
+                                    <th className="px-4 py-3 text-right font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {vessels.map((row) => {
+                                    const pos = positionInfo(row.last_position_at);
+                                    const status = row.operational_status;
+                                    const railColor = status === 'dalam_perbaikan' ? '#D99A2B' : (status === 'dock' || status === 'mangkrak') ? '#C1121F' : null;
+                                    return (
+                                        <tr key={row.id} id={`record-vessel-${row.id}`} className="border-b transition-colors duration-150 hover:bg-[#FAF7F2]/50" style={{ borderColor: '#E7E1D9' }}>
+                                            <td className="relative px-4 py-3.5 align-middle">
+                                                {railColor && (
+                                                    <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full" style={{ background: railColor }} />
+                                                )}
+                                                <Link href={`/armada/${row.id}`} className="text-sm font-semibold transition-colors duration-150 hover:underline" style={{ color: '#1C1B1A' }}>
+                                                    {row.vessel_name}
+                                                </Link>
+                                                <p className="mt-0.5 text-xs" style={{ color: '#8A8580' }}>
+                                                    {row.vessel_type === 'lainnya' && row.vessel_type_custom
+                                                        ? row.vessel_type_custom
+                                                        : TYPE_LABELS[row.vessel_type] ?? row.vessel_type}
+                                                    {' · '}
+                                                    {NAV_LABELS[row.navigation_type] ?? row.navigation_type}
+                                                    {row.year_built ? ` · ${row.year_built}` : ''}
+                                                    {row.registration_number ? ` · Reg. ${row.registration_number}` : ''}
+                                                </p>
+                                            </td>
+                                            <td className="px-4 py-3.5 align-middle">
+                                                {(() => {
+                                                    const utama = [row.gt != null ? `GT ${formatNumber(row.gt)}` : null, row.dwt != null ? `DWT ${formatNumber(row.dwt, 2)}` : null].filter(Boolean).join(' · ');
+                                                    const kapasitas = row.capacity_value != null ? `${formatNumber(row.capacity_value, 2)}${row.capacity_unit ? ` ${row.capacity_unit}` : ''}` : null;
+                                                    if (!utama && !kapasitas) return <span className="text-xs" style={{ color: '#8A8580' }}>Belum dilengkapi</span>;
+                                                    return (
+                                                        <div>
+                                                            {utama && <p className="font-mono text-[13px]" style={{ color: '#1C1B1A' }}>{utama}</p>}
+                                                            {kapasitas && <p className="mt-0.5 text-xs" style={{ color: '#8A8580' }}>Kapasitas {kapasitas}</p>}
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </td>
+                                            <td className="px-4 py-3.5 align-middle">
+                                                {row.base_location ? (
+                                                    <p className="text-sm" style={{ color: '#1C1B1A' }}>{row.base_location}</p>
+                                                ) : (
+                                                    <p className="text-xs" style={{ color: '#8A8580' }}>Belum diatur</p>
+                                                )}
+                                                {pos && (
+                                                    <p className="mt-0.5 flex items-center gap-1.5 font-mono text-[11px]" style={{ color: '#8A8580' }}>
+                                                        <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: pos.fresh ? '#2F8F68' : '#8A8580' }} />
+                                                        Posisi terakhir {pos.label}
                                                     </p>
-                                                </td>
-                                                <td className={TD_CLS}>
-                                                    <SpecsCell row={row} />
-                                                </td>
-                                                <td className={TD_CLS}>
-                                                    {row.base_location ? (
-                                                        <p className="text-sm text-ink">
-                                                            {row.base_location}
-                                                        </p>
-                                                    ) : (
-                                                        <p className="text-xs text-muted">
-                                                            Belum diatur
-                                                        </p>
-                                                    )}
-                                                    {pos && (
-                                                        <p className="mt-0.5 flex items-center gap-1.5 font-mono text-[11px] text-muted">
-                                                            <span
-                                                                aria-hidden="true"
-                                                                className={classNames(
-                                                                    'h-1.5 w-1.5 rounded-full',
-                                                                    pos.fresh ? 'bg-ok' : 'bg-stone',
-                                                                )}
-                                                            />
-                                                            Posisi terakhir {pos.label}
-                                                        </p>
-                                                    )}
-                                                </td>
-                                                <td className={TD_CLS}>
-                                                    <Badge tone={statusTone(row.operational_status)}>
-                                                        {STATUS_LABELS[row.operational_status] ??
-                                                            row.operational_status}
-                                                    </Badge>
-                                                </td>
-                                                <td className={TD_CLS}>
-                                                    <CompletenessCell
-                                                        pct={row.doc_completeness}
-                                                        missing={row.missing_count}
-                                                    />
-                                                </td>
-                                                <td className={classNames(TD_CLS, 'text-center')}>
-                                                    <span className="text-sm font-semibold tabular-nums text-ink">
-                                                        {formatNumber(row.voyage_count)}
-                                                    </span>
-                                                </td>
-                                                <td className={classNames(TD_CLS, 'text-right')}>
-                                                    <Link
-                                                        href={`/armada/${row.id}`}
-                                                        className="inline-flex items-center gap-1 whitespace-nowrap text-sm font-semibold text-primary transition-colors duration-150 hover:underline"
-                                                    >
-                                                        Detail
-                                                        <ChevronRight
-                                                            size={14}
-                                                            aria-hidden="true"
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3.5 align-middle">
+                                                <Badge tone={statusTone(row.operational_status)}>
+                                                    {STATUS_LABELS[row.operational_status] ?? row.operational_status}
+                                                </Badge>
+                                            </td>
+                                            <td className="px-4 py-3.5 align-middle">
+                                                <div className="w-40 max-w-full">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <Progress
+                                                            percent={Math.min(100, Math.max(0, row.doc_completeness))}
+                                                            showInfo={false}
+                                                            strokeColor={row.doc_completeness >= 90 ? '#2F8F68' : row.doc_completeness >= 70 ? '#D99A2B' : '#C1121F'}
+                                                            trailColor="#FAF7F2"
+                                                            size="small"
+                                                            className="flex-1"
                                                         />
-                                                    </Link>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
+                                                        <span className="shrink-0 font-mono text-[13px] font-semibold tabular-nums" style={{ color: row.doc_completeness >= 90 ? '#2F8F68' : row.doc_completeness >= 70 ? '#D99A2B' : '#C1121F' }}>
+                                                            {formatNumber(row.doc_completeness, 1)}%
+                                                        </span>
+                                                    </div>
+                                                    <p className="mt-1 text-xs" style={{ color: row.missing_count > 0 ? '#8A8580' : '#2F8F68' }}>
+                                                        {row.missing_count > 0 ? `${row.missing_count} dokumen kurang` : 'Lengkap'}
+                                                    </p>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3.5 align-middle text-center">
+                                                <span className="text-sm font-semibold tabular-nums" style={{ color: '#1C1B1A' }}>
+                                                    {formatNumber(row.voyage_count)}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3.5 align-middle text-right">
+                                                <Link href={`/armada/${row.id}`} className="text-sm font-semibold hover:underline" style={{ color: '#C1121F' }}>
+                                                    Detail
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
                     </div>
                 )}
             </section>

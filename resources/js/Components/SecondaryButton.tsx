@@ -1,24 +1,34 @@
-import { ButtonHTMLAttributes } from 'react';
+import { Button, ButtonProps } from 'antd';
+import { ReactNode } from 'react';
+
+type HtmlButtonType = 'button' | 'submit' | 'reset';
 
 export default function SecondaryButton({
-    type = 'button',
     className = '',
     disabled,
     children,
+    loading,
+    icon,
+    type: htmlType = 'button',
+    onClick,
     ...props
-}: ButtonHTMLAttributes<HTMLButtonElement>) {
+}: Omit<ButtonProps, 'type'> & {
+    children?: ReactNode;
+    icon?: ReactNode;
+    type?: HtmlButtonType;
+    onClick?: (e: React.MouseEvent) => void;
+}) {
     return (
-        <button
-            {...props}
-            type={type}
-            className={
-                `inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-widest text-gray-700 shadow-sm transition duration-150 ease-in-out hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-25 ${
-                    disabled && 'opacity-25'
-                } ` + className
-            }
+        <Button
+            htmlType={htmlType}
             disabled={disabled}
+            loading={loading}
+            icon={icon as any}
+            className={className}
+            onClick={onClick}
+            {...props}
         >
             {children}
-        </button>
+        </Button>
     );
 }

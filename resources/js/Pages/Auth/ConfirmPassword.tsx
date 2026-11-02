@@ -1,9 +1,7 @@
-import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
-import PrimaryButton from '@/Components/PrimaryButton';
-import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, useForm } from '@inertiajs/react';
+import { Button, Form, Input } from 'antd';
+import { Lock } from 'lucide-react';
 import { FormEventHandler } from 'react';
 
 export default function ConfirmPassword() {
@@ -13,7 +11,6 @@ export default function ConfirmPassword() {
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-
         post(route('password.confirm'), {
             onFinish: () => reset('password'),
         });
@@ -21,34 +18,34 @@ export default function ConfirmPassword() {
 
     return (
         <GuestLayout>
-            <Head title="Confirm Password" />
+            <Head title="Konfirmasi Kata Sandi" />
 
-            <div className="mb-4 text-sm text-gray-600">
-                This is a secure area of the application. Please confirm your
-                password before continuing.
+            <div className="mb-6 text-sm text-[#1C1B1A]/70">
+                Ini adalah area aman aplikasi. Harap konfirmasi kata sandi Anda sebelum melanjutkan.
             </div>
 
             <form onSubmit={submit}>
-                <div className="mt-4">
-                    <InputLabel htmlFor="password" value="Password" />
-
-                    <TextInput
-                        id="password"
-                        type="password"
+                <Form.Item
+                    label={<span className="text-sm font-medium">Kata Sandi</span>}
+                    validateStatus={errors.password ? 'error' : undefined}
+                    help={errors.password}
+                >
+                    <Input.Password
+                        prefix={<Lock size={16} className="text-[#8A8580]" />}
                         name="password"
                         value={data.password}
-                        className="mt-1 block w-full"
-                        isFocused={true}
+                        autoComplete="current-password"
+                        autoFocus
                         onChange={(e) => setData('password', e.target.value)}
+                        placeholder="••••••••"
+                        size="large"
                     />
+                </Form.Item>
 
-                    <InputError message={errors.password} className="mt-2" />
-                </div>
-
-                <div className="mt-4 flex items-center justify-end">
-                    <PrimaryButton className="ms-4" disabled={processing}>
-                        Confirm
-                    </PrimaryButton>
+                <div className="mt-6 flex justify-end">
+                    <Button type="primary" htmlType="submit" size="large" loading={processing}>
+                        Konfirmasi
+                    </Button>
                 </div>
             </form>
         </GuestLayout>

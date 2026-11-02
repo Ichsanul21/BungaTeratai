@@ -1,8 +1,6 @@
 import Badge from '@/Components/ui/Badge';
 import Card from '@/Components/ui/Card';
 import ConfirmModal from '@/Components/ui/ConfirmModal';
-import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
 import Modal from '@/Components/Modal';
 import NumericInput from '@/Components/NumericInput';
 import PageHeader from '@/Components/ui/PageHeader';
@@ -11,13 +9,13 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SearchableSelect from '@/Components/SearchableSelect';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TabNav from '@/Components/ui/TabNav';
-import TextInput from '@/Components/TextInput';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { classNames, formatDate, formatRupiah } from '@/lib/format';
 import { type PageProps } from '@/types';
 import { Head, router, useForm } from '@inertiajs/react';
-import { Bell, BookOpen, Briefcase, Building2, KeyRound, Pencil, Plus, ScrollText, Shield, Trash2, Users } from 'lucide-react';
+import { Bell, BookOpen, Briefcase, Building2, KeyRound, Plus, ScrollText, Shield, Users } from 'lucide-react';
 import { FormEvent, useState } from 'react';
+import { Table, Button, Input, Select, Switch, Alert, Divider } from 'antd';
 
 const ROLE_LABELS: Record<string, string> = {
     super_admin: 'Super Admin',
@@ -30,6 +28,13 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const SUPPLIER_CATEGORIES = ['bengkel', 'sparepart', 'operator_lain', 'pemerintah'];
+
+const FormLabel = ({ children }: { children: React.ReactNode }) => (
+    <label className="mb-1 block text-sm font-medium text-[#1C1B1A]">{children}</label>
+);
+
+const FormError = ({ message }: { message?: string }) =>
+    message ? <div className="mt-1 text-xs text-[#C1121F]">{message}</div> : null;
 
 export default function SettingsIndex({
     tab,
@@ -71,7 +76,6 @@ export default function SettingsIndex({
     const [confirmDel, setConfirmDel] = useState<{ url: string; label: string; note?: string } | null>(null);
     const [busy, setBusy] = useState(false);
 
-    // --- RBAC matriks (izin × role) ---
     const editableRoles: any[] = (rbacRoles ?? []).filter((r: any) => r.slug !== 'super_admin');
     const [rbacRoleId, setRbacRoleId] = useState<number | null>(editableRoles[0]?.id ?? null);
     const [rbacGrantsState, setRbacGrantsState] = useState<Record<number, number[]>>(() => {
@@ -141,7 +145,7 @@ export default function SettingsIndex({
 
     const submitEditTemplate = (e: FormEvent) => {
         e.preventDefault();
-        if (! editTemplate) return;
+        if (!editTemplate) return;
         editTemplateForm.put(`/pengaturan/templates/${editTemplate.id}`, { preserveScroll: true, onSuccess: () => { setModal(null); setEditTemplate(null); } });
     };
     const companyForm = useForm({
@@ -184,33 +188,104 @@ export default function SettingsIndex({
     };
     const submitEditUser = (e: FormEvent) => {
         e.preventDefault();
-        if (! editUser) return;
+        if (!editUser) return;
         editUserForm.put(`/pengaturan/users/${editUser.id}`, { preserveScroll: true, onSuccess: () => { setModal(null); setEditUser(null); } });
     };
     const submitEditCustomer = (e: FormEvent) => {
         e.preventDefault();
-        if (! editCustomer) return;
+        if (!editCustomer) return;
         editCustomerForm.put(`/pengaturan/customers/${editCustomer.id}`, { preserveScroll: true, onSuccess: () => { setModal(null); setEditCustomer(null); } });
     };
     const submitEditSupplier = (e: FormEvent) => {
         e.preventDefault();
-        if (! editSupplier) return;
+        if (!editSupplier) return;
         editSupplierForm.put(`/pengaturan/suppliers/${editSupplier.id}`, { preserveScroll: true, onSuccess: () => { setModal(null); setEditSupplier(null); } });
     };
     const submitEditCatalog = (e: FormEvent) => {
         e.preventDefault();
-        if (! editCatalog) return;
+        if (!editCatalog) return;
         editCatalogForm.put(`/pengaturan/katalog/${editCatalog.id}`, { preserveScroll: true, onSuccess: () => { setModal(null); setEditCatalog(null); } });
     };
     const submitEditCategory = (e: FormEvent) => {
         e.preventDefault();
-        if (! editCategory) return;
+        if (!editCategory) return;
         editCategoryForm.put(`/pengaturan/kategori/${editCategory.id}`, { preserveScroll: true, onSuccess: () => { setModal(null); setEditCategory(null); } });
     };
     const submitAddCategory = (e: FormEvent) => {
         e.preventDefault();
         addCategoryForm.post('/pengaturan/kategori', { preserveScroll: true, onSuccess: () => { setModal(null); addCategoryForm.reset(); } });
     };
+
+    const userColumns = [
+        { title: 'Nama', dataIndex: 'name', key: 'name', render: (v: string) => <span className="font-medium text-[#1C1B1A]">{v}</span> },
+        { title: 'Email', dataIndex: 'email', key: 'email', render: (v: string) => <span className="text-[#8A8580]">{v}</span> },
+        {
+            title: 'Role', key: 'roles', render: (_: any, r: any) => (
+                <div className="flex flex-wrap gap-1">
+                    {r.roles.map((role: string) => (
+                        <Badge key={role} tone={role === 'super_admin' ? 'primary' : 'info'}>
+                            {ROLE_LABELS[role] ?? role}
+                        </Badge>
+                    ))}
+                </div>
+            ),
+        },
+        { title: 'Dibuat', dataIndex: 'created_at', key: 'created_at', render: (v: string) => <span className="text-xs text-[#8A8580]">{formatDate(v)}</span> },
+        ...(canManageUsers ? [{
+            title: 'Aksi', key: 'aksi', render: (_: any, u: any) => (
+                <div className="flex gap-2 text-xs font-medium">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setEditUser(u);
+                            editUserForm.setData({ name: u.name, email: u.email, password: '', role: u.roles[0] ?? 'ship_ops' });
+                            setModal('editUser');
+                        }}
+                        className="text-[#C1121F] hover:underline"
+                    >
+                        Edit
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setConfirmDel({ url: `/pengaturan/users/${u.id}`, label: `pengguna ${u.email}` })}
+                        className="text-[#C1121F] hover:underline"
+                    >
+                        Hapus
+                    </button>
+                </div>
+            ),
+        }] : []),
+    ];
+
+    const categoryColumns = [
+        { title: 'Kode', dataIndex: 'code', key: 'code', render: (v: string) => <span className="font-mono text-xs text-[#1C1B1A]">{v}</span> },
+        { title: 'Nama', dataIndex: 'name', key: 'name', render: (v: string) => <span className="text-[#1C1B1A]">{v}</span> },
+        { title: 'Kelompok', dataIndex: 'group_code', key: 'group_code', render: (v: string) => <Badge tone="info">{v}</Badge> },
+        ...(canManageUsers ? [{
+            title: 'Aksi', key: 'aksi', render: (_: any, c: any) => (
+                <div className="flex gap-2 text-xs font-medium">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setEditCategory(c);
+                            editCategoryForm.setData({ name: c.name, group_code: c.group_code, sort: String(c.sort ?? 0) });
+                            setModal('editCategory');
+                        }}
+                        className="text-[#C1121F] hover:underline"
+                    >
+                        Edit
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setConfirmDel({ url: `/pengaturan/kategori/${c.id}`, label: `kategori ${c.code} — ${c.name}` })}
+                        className="text-[#C1121F] hover:underline"
+                    >
+                        Hapus
+                    </button>
+                </div>
+            ),
+        }] : []),
+    ];
 
     return (
         <AuthenticatedLayout>
@@ -230,7 +305,7 @@ export default function SettingsIndex({
             {tab === 'rbac' && canRbac && (
                 <div className="space-y-4">
                     <Card title="Matriks Hak Akses (RBAC)">
-                        <p className="text-sm text-muted">
+                        <p className="text-sm text-[#8A8580]">
                             Atur role mana yang boleh <strong>melihat</strong> / <strong>CRUD</strong> tiap modul & fungsi.
                             Super Admin selalu memiliki semua izin. Perubahan langsung berlaku dan tercatat di Jejak Audit.
                         </p>
@@ -241,12 +316,11 @@ export default function SettingsIndex({
                                     key={r.id}
                                     type="button"
                                     onClick={() => setRbacRoleId(r.id)}
-                                    className={classNames(
-                                        'rounded-full px-3 py-1.5 text-sm font-medium ring-1 transition',
-                                        rbacRoleId === r.id
-                                            ? 'bg-primary text-white ring-primary'
-                                            : 'bg-appbg text-ink ring-hairline hover:bg-gray-100',
-                                    )}
+                                    className="rounded-full px-3 py-1.5 text-sm font-medium ring-1 transition"
+                                    style={rbacRoleId === r.id
+                                        ? { background: '#C1121F', color: '#FFFFFF', boxShadow: '0 0 0 1px #C1121F' }
+                                        : { background: '#FAF7F2', color: '#1C1B1A', boxShadow: '0 0 0 1px #E7E1D9' }
+                                    }
                                 >
                                     {ROLE_LABELS[r.slug] ?? r.name}
                                 </button>
@@ -255,10 +329,10 @@ export default function SettingsIndex({
 
                         {selectedRole && (
                             <div className="mt-5">
-                                <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-appbg px-3 py-2">
+                                <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-[#FAF7F2] px-3 py-2">
                                     <div className="text-sm">
-                                        <span className="font-semibold text-ink">{ROLE_LABELS[selectedRole.slug] ?? selectedRole.name}</span>
-                                        <span className="ml-2 text-muted">
+                                        <span className="font-semibold text-[#1C1B1A]">{ROLE_LABELS[selectedRole.slug] ?? selectedRole.name}</span>
+                                        <span className="ml-2 text-[#8A8580]">
                                             {isSuperRole
                                                 ? 'Selalu semua izin (bypass)'
                                                 : `${selectedGrants.length} izin aktif dari ${Object.values(rbacPermissions ?? {}).flat().length}`}
@@ -269,14 +343,14 @@ export default function SettingsIndex({
                                             <button
                                                 type="button"
                                                 onClick={() => setAllForRole(selectedRole.id, (Object.values(rbacPermissions ?? {}) as any[][]).flat().map((p: any) => p.id))}
-                                                className="rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-gray-100"
+                                                className="rounded-md px-2 py-1 text-xs font-medium text-[#C1121F] hover:bg-[#FAF7F2]"
                                             >
                                                 Centang semua
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => setAllForRole(selectedRole.id, [])}
-                                                className="rounded-md px-2 py-1 text-xs font-medium text-muted hover:bg-gray-100"
+                                                className="rounded-md px-2 py-1 text-xs font-medium text-[#8A8580] hover:bg-[#FAF7F2]"
                                             >
                                                 Kosongkan
                                             </button>
@@ -286,8 +360,8 @@ export default function SettingsIndex({
 
                                 <div className="mt-4 grid grid-cols-1 gap-5 lg:grid-cols-2">
                                     {Object.entries(rbacPermissions ?? {}).map(([module, perms]) => (
-                                        <div key={module} className="rounded-lg border border-hairline p-3">
-                                            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">
+                                        <div key={module} className="rounded-lg border border-[#E7E1D9] p-3">
+                                            <h3 className="text-xs font-semibold uppercase tracking-wide text-[#8A8580]">
                                                 {MODULE_LABELS[module] ?? module}
                                             </h3>
                                             <ul className="mt-2 space-y-1.5">
@@ -302,12 +376,12 @@ export default function SettingsIndex({
                                                                 checked={isSuperRole ? true : selectedGrants.includes(perm.id)}
                                                                 disabled={isSuperRole}
                                                                 onChange={() => toggleRbacPermission(selectedRole.id, perm.id)}
-                                                                className="mt-0.5 rounded border-gray-300 text-primary focus:ring-primary"
+                                                                className="mt-0.5 rounded border-[#E7E1D9] text-[#C1121F] focus:ring-[#C1121F]"
                                                             />
                                                             <span>
                                                                 {perm.label}
                                                                 {perm.description && (
-                                                                    <span className="block text-xs text-muted">{perm.description}</span>
+                                                                    <span className="block text-xs text-[#8A8580]">{perm.description}</span>
                                                                 )}
                                                             </span>
                                                         </label>
@@ -337,74 +411,34 @@ export default function SettingsIndex({
             {tab === 'users' && (
                 <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
                     <Card title="Daftar Pengguna & Hak Akses" className="xl:col-span-2">
-                        <table className="min-w-full text-sm">
-                            <thead className="bg-appbg text-left text-xs uppercase text-muted">
-                                <tr>{['Nama', 'Email', 'Role', 'Dibuat', ...(canManageUsers ? ['Aksi'] : [])].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr>
-                            </thead>
-                            <tbody className="divide-y divide-hairline">
-                                {(usersList ?? []).map((u: any) => (
-                                    <tr key={u.id} className="hover:bg-appbg">
-                                        <td className="px-3 py-2 font-medium text-ink">{u.name}</td>
-                                        <td className="px-3 py-2 text-muted">{u.email}</td>
-                                        <td className="px-3 py-2">
-                                            <div className="flex flex-wrap gap-1">
-                                                {u.roles.map((r: string) => (
-                                                    <Badge key={r} tone={r === 'super_admin' ? 'primary' : 'info'}>
-                                                        {ROLE_LABELS[r] ?? r}
-                                                    </Badge>
-                                                ))}
-                                            </div>
-                                        </td>
-                                        <td className="px-3 py-2 text-xs text-muted">{formatDate(u.created_at)}</td>
-                                        {canManageUsers && (
-                                            <td className="px-3 py-2">
-                                                <div className="flex gap-2 text-xs font-medium">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setEditUser(u);
-                                                            editUserForm.setData({ name: u.name, email: u.email, password: '', role: u.roles[0] ?? 'ship_ops' });
-                                                            setModal('editUser');
-                                                        }}
-                                                        className="text-primary hover:underline"
-                                                    >
-                                                        Edit
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setConfirmDel({ url: `/pengaturan/users/${u.id}`, label: `pengguna ${u.email}` })}
-                                                        className="text-primary hover:underline"
-                                                    >
-                                                        Hapus
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        )}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                        <Table
+                            columns={userColumns}
+                            dataSource={usersList ?? []}
+                            rowKey="id"
+                            pagination={false}
+                            size="small"
+                        />
                     </Card>
                     <Card title="Tambah Pengguna" description="Hanya Super Admin.">
                         {canManageUsers ? (
                             <form onSubmit={submitUser} className="space-y-3">
                                 <div>
-                                    <InputLabel value="Nama *" />
-                                    <TextInput value={userForm.data.name} onChange={(e) => userForm.setData('name', e.target.value)} className="mt-1 block w-full" />
-                                    <InputError message={userForm.errors.name} className="mt-1" />
+                                    <FormLabel>Nama *</FormLabel>
+                                    <Input value={userForm.data.name} onChange={(e) => userForm.setData('name', e.target.value)} />
+                                    <FormError message={userForm.errors.name} />
                                 </div>
                                 <div>
-                                    <InputLabel value="Email *" />
-                                    <TextInput type="email" value={userForm.data.email} onChange={(e) => userForm.setData('email', e.target.value)} className="mt-1 block w-full" />
-                                    <InputError message={userForm.errors.email} className="mt-1" />
+                                    <FormLabel>Email *</FormLabel>
+                                    <Input type="email" value={userForm.data.email} onChange={(e) => userForm.setData('email', e.target.value)} />
+                                    <FormError message={userForm.errors.email} />
                                 </div>
                                 <div>
-                                    <InputLabel value="Password * (min 8)" />
-                                    <TextInput type="password" value={userForm.data.password} onChange={(e) => userForm.setData('password', e.target.value)} className="mt-1 block w-full" />
-                                    <InputError message={userForm.errors.password} className="mt-1" />
+                                    <FormLabel>Password * (min 8)</FormLabel>
+                                    <Input type="password" value={userForm.data.password} onChange={(e) => userForm.setData('password', e.target.value)} />
+                                    <FormError message={userForm.errors.password} />
                                 </div>
                                 <div>
-                                    <InputLabel value="Role *" />
+                                    <FormLabel>Role *</FormLabel>
                                     <SearchableSelect
                                         value={userForm.data.role}
                                         options={(roles ?? []).map((r: any) => ({ value: r.slug, label: r.name }))}
@@ -415,7 +449,7 @@ export default function SettingsIndex({
                                 <PrimaryButton disabled={userForm.processing}>Buat Pengguna</PrimaryButton>
                             </form>
                         ) : (
-                            <p className="text-sm text-muted">Hanya Super Admin yang dapat menambah pengguna.</p>
+                            <p className="text-sm text-[#8A8580]">Hanya Super Admin yang dapat menambah pengguna.</p>
                         )}
                     </Card>
                 </div>
@@ -424,20 +458,20 @@ export default function SettingsIndex({
             {tab === 'profil' && (
                 <Card title="Profil Perusahaan" className="max-w-3xl">
                     <form onSubmit={submitCompany} className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <div><InputLabel value="Nama Perusahaan *" />
-                            <TextInput value={companyForm.data.company_name} onChange={(e) => companyForm.setData('company_name', e.target.value)} className="mt-1 block w-full" /></div>
-                        <div><InputLabel value="NIB / Legalitas" />
-                            <TextInput value={companyForm.data.business_license_reference} onChange={(e) => companyForm.setData('business_license_reference', e.target.value)} className="mt-1 block w-full" /></div>
-                        <div><InputLabel value="NPWP" />
-                            <TextInput value={companyForm.data.npwp} onChange={(e) => companyForm.setData('npwp', e.target.value)} className="mt-1 block w-full" /></div>
-                        <div><InputLabel value="Kota" />
-                            <TextInput value={companyForm.data.city} onChange={(e) => companyForm.setData('city', e.target.value)} className="mt-1 block w-full" /></div>
-                        <div className="md:col-span-2"><InputLabel value="Alamat" />
-                            <TextInput value={companyForm.data.address} onChange={(e) => companyForm.setData('address', e.target.value)} className="mt-1 block w-full" /></div>
-                        <div><InputLabel value="Telepon" />
-                            <TextInput value={companyForm.data.phone} onChange={(e) => companyForm.setData('phone', e.target.value)} className="mt-1 block w-full" /></div>
-                        <div><InputLabel value="Email" />
-                            <TextInput value={companyForm.data.email} onChange={(e) => companyForm.setData('email', e.target.value)} className="mt-1 block w-full" /></div>
+                        <div><FormLabel>Nama Perusahaan *</FormLabel>
+                            <Input value={companyForm.data.company_name} onChange={(e) => companyForm.setData('company_name', e.target.value)} /></div>
+                        <div><FormLabel>NIB / Legalitas</FormLabel>
+                            <Input value={companyForm.data.business_license_reference} onChange={(e) => companyForm.setData('business_license_reference', e.target.value)} /></div>
+                        <div><FormLabel>NPWP</FormLabel>
+                            <Input value={companyForm.data.npwp} onChange={(e) => companyForm.setData('npwp', e.target.value)} /></div>
+                        <div><FormLabel>Kota</FormLabel>
+                            <Input value={companyForm.data.city} onChange={(e) => companyForm.setData('city', e.target.value)} /></div>
+                        <div className="md:col-span-2"><FormLabel>Alamat</FormLabel>
+                            <Input value={companyForm.data.address} onChange={(e) => companyForm.setData('address', e.target.value)} /></div>
+                        <div><FormLabel>Telepon</FormLabel>
+                            <Input value={companyForm.data.phone} onChange={(e) => companyForm.setData('phone', e.target.value)} /></div>
+                        <div><FormLabel>Email</FormLabel>
+                            <Input value={companyForm.data.email} onChange={(e) => companyForm.setData('email', e.target.value)} /></div>
                         <div className="md:col-span-2">
                             <PrimaryButton disabled={companyForm.processing}>Simpan Profil</PrimaryButton>
                         </div>
@@ -447,23 +481,23 @@ export default function SettingsIndex({
 
             {tab === 'template' && (
                 <div className="space-y-3">
-                    <p className="text-sm text-muted">
-                        Token pola nomor: <code className="rounded bg-appbg px-1">{'{seq}'}</code>{' '}
-                        <code className="rounded bg-appbg px-1">{'{seq_raw}'}</code>{' '}
-                        <code className="rounded bg-appbg px-1">{'{tahun}'}</code>{' '}
-                        <code className="rounded bg-appbg px-1">{'{bulan_romawi}'}</code>{' '}
-                        <code className="rounded bg-appbg px-1">{'{kode}'}</code>{' '}
-                        <code className="rounded bg-appbg px-1">{'{kode_penyewa}'}</code>{' '}
-                        <code className="rounded bg-appbg px-1">{'{kode_kapal}'}</code>
+                    <p className="text-sm text-[#8A8580]">
+                        Token pola nomor: <code className="rounded bg-[#FAF7F2] px-1">{'{seq}'}</code>{' '}
+                        <code className="rounded bg-[#FAF7F2] px-1">{'{seq_raw}'}</code>{' '}
+                        <code className="rounded bg-[#FAF7F2] px-1">{'{tahun}'}</code>{' '}
+                        <code className="rounded bg-[#FAF7F2] px-1">{'{bulan_romawi}'}</code>{' '}
+                        <code className="rounded bg-[#FAF7F2] px-1">{'{kode}'}</code>{' '}
+                        <code className="rounded bg-[#FAF7F2] px-1">{'{kode_penyewa}'}</code>{' '}
+                        <code className="rounded bg-[#FAF7F2] px-1">{'{kode_kapal}'}</code>
                     </p>
                     {(templates ?? []).map((t: any) => (
-                        <div key={t.id} className="rounded-xl border border-hairline bg-white p-4 shadow-sm">
+                        <div key={t.id} className="rounded-xl border border-[#E7E1D9] bg-white p-4 shadow-sm">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                                 <div>
-                                    <p className="font-semibold text-ink">
-                                        <span className="font-mono text-xs text-muted">{t.code}</span> · {t.name}
+                                    <p className="font-semibold text-[#1C1B1A]">
+                                        <span className="font-mono text-xs text-[#8A8580]">{t.code}</span> · {t.name}
                                     </p>
-                                    <p className="text-xs text-muted">
+                                    <p className="text-xs text-[#8A8580]">
                                         {t.kategori} · layout: {t.layout_type}
                                         {t.is_generic_letter ? ' · surat umum' : ''}
                                     </p>
@@ -484,21 +518,21 @@ export default function SettingsIndex({
                                                     });
                                                     setModal('editTemplate');
                                                 }}
-                                                className="text-primary hover:underline"
+                                                className="text-[#C1121F] hover:underline"
                                             >
                                                 Edit
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => router.post(`/pengaturan/templates/${t.id}/reset-counter`, { kind: 'terbit' }, { preserveScroll: true })}
-                                                className="text-muted hover:text-ink"
+                                                className="text-[#8A8580] hover:text-[#1C1B1A]"
                                             >
                                                 Reset counter terbit
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => router.post(`/pengaturan/templates/${t.id}/reset-counter`, { kind: 'arsip' }, { preserveScroll: true })}
-                                                className="text-muted hover:text-ink"
+                                                className="text-[#8A8580] hover:text-[#1C1B1A]"
                                             >
                                                 Reset counter arsip
                                             </button>
@@ -507,15 +541,15 @@ export default function SettingsIndex({
                                 </div>
                             </div>
                             <div className="mt-2 grid grid-cols-1 gap-2 text-xs md:grid-cols-2">
-                                <p className="rounded-lg bg-appbg px-3 py-1.5 text-muted">
+                                <p className="rounded-lg bg-[#FAF7F2] px-3 py-1.5 text-[#8A8580]">
                                     Pola nomor terbit:{' '}
-                                    <span className="font-mono text-ink">{t.numbering_pattern ?? '—'}</span>
-                                    {' '}<span className="text-primary">(counter: {t.seq_last})</span>
+                                    <span className="font-mono text-[#1C1B1A]">{t.numbering_pattern ?? '—'}</span>
+                                    {' '}<span className="text-[#C1121F]">(counter: {t.seq_last})</span>
                                 </p>
-                                <p className="rounded-lg bg-appbg px-3 py-1.5 text-muted">
+                                <p className="rounded-lg bg-[#FAF7F2] px-3 py-1.5 text-[#8A8580]">
                                     Pola nomor arsip:{' '}
-                                    <span className="font-mono text-ink">{t.archive_pattern ?? '—'}</span>
-                                    {' '}<span className="text-primary">(counter: {t.archive_seq_last})</span>
+                                    <span className="font-mono text-[#1C1B1A]">{t.archive_pattern ?? '—'}</span>
+                                    {' '}<span className="text-[#C1121F]">(counter: {t.archive_seq_last})</span>
                                 </p>
                             </div>
                         </div>
@@ -527,15 +561,18 @@ export default function SettingsIndex({
                 <Card title="Aturan Reminder Dokumen" description="Jeda hari sebelum kedaluwarsa (dipisah koma). Tanpa masa berlaku → tanpa reminder." className="max-w-xl">
                     <form onSubmit={submitReminder} className="flex items-end gap-3">
                         <div className="flex-1">
-                            <InputLabel value="Hari pengingat *" />
-                            <TextInput value={reminderForm.data.reminder_days} onChange={(e) => reminderForm.setData('reminder_days', e.target.value)} className="mt-1 block w-full" placeholder="30,14,7,0" />
-                            <InputError message={reminderForm.errors.reminder_days} className="mt-1" />
+                            <FormLabel>Hari pengingat *</FormLabel>
+                            <Input value={reminderForm.data.reminder_days} onChange={(e) => reminderForm.setData('reminder_days', e.target.value)} placeholder="30,14,7,0" />
+                            <FormError message={reminderForm.errors.reminder_days} />
                         </div>
                         <PrimaryButton disabled={reminderForm.processing}>Simpan</PrimaryButton>
                     </form>
-                    <p className="mt-3 rounded-lg bg-appbg p-3 text-xs text-muted">
-                        Berlaku untuk dokumen perusahaan, dokumen kapal, dan sertifikat ABK. Tanggal fiktif tidak pernah dibuat sistem.
-                    </p>
+                    <Alert
+                        type="info"
+                        showIcon
+                        message="Berlaku untuk dokumen perusahaan, dokumen kapal, dan sertifikat ABK. Tanggal fiktif tidak pernah dibuat sistem."
+                        className="mt-3"
+                    />
                 </Card>
             )}
 
@@ -548,13 +585,13 @@ export default function SettingsIndex({
                             ['Ready for Departure hanya setelah checklist wajib terpenuhi + approval internal + status eksternal jelas', true],
                             ['Status siap berangkat = indikator internal, bukan persetujuan otoritas pelayaran', true],
                         ].map(([label, active]) => (
-                            <li key={label as string} className="flex items-start justify-between gap-3 rounded-lg border border-hairline p-3">
-                                <span className="text-ink">{label}</span>
+                            <li key={label as string} className="flex items-start justify-between gap-3 rounded-lg border border-[#E7E1D9] p-3">
+                                <span className="text-[#1C1B1A]">{label}</span>
                                 <Badge tone={active ? 'success' : 'neutral'}>{active ? 'Aktif' : 'Nonaktif'}</Badge>
                             </li>
                         ))}
                     </ul>
-                    <p className="mt-4 text-xs text-muted">
+                    <p className="mt-4 text-xs text-[#8A8580]">
                         Konfigurasi lanjutan (multi-level approver, eskalasi) masuk roadmap implementasi.
                     </p>
                 </Card>
@@ -562,48 +599,17 @@ export default function SettingsIndex({
 
             {tab === 'kategori' && (
                 <Card title="Kategori Dokumen (A–G)" actions={canManageUsers && (
-                    <button type="button" onClick={() => setModal('addCategory')} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                        <Plus size={13} /> Tambah
-                    </button>
+                    <Button type="link" onClick={() => setModal('addCategory')} icon={<Plus size={13} />} size="small">
+                        Tambah
+                    </Button>
                 )}>
-                    <table className="min-w-full text-sm">
-                        <thead className="bg-appbg text-left text-xs uppercase text-muted">
-                            <tr>{['Kode', 'Nama', 'Kelompok', ...(canManageUsers ? ['Aksi'] : [])].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr>
-                        </thead>
-                        <tbody className="divide-y divide-hairline">
-                            {(categories ?? []).map((c: any) => (
-                                <tr key={c.id} className="hover:bg-appbg">
-                                    <td className="px-3 py-2 font-mono text-xs text-ink">{c.code}</td>
-                                    <td className="px-3 py-2 text-ink">{c.name}</td>
-                                    <td className="px-3 py-2"><Badge tone="info">{c.group_code}</Badge></td>
-                                    {canManageUsers && (
-                                        <td className="px-3 py-2">
-                                            <div className="flex gap-2 text-xs font-medium">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setEditCategory(c);
-                                                        editCategoryForm.setData({ name: c.name, group_code: c.group_code, sort: String(c.sort ?? 0) });
-                                                        setModal('editCategory');
-                                                    }}
-                                                    className="text-primary hover:underline"
-                                                >
-                                                    Edit
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setConfirmDel({ url: `/pengaturan/kategori/${c.id}`, label: `kategori ${c.code} — ${c.name}` })}
-                                                    className="text-primary hover:underline"
-                                                >
-                                                    Hapus
-                                                </button>
-                                            </div>
-                                        </td>
-                                    )}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                    <Table
+                        columns={categoryColumns}
+                        dataSource={categories ?? []}
+                        rowKey="id"
+                        pagination={false}
+                        size="small"
+                    />
                 </Card>
             )}
 
@@ -613,14 +619,19 @@ export default function SettingsIndex({
                         <button type="button" onClick={submitCustomer as any} className="hidden" />
                     }>
                         <form onSubmit={submitCustomer} className="mb-4 flex gap-2">
-                            <input value={customerForm.data.name} onChange={(e) => customerForm.setData('name', e.target.value)} placeholder="Nama customer baru" className="h-9 flex-1 rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
-                            <PrimaryButton disabled={customerForm.processing || !customerForm.data.name}><Plus size={14} /></PrimaryButton>
+                            <Input
+                                value={customerForm.data.name}
+                                onChange={(e) => customerForm.setData('name', e.target.value)}
+                                placeholder="Nama customer baru"
+                                style={{ flex: 1 }}
+                            />
+                            <PrimaryButton disabled={customerForm.processing || !customerForm.data.name} icon={<Plus size={14} />} />
                         </form>
                         <ul className="max-h-72 space-y-1 overflow-y-auto text-sm">
                             {(customers ?? []).map((c: any) => (
-                                <li key={c.id} className="flex items-center justify-between gap-2 rounded-lg border border-hairline px-3 py-1.5">
-                                    <span className="text-ink">{c.name}</span>
-                                    <span className="text-xs text-muted">{c.phone}</span>
+                                <li key={c.id} className="flex items-center justify-between gap-2 rounded-lg border border-[#E7E1D9] px-3 py-1.5">
+                                    <span className="text-[#1C1B1A]">{c.name}</span>
+                                    <span className="text-xs text-[#8A8580]">{c.phone}</span>
                                     <span className="flex gap-2 text-xs font-medium">
                                         <button
                                             type="button"
@@ -629,14 +640,14 @@ export default function SettingsIndex({
                                                 editCustomerForm.setData({ name: c.name, npwp: c.npwp ?? '', address: c.address ?? '', phone: c.phone ?? '', notes: c.notes ?? '' });
                                                 setModal('editCustomer');
                                             }}
-                                            className="text-primary hover:underline"
+                                            className="text-[#C1121F] hover:underline"
                                         >
                                             Edit
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => setConfirmDel({ url: `/pengaturan/customers/${c.id}`, label: `customer ${c.name}` })}
-                                            className="text-primary hover:underline"
+                                            className="text-[#C1121F] hover:underline"
                                         >
                                             Hapus
                                         </button>
@@ -647,7 +658,12 @@ export default function SettingsIndex({
                     </Card>
                     <Card title="Supplier">
                         <form onSubmit={submitSupplier} className="mb-4 flex gap-2">
-                            <input value={supplierForm.data.name} onChange={(e) => supplierForm.setData('name', e.target.value)} placeholder="Nama supplier baru" className="h-9 flex-1 rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
+                            <Input
+                                value={supplierForm.data.name}
+                                onChange={(e) => supplierForm.setData('name', e.target.value)}
+                                placeholder="Nama supplier baru"
+                                style={{ flex: 1 }}
+                            />
                             <div className="w-40 shrink-0">
                                 <SearchableSelect
                                     value={supplierForm.data.category_is_custom ? 'lainnya' : supplierForm.data.category}
@@ -663,24 +679,24 @@ export default function SettingsIndex({
                                     className="h-9"
                                 />
                                 {supplierForm.data.category_is_custom && (
-                                    <input
+                                    <Input
                                         value={supplierForm.data.category}
                                         onChange={(e) => supplierForm.setData('category', e.target.value)}
                                         placeholder="Kategori lainnya"
                                         maxLength={60}
                                         required
-                                        className="mt-1 h-9 w-40 rounded-md border-gray-300 text-xs shadow-sm focus:border-primary focus:ring-primary"
+                                        style={{ marginTop: 4 }}
                                     />
                                 )}
-                                <InputError message={supplierForm.errors.category} className="mt-1" />
+                                <FormError message={supplierForm.errors.category} />
                             </div>
-                            <PrimaryButton disabled={supplierForm.processing || !supplierForm.data.name}><Plus size={14} /></PrimaryButton>
+                            <PrimaryButton disabled={supplierForm.processing || !supplierForm.data.name} icon={<Plus size={14} />} />
                         </form>
                         <ul className="max-h-72 space-y-1 overflow-y-auto text-sm">
                             {(suppliers ?? []).map((s: any) => (
-                                <li key={s.id} className="flex items-center justify-between gap-2 rounded-lg border border-hairline px-3 py-1.5">
-                                    <span className="text-ink">{s.name}</span>
-                                    <span className="text-xs capitalize text-muted">{s.category}</span>
+                                <li key={s.id} className="flex items-center justify-between gap-2 rounded-lg border border-[#E7E1D9] px-3 py-1.5">
+                                    <span className="text-[#1C1B1A]">{s.name}</span>
+                                    <span className="text-xs capitalize text-[#8A8580]">{s.category}</span>
                                     <span className="flex gap-2 text-xs font-medium">
                                         <button
                                             type="button"
@@ -697,14 +713,14 @@ export default function SettingsIndex({
                                                 });
                                                 setModal('editSupplier');
                                             }}
-                                            className="text-primary hover:underline"
+                                            className="text-[#C1121F] hover:underline"
                                         >
                                             Edit
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => setConfirmDel({ url: `/pengaturan/suppliers/${s.id}`, label: `supplier ${s.name}` })}
-                                            className="text-primary hover:underline"
+                                            className="text-[#C1121F] hover:underline"
                                         >
                                             Hapus
                                         </button>
@@ -716,7 +732,11 @@ export default function SettingsIndex({
                     <div className="space-y-5">
                         <Card title="Katalog Jasa & Biaya">
                             <form onSubmit={submitCatalog} className="mb-4 space-y-2">
-                                <input value={catalogForm.data.name} onChange={(e) => catalogForm.setData('name', e.target.value)} placeholder="Nama katalog" className="h-9 w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
+                                <Input
+                                    value={catalogForm.data.name}
+                                    onChange={(e) => catalogForm.setData('name', e.target.value)}
+                                    placeholder="Nama katalog"
+                                />
                                 <div className="flex gap-2">
                                     <SearchableSelect
                                         value={catalogForm.data.kind}
@@ -727,15 +747,15 @@ export default function SettingsIndex({
                                         onChange={(value) => catalogForm.setData('kind', value)}
                                         className="flex-1"
                                     />
-                                    <PriceInput value={catalogForm.data.default_price} onChange={(e) => catalogForm.setData('default_price', e.target.value)} placeholder="Harga" className="h-9 w-32 rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
-                                    <PrimaryButton disabled={catalogForm.processing || !catalogForm.data.name}><Plus size={14} /></PrimaryButton>
+                                    <PriceInput value={catalogForm.data.default_price} onChange={(e) => catalogForm.setData('default_price', e.target.value)} placeholder="Harga" className="h-9 w-32" />
+                                    <PrimaryButton disabled={catalogForm.processing || !catalogForm.data.name} icon={<Plus size={14} />} />
                                 </div>
                             </form>
                             <ul className="max-h-52 space-y-1 overflow-y-auto text-sm">
                                 {(serviceCatalog ?? []).map((s: any) => (
-                                    <li key={s.id} className="flex items-center justify-between gap-2 rounded-lg border border-hairline px-3 py-1.5">
-                                        <span className={classNames('text-ink', s.kind === 'biaya' && 'text-primary')}>{s.name}</span>
-                                        <span className="tabular-nums text-muted">{formatRupiah(s.default_price)}</span>
+                                    <li key={s.id} className="flex items-center justify-between gap-2 rounded-lg border border-[#E7E1D9] px-3 py-1.5">
+                                        <span className={classNames('text-[#1C1B1A]', s.kind === 'biaya' && 'text-[#C1121F]')}>{s.name}</span>
+                                        <span className="tabular-nums text-[#8A8580]">{formatRupiah(s.default_price)}</span>
                                         <span className="flex gap-2 text-xs font-medium">
                                             <button
                                                 type="button"
@@ -744,14 +764,14 @@ export default function SettingsIndex({
                                                     editCatalogForm.setData({ name: s.name, kind: s.kind, default_price: String(s.default_price) });
                                                     setModal('editCatalog');
                                                 }}
-                                                className="text-primary hover:underline"
+                                                className="text-[#C1121F] hover:underline"
                                             >
                                                 Edit
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => setConfirmDel({ url: `/pengaturan/katalog/${s.id}`, label: `katalog ${s.name}` })}
-                                                className="text-primary hover:underline"
+                                                className="text-[#C1121F] hover:underline"
                                             >
                                                 Hapus
                                             </button>
@@ -763,9 +783,9 @@ export default function SettingsIndex({
                         <Card title="Bagan Akun (COA)">
                             <ul className="max-h-48 space-y-1 overflow-y-auto text-sm">
                                 {(accountsList ?? []).map((a: any) => (
-                                    <li key={a.id} className="flex justify-between border-b border-hairline py-1">
-                                        <span className="font-mono text-xs text-muted">{a.code}</span>
-                                        <span className="text-ink">{a.name}</span>
+                                    <li key={a.id} className="flex justify-between border-b border-[#E7E1D9] py-1">
+                                        <span className="font-mono text-xs text-[#8A8580]">{a.code}</span>
+                                        <span className="text-[#1C1B1A]">{a.name}</span>
                                     </li>
                                 ))}
                             </ul>
@@ -773,61 +793,59 @@ export default function SettingsIndex({
                     </div>
                 </div>
             )}
-            {/* Modal: Edit Pengguna */}
+
             <Modal show={modal === 'editUser'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitEditUser} className="p-6">
-                    <h2 className="text-lg font-semibold text-ink">Edit Pengguna — {editUser?.email}</h2>
+                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit Pengguna — {editUser?.email}</h2>
                     <div className="mt-4 space-y-3">
-                        <div><label className="text-xs font-medium text-muted">Nama *</label>
-                            <input value={editUserForm.data.name} onChange={(e) => editUserForm.setData('name', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Email *</label>
-                            <input value={editUserForm.data.email} onChange={(e) => editUserForm.setData('email', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Role *</label>
+                        <div><label className="text-xs font-medium text-[#8A8580]">Nama *</label>
+                            <Input value={editUserForm.data.name} onChange={(e) => editUserForm.setData('name', e.target.value)} style={{ marginTop: 4 }} /></div>
+                        <div><label className="text-xs font-medium text-[#8A8580]">Email *</label>
+                            <Input value={editUserForm.data.email} onChange={(e) => editUserForm.setData('email', e.target.value)} style={{ marginTop: 4 }} /></div>
+                        <div><label className="text-xs font-medium text-[#8A8580]">Role *</label>
                             <SearchableSelect
                                 value={editUserForm.data.role}
                                 options={(roles ?? []).map((r: any) => ({ value: r.slug, label: r.name }))}
                                 onChange={(value) => editUserForm.setData('role', value)}
                                 required
                             /></div>
-                        <div><label className="text-xs font-medium text-muted">Password Baru (opsional, min 8)</label>
-                            <input type="password" value={editUserForm.data.password} onChange={(e) => editUserForm.setData('password', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                        <div><label className="text-xs font-medium text-[#8A8580]">Password Baru (opsional, min 8)</label>
+                            <Input type="password" value={editUserForm.data.password} onChange={(e) => editUserForm.setData('password', e.target.value)} style={{ marginTop: 4 }} /></div>
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
-                        <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
+                        <SecondaryButton onClick={() => setModal(null)}>Batal</SecondaryButton>
                         <PrimaryButton disabled={editUserForm.processing}>Simpan</PrimaryButton>
                     </div>
                 </form>
             </Modal>
 
-            {/* Modal: Edit Customer */}
             <Modal show={modal === 'editCustomer'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitEditCustomer} className="p-6">
-                    <h2 className="text-lg font-semibold text-ink">Edit Customer — {editCustomer?.name}</h2>
+                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit Customer — {editCustomer?.name}</h2>
                     <div className="mt-4 space-y-3">
-                        <div><label className="text-xs font-medium text-muted">Nama *</label>
-                            <input value={editCustomerForm.data.name} onChange={(e) => editCustomerForm.setData('name', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">NPWP</label>
-                            <input value={editCustomerForm.data.npwp} onChange={(e) => editCustomerForm.setData('npwp', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Alamat</label>
-                            <input value={editCustomerForm.data.address} onChange={(e) => editCustomerForm.setData('address', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Telepon</label>
-                            <input value={editCustomerForm.data.phone} onChange={(e) => editCustomerForm.setData('phone', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                        <div><label className="text-xs font-medium text-[#8A8580]">Nama *</label>
+                            <Input value={editCustomerForm.data.name} onChange={(e) => editCustomerForm.setData('name', e.target.value)} style={{ marginTop: 4 }} /></div>
+                        <div><label className="text-xs font-medium text-[#8A8580]">NPWP</label>
+                            <Input value={editCustomerForm.data.npwp} onChange={(e) => editCustomerForm.setData('npwp', e.target.value)} style={{ marginTop: 4 }} /></div>
+                        <div><label className="text-xs font-medium text-[#8A8580]">Alamat</label>
+                            <Input value={editCustomerForm.data.address} onChange={(e) => editCustomerForm.setData('address', e.target.value)} style={{ marginTop: 4 }} /></div>
+                        <div><label className="text-xs font-medium text-[#8A8580]">Telepon</label>
+                            <Input value={editCustomerForm.data.phone} onChange={(e) => editCustomerForm.setData('phone', e.target.value)} style={{ marginTop: 4 }} /></div>
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
-                        <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
+                        <SecondaryButton onClick={() => setModal(null)}>Batal</SecondaryButton>
                         <PrimaryButton disabled={editCustomerForm.processing}>Simpan</PrimaryButton>
                     </div>
                 </form>
             </Modal>
 
-            {/* Modal: Edit Supplier */}
             <Modal show={modal === 'editSupplier'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitEditSupplier} className="p-6">
-                    <h2 className="text-lg font-semibold text-ink">Edit Supplier — {editSupplier?.name}</h2>
+                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit Supplier — {editSupplier?.name}</h2>
                     <div className="mt-4 space-y-3">
-                        <div><label className="text-xs font-medium text-muted">Nama *</label>
-                            <input value={editSupplierForm.data.name} onChange={(e) => editSupplierForm.setData('name', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Kategori</label>
+                        <div><label className="text-xs font-medium text-[#8A8580]">Nama *</label>
+                            <Input value={editSupplierForm.data.name} onChange={(e) => editSupplierForm.setData('name', e.target.value)} style={{ marginTop: 4 }} /></div>
+                        <div><label className="text-xs font-medium text-[#8A8580]">Kategori</label>
                             <SearchableSelect
                                 value={editSupplierForm.data.category_is_custom ? 'lainnya' : editSupplierForm.data.category}
                                 options={[
@@ -848,37 +866,36 @@ export default function SettingsIndex({
                             /></div>
                         {editSupplierForm.data.category_is_custom && (
                             <div>
-                                <label className="text-xs font-medium text-muted">Kategori Lainnya</label>
-                                <input
+                                <label className="text-xs font-medium text-[#8A8580]">Kategori Lainnya</label>
+                                <Input
                                     value={editSupplierForm.data.category === 'lainnya' ? '' : editSupplierForm.data.category}
                                     onChange={(e) => editSupplierForm.setData('category', e.target.value)}
                                     placeholder="Masukkan kategori"
                                     maxLength={60}
                                     required={editSupplierForm.data.category !== 'lainnya'}
-                                    className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                                    style={{ marginTop: 4 }}
                                 />
-                                <InputError message={editSupplierForm.errors.category} className="mt-1" />
+                                <FormError message={editSupplierForm.errors.category} />
                             </div>
                         )}
-                        <div><label className="text-xs font-medium text-muted">Telepon</label>
-                            <input value={editSupplierForm.data.phone} onChange={(e) => editSupplierForm.setData('phone', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                        <div><label className="text-xs font-medium text-[#8A8580]">Telepon</label>
+                            <Input value={editSupplierForm.data.phone} onChange={(e) => editSupplierForm.setData('phone', e.target.value)} style={{ marginTop: 4 }} /></div>
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
-                        <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
+                        <SecondaryButton onClick={() => setModal(null)}>Batal</SecondaryButton>
                         <PrimaryButton disabled={editSupplierForm.processing}>Simpan</PrimaryButton>
                     </div>
                 </form>
             </Modal>
 
-            {/* Modal: Edit Katalog */}
             <Modal show={modal === 'editCatalog'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitEditCatalog} className="p-6">
-                    <h2 className="text-lg font-semibold text-ink">Edit Katalog — {editCatalog?.name}</h2>
+                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit Katalog — {editCatalog?.name}</h2>
                     <div className="mt-4 space-y-3">
-                        <div><label className="text-xs font-medium text-muted">Nama *</label>
-                            <input value={editCatalogForm.data.name} onChange={(e) => editCatalogForm.setData('name', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                        <div><label className="text-xs font-medium text-[#8A8580]">Nama *</label>
+                            <Input value={editCatalogForm.data.name} onChange={(e) => editCatalogForm.setData('name', e.target.value)} style={{ marginTop: 4 }} /></div>
                         <div className="grid grid-cols-2 gap-3">
-                            <div><label className="text-xs font-medium text-muted">Jenis</label>
+                            <div><label className="text-xs font-medium text-[#8A8580]">Jenis</label>
                                 <SearchableSelect
                                     value={editCatalogForm.data.kind}
                                     options={[
@@ -887,26 +904,25 @@ export default function SettingsIndex({
                                     ]}
                                     onChange={(value) => editCatalogForm.setData('kind', value)}
                                 /></div>
-                            <div><label className="text-xs font-medium text-muted">Harga Default *</label>
-                                <PriceInput value={editCatalogForm.data.default_price} onChange={(e) => editCatalogForm.setData('default_price', e.target.value)} className="mt-1 block w-full" /></div>
+                            <div><label className="text-xs font-medium text-[#8A8580]">Harga Default *</label>
+                                <PriceInput value={editCatalogForm.data.default_price} onChange={(e) => editCatalogForm.setData('default_price', e.target.value)} /></div>
                         </div>
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
-                        <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
+                        <SecondaryButton onClick={() => setModal(null)}>Batal</SecondaryButton>
                         <PrimaryButton disabled={editCatalogForm.processing}>Simpan</PrimaryButton>
                     </div>
                 </form>
             </Modal>
 
-            {/* Modal: Edit Kategori */}
             <Modal show={modal === 'editCategory'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitEditCategory} className="p-6">
-                    <h2 className="text-lg font-semibold text-ink">Edit Kategori — {editCategory?.code}</h2>
+                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit Kategori — {editCategory?.code}</h2>
                     <div className="mt-4 space-y-3">
-                        <div><label className="text-xs font-medium text-muted">Nama *</label>
-                            <input value={editCategoryForm.data.name} onChange={(e) => editCategoryForm.setData('name', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                        <div><label className="text-xs font-medium text-[#8A8580]">Nama *</label>
+                            <Input value={editCategoryForm.data.name} onChange={(e) => editCategoryForm.setData('name', e.target.value)} style={{ marginTop: 4 }} /></div>
                         <div className="grid grid-cols-2 gap-3">
-                            <div><label className="text-xs font-medium text-muted">Kelompok</label>
+                            <div><label className="text-xs font-medium text-[#8A8580]">Kelompok</label>
                                 <SearchableSelect
                                     value={editCategoryForm.data.group_code}
                                     options={['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((value) => ({
@@ -915,28 +931,27 @@ export default function SettingsIndex({
                                     }))}
                                     onChange={(value) => editCategoryForm.setData('group_code', value)}
                                 /></div>
-                            <div><label className="text-xs font-medium text-muted">Urutan</label>
-                                <NumericInput value={editCategoryForm.data.sort} onChange={(e) => editCategoryForm.setData('sort', e.target.value)} className="mt-1 block w-full" /></div>
+                            <div><label className="text-xs font-medium text-[#8A8580]">Urutan</label>
+                                <NumericInput value={editCategoryForm.data.sort} onChange={(e) => editCategoryForm.setData('sort', e.target.value)} /></div>
                         </div>
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
-                        <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
+                        <SecondaryButton onClick={() => setModal(null)}>Batal</SecondaryButton>
                         <PrimaryButton disabled={editCategoryForm.processing}>Simpan</PrimaryButton>
                     </div>
                 </form>
             </Modal>
 
-            {/* Modal: Tambah Kategori */}
             <Modal show={modal === 'addCategory'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitAddCategory} className="p-6">
-                    <h2 className="text-lg font-semibold text-ink">Tambah Kategori Dokumen</h2>
+                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Tambah Kategori Dokumen</h2>
                     <div className="mt-4 space-y-3">
-                        <div><label className="text-xs font-medium text-muted">Kode *</label>
-                            <input value={addCategoryForm.data.code} onChange={(e) => addCategoryForm.setData('code', e.target.value)} placeholder="mis. H1" className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Nama *</label>
-                            <input value={addCategoryForm.data.name} onChange={(e) => addCategoryForm.setData('name', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                        <div><label className="text-xs font-medium text-[#8A8580]">Kode *</label>
+                            <Input value={addCategoryForm.data.code} onChange={(e) => addCategoryForm.setData('code', e.target.value)} placeholder="mis. H1" style={{ marginTop: 4 }} /></div>
+                        <div><label className="text-xs font-medium text-[#8A8580]">Nama *</label>
+                            <Input value={addCategoryForm.data.name} onChange={(e) => addCategoryForm.setData('name', e.target.value)} style={{ marginTop: 4 }} /></div>
                         <div className="grid grid-cols-2 gap-3">
-                            <div><label className="text-xs font-medium text-muted">Kelompok</label>
+                            <div><label className="text-xs font-medium text-[#8A8580]">Kelompok</label>
                                 <SearchableSelect
                                     value={addCategoryForm.data.group_code}
                                     options={['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((value) => ({
@@ -945,35 +960,34 @@ export default function SettingsIndex({
                                     }))}
                                     onChange={(value) => addCategoryForm.setData('group_code', value)}
                                 /></div>
-                            <div><label className="text-xs font-medium text-muted">Urutan</label>
-                                <NumericInput value={addCategoryForm.data.sort} onChange={(e) => addCategoryForm.setData('sort', e.target.value)} className="mt-1 block w-full" /></div>
+                            <div><label className="text-xs font-medium text-[#8A8580]">Urutan</label>
+                                <NumericInput value={addCategoryForm.data.sort} onChange={(e) => addCategoryForm.setData('sort', e.target.value)} /></div>
                         </div>
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
-                        <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
+                        <SecondaryButton onClick={() => setModal(null)}>Batal</SecondaryButton>
                         <PrimaryButton disabled={addCategoryForm.processing}>Simpan Kategori</PrimaryButton>
                     </div>
                 </form>
             </Modal>
 
-            {/* Modal: Edit Template */}
             <Modal show={modal === 'editTemplate'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitEditTemplate} className="p-6">
-                    <h2 className="text-lg font-semibold text-ink">Edit Template — {editTemplate?.code}</h2>
+                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit Template — {editTemplate?.code}</h2>
                     <div className="mt-4 space-y-3">
-                        <div><label className="text-xs font-medium text-muted">Nama *</label>
-                            <input value={editTemplateForm.data.name} onChange={(e) => editTemplateForm.setData('name', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Pola Nomor Terbit</label>
-                            <input value={editTemplateForm.data.numbering_pattern} onChange={(e) => editTemplateForm.setData('numbering_pattern', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 font-mono text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Pola Nomor Arsip</label>
-                            <input value={editTemplateForm.data.archive_pattern} onChange={(e) => editTemplateForm.setData('archive_pattern', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 font-mono text-sm focus:border-primary focus:ring-primary" /></div>
+                        <div><label className="text-xs font-medium text-[#8A8580]">Nama *</label>
+                            <Input value={editTemplateForm.data.name} onChange={(e) => editTemplateForm.setData('name', e.target.value)} style={{ marginTop: 4 }} /></div>
+                        <div><label className="text-xs font-medium text-[#8A8580]">Pola Nomor Terbit</label>
+                            <Input value={editTemplateForm.data.numbering_pattern} onChange={(e) => editTemplateForm.setData('numbering_pattern', e.target.value)} className="font-mono" style={{ marginTop: 4 }} /></div>
+                        <div><label className="text-xs font-medium text-[#8A8580]">Pola Nomor Arsip</label>
+                            <Input value={editTemplateForm.data.archive_pattern} onChange={(e) => editTemplateForm.setData('archive_pattern', e.target.value)} className="font-mono" style={{ marginTop: 4 }} /></div>
                         <label className="flex items-center gap-2 text-sm">
-                            <input type="checkbox" checked={editTemplateForm.data.enabled} onChange={(e) => editTemplateForm.setData('enabled', e.target.checked)} className="rounded border-gray-300 text-primary focus:ring-primary" />
+                            <input type="checkbox" checked={editTemplateForm.data.enabled} onChange={(e) => editTemplateForm.setData('enabled', e.target.checked)} className="rounded border-[#E7E1D9] text-[#C1121F] focus:ring-[#C1121F]" />
                             Template aktif (muncul di form penerbitan)
                         </label>
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
-                        <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
+                        <SecondaryButton onClick={() => setModal(null)}>Batal</SecondaryButton>
                         <PrimaryButton disabled={editTemplateForm.processing}>Simpan</PrimaryButton>
                     </div>
                 </form>

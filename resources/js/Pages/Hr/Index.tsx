@@ -14,9 +14,9 @@ import { type PageProps } from '@/types';
 import { useSync } from '@/lib/sync/SyncProvider';
 import { Head, router, useForm } from '@inertiajs/react';
 import { AlertTriangle, Briefcase, CheckCircle2, Clock, Plus, Printer, ShieldCheck, Trash2, Users } from 'lucide-react';
+import { Button, Checkbox, Col, Divider, Form, Input, InputNumber, Row, Select as AntSelect, Table, Tag } from 'antd';
 import { FormEvent, useState } from 'react';
 
-// Fallback lama — server mengirim rankList (36 jabatan materi gAJI + kadet + lainnya)
 const LEGACY_RANKS: [string, string][] = [
     ['nakhoda', 'Nakhoda'],
     ['chief_engineer', 'Chief Engineer'],
@@ -40,8 +40,6 @@ const CERT_TYPES: [string, string][] = [
     ['skk', 'SKK'], ['medical_fitness', 'Medical Fitness'], ['roc', 'ROC'], ['cdc', 'CDC / Buku Pelaut (lama)'],
     ['passport', 'Passpor'], ['lainnya', 'Lainnya'],
 ];
-
-const INPUT_CLS = 'mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary';
 
 export default function HrIndex({
     tab,
@@ -68,7 +66,6 @@ export default function HrIndex({
     horAccess?: boolean;
     canHorManage?: boolean;
 }>) {
-    // 36 jabatan materi gAJI (+ kadet/lainnya) dari server; fallback legacy
     const RANKS: [string, string][] = (rankList ?? LEGACY_RANKS.map(([value, label]) => ({ value, label })))
         .map((r: any) => [String(r.value ?? r[0]), String(r.label ?? r[1])]);
 
@@ -114,7 +111,6 @@ export default function HrIndex({
         name: '', nik: '', npwp: '', position: '', department: '', join_date: '',
         status: 'aktif', base_salary: '', allowances: '',
     });
-    // ===== Hours of Rest (MLC 2006) =====
     const { engine } = useSync();
     const HOR_VLABEL: Record<string, string> = {
         rest_min_10h: 'Istirahat < 10 jam / 24 jam',
@@ -166,9 +162,6 @@ export default function HrIndex({
 
     const submitHor = (e: FormEvent) => {
         e.preventDefault();
-
-        // Offline: catatan masuk outbox sinkronisasi (client_uuid = idempoten),
-        // dikirim ke kantor begitu kembali online — aturan WLR dihitung server.
         if (typeof navigator !== 'undefined' && !navigator.onLine) {
             void engine.enqueue({
                 entity_type: 'hours_of_rest',
@@ -187,7 +180,6 @@ export default function HrIndex({
             setEditHor(null);
             return;
         }
-
         const opts = { preserveScroll: true, onSuccess: () => { setModal(null); setEditHor(null); } };
         if (editHor) {
             horForm.put(`/sdm/hor/${editHor.id}`, opts);
@@ -202,7 +194,6 @@ export default function HrIndex({
         )));
     };
 
-    // Pratinjau WLR di form (aturan sama dgn server)
     const horPreview = (() => {
         let rest = 0;
         let longest = 0;
@@ -322,6 +313,93 @@ export default function HrIndex({
         editAssignmentForm.put(`/sdm/penempatan/${editAssignment.id}`, { preserveScroll: true, onSuccess: () => { setModal(null); setEditAssignment(null); } });
     };
 
+    const employeeColumns = [
+        { title: 'Nama', dataIndex: 'name', key: 'name', render: (v: string) => <span className="font-medium text-[#1C1B1A]">{v}</span> },
+        { title: 'Jabatan', dataIndex: 'position', key: 'position', render: (v: string) => <span className="text-[#8A8580]">{v}</span> },
+        { title: 'Departemen', dataIndex: 'department', key: 'department', render: (v: string) => <span className="text-[#8A8580]">{v}</span> },
+        { title: 'Masuk', dataIndex: 'join_date', key: 'join_date', render: (v: string) => <span className="text-[#8A8580]">{formatDate(v)}</span> },
+        { title: 'Pokok', dataIndex: 'base_salary', key: 'base_salary', render: (v: any) => <span className="tabular-nums">{formatRupiah(v)}</span> },
+        { title: 'Tunjangan', dataIndex: 'allowances', key: 'allowances', render: (v: any) => <span className="tabular-nums">{formatRupiah(v)}</span> },
+        {
+            title: 'Status', dataIndex: 'status', key: 'status',
+            render: (v: string) => <Badge tone={v === 'aktif' ? 'success' : 'neutral'}>{v}</Badge>,
+        },
+        {
+            title: 'Aksi', key: 'aksi',
+            render: (_: any, r: Record<string, any>) => (
+                <div className="flex gap-2 text-xs font-medium">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setEditEmployee(r);
+                            editEmployeeForm.setData({
+                                name: r.name, nik: r.nik ?? '', npwp: r.npwp ?? '',
+                                position: r.position, department: r.department ?? '',
+                                join_date: r.join_date ? String(r.join_date).slice(0, 10) : '',
+                                status: r.status, base_salary: String(r.base_salary),
+                                allowances: String(r.allowances ?? 0),
+                            });
+                            setModal('editEmployee');
+                        }}
+                        className="text-[#C1121F] hover:underline"
+                    >
+                        Edit
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setConfirmDel({ url: `/sdm/karyawan/${r.id}`, label: `karyawan ${r.name}` })}
+                        className="text-[#C1121F] hover:underline"
+                    >
+                        Hapus
+                    </button>
+                </div>
+            ),
+        },
+    ];
+
+    const horColumns = [
+        { title: 'Tanggal', dataIndex: 'log_date', key: 'log_date', render: (v: string) => <span className="whitespace-nowrap">{formatDate(v)}</span> },
+        { title: 'Awak', dataIndex: 'crew_name', key: 'crew_name' },
+        {
+            title: 'Blok Istirahat', key: 'rest_entries',
+            render: (_: any, r: Record<string, any>) => (
+                (r.rest_entries ?? []).length > 0
+                    ? (r.rest_entries as any[]).map((en, i) => `${en.start}-${en.end}`).join(', ')
+                    : '—'
+            ),
+        },
+        {
+            title: 'Istirahat', key: 'total_rest_minutes',
+            render: (_: any, r: Record<string, any>) => `${Math.round(Number(r.total_rest_minutes) / 6) / 10} jam`,
+        },
+        {
+            title: 'Kerja', key: 'total_work_minutes',
+            render: (_: any, r: Record<string, any>) => `${Math.round(Number(r.total_work_minutes) / 6) / 10} jam`,
+        },
+        {
+            title: 'Status WLR', key: 'status',
+            render: (_: any, r: Record<string, any>) => horStatusBadge(r),
+        },
+        ...(canHorManage ? [{
+            title: 'Aksi', key: 'aksi',
+            render: (_: any, r: Record<string, any>) => (
+                <div className="flex gap-2">
+                    <button type="button" onClick={() => openHorEdit(r)} className="text-[#C1121F] hover:underline" title="Ubah">
+                        <ShieldCheck size={14} />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setConfirmDel({ url: `/sdm/hor/${r.id}`, label: `Jam istirahat ${r.log_date}` })}
+                        className="text-[#C1121F] hover:underline"
+                        title="Hapus"
+                    >
+                        <Trash2 size={14} />
+                    </button>
+                </div>
+            ),
+        }] : []),
+    ];
+
     return (
         <AuthenticatedLayout>
             <Head title="SDM & Karyawan" />
@@ -334,27 +412,30 @@ export default function HrIndex({
                         {tab === 'abk' && (
                             <>
                                 <div className="flex items-center gap-1.5">
-                                    <select value={printVessel} onChange={(e) => setPrintVessel(e.target.value)} className="rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                        <option value="">Crew List kapal…</option>
-                                        {(vessels ?? []).map((v) => <option key={v.id} value={v.id}>{v.vessel_name}</option>)}
-                                    </select>
-                                    <button
-                                        type="button"
+                                    <AntSelect
+                                        value={printVessel || undefined}
+                                        onChange={(v) => setPrintVessel(v ?? '')}
+                                        placeholder="Crew List kapal…"
+                                        style={{ width: 200 }}
+                                        allowClear
+                                        options={(vessels ?? []).map((v) => ({ value: String(v.id), label: v.vessel_name }))}
+                                    />
+                                    <SecondaryButton
                                         disabled={!printVessel}
                                         onClick={() => window.open(`/sdm/crew-list/${printVessel}/cetak`, '_blank')}
-                                        className="inline-flex items-center gap-1.5 rounded-lg border border-hairline px-2.5 py-1.5 text-xs font-medium text-ink hover:border-primary/40 disabled:opacity-50"
+                                        icon={<Printer size={13} />}
                                     >
-                                        <Printer size={13} /> Cetak
-                                    </button>
+                                        Cetak
+                                    </SecondaryButton>
                                 </div>
-                                <PrimaryButton onClick={() => setModal('crew')}><Plus size={15} className="inline me-1" /> ABK Baru</PrimaryButton>
+                                <PrimaryButton onClick={() => setModal('crew')} icon={<Plus size={15} />}>ABK Baru</PrimaryButton>
                             </>
                         )}
                         {tab === 'hor' && canHorManage && (
-                            <PrimaryButton onClick={openHorAdd}><Plus size={15} className="inline me-1" /> Catat Istirahat</PrimaryButton>
+                            <PrimaryButton onClick={openHorAdd} icon={<Plus size={15} />}>Catat Istirahat</PrimaryButton>
                         )}
                         {tab === 'karyawan' && (
-                            <PrimaryButton onClick={() => setModal('employee')}><Plus size={15} className="inline me-1" /> Karyawan Baru</PrimaryButton>
+                            <PrimaryButton onClick={() => setModal('employee')} icon={<Plus size={15} />}>Karyawan Baru</PrimaryButton>
                         )}
                     </div>
                 }
@@ -374,127 +455,99 @@ export default function HrIndex({
                     >
                         <div className="flex flex-wrap items-end gap-3">
                             <div>
-                                <label className="text-xs font-medium text-muted">Awak</label>
-                                <select
-                                    value={horFilter.crew_id}
-                                    onChange={(e) => setHorFilter((f) => ({ ...f, crew_id: e.target.value }))}
-                                    className={classNames(INPUT_CLS, 'w-56')}
-                                >
-                                    <option value="">— semua awak —</option>
-                                    {(horCrew ?? []).map((c) => <option key={c.id} value={c.id}>{c.name} — {c.rank}</option>)}
-                                </select>
+                                <label className="text-xs font-medium text-[#8A8580]">Awak</label>
+                                <AntSelect
+                                    value={horFilter.crew_id || undefined}
+                                    onChange={(v) => setHorFilter((f) => ({ ...f, crew_id: v ?? '' }))}
+                                    placeholder="— semua awak —"
+                                    style={{ width: 224 }}
+                                    allowClear
+                                    options={(horCrew ?? []).map((c) => ({ value: String(c.id), label: `${c.name} — ${c.rank}` }))}
+                                />
                             </div>
                             <div>
-                                <label className="text-xs font-medium text-muted">Bulan</label>
-                                <input
+                                <label className="text-xs font-medium text-[#8A8580]">Bulan</label>
+                                <Input
                                     type="month"
                                     value={horFilter.month}
                                     onChange={(e) => setHorFilter((f) => ({ ...f, month: e.target.value }))}
-                                    className={classNames(INPUT_CLS, 'w-44')}
+                                    style={{ width: 176 }}
                                 />
                             </div>
-                            <SecondaryButton type="button" onClick={reloadHor}>Terapkan</SecondaryButton>
+                            <SecondaryButton onClick={reloadHor}>Terapkan</SecondaryButton>
                             {horFilter.crew_id && (
-                                <button
-                                    type="button"
+                                <SecondaryButton
                                     onClick={() => window.open(`/sdm/hor/cetak/${horFilter.crew_id}?month=${horFilter.month}`, '_blank')}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-hairline px-2.5 py-2 text-xs font-medium text-ink hover:border-primary/40"
+                                    icon={<Printer size={13} />}
                                 >
-                                    <Printer size={13} /> Cetak Register (PSC)
-                                </button>
+                                    Cetak Register (PSC)
+                                </SecondaryButton>
                             )}
                         </div>
 
-                        <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                        <Row gutter={12} className="mt-4">
                             {[
-                                { label: 'Hari tercatat', value: String(horStats.recorded), tone: 'text-ink' },
-                                { label: 'Patuh WLR', value: String(horStats.compliant), tone: 'text-ok' },
-                                { label: 'Langgar', value: String(horStats.violations), tone: horStats.violations > 0 ? 'text-primary' : 'text-muted' },
-                                { label: 'Rata² istirahat', value: `${horStats.avgRest} jam`, tone: 'text-ink' },
+                                { label: 'Hari tercatat', value: String(horStats.recorded), color: '#1C1B1A' },
+                                { label: 'Patuh WLR', value: String(horStats.compliant), color: '#2F8F68' },
+                                { label: 'Langgar', value: String(horStats.violations), color: horStats.violations > 0 ? '#C1121F' : '#8A8580' },
+                                { label: 'Rata² istirahat', value: `${horStats.avgRest} jam`, color: '#1C1B1A' },
                             ].map((s) => (
-                                <div key={s.label} className="rounded-lg bg-appbg px-3 py-2">
-                                    <div className="text-xs text-muted">{s.label}</div>
-                                    <div className={classNames('text-lg font-semibold', s.tone)}>{s.value}</div>
-                                </div>
+                                <Col key={s.label} xs={12} lg={6}>
+                                    <div className="rounded-lg px-3 py-2" style={{ background: '#FAF7F2' }}>
+                                        <div className="text-xs text-[#8A8580]">{s.label}</div>
+                                        <div className="text-lg font-semibold" style={{ color: s.color }}>{s.value}</div>
+                                    </div>
+                                </Col>
                             ))}
-                        </div>
+                        </Row>
                     </Card>
 
                     {horWeeks.length > 0 && (
                         <Card title="Kepatuhan Mingguan (77 jam / 7 hari)">
-                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                            <Row gutter={[8, 8]}>
                                 {horWeeks.map((w) => (
-                                    <div key={w.label} className="rounded-lg border border-hairline px-3 py-2">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-sm font-medium text-ink">{w.label}</span>
-                                            {w.ok ? (
-                                                <Badge tone="success"><CheckCircle2 size={11} /> Patuh</Badge>
-                                            ) : (
-                                                <Badge tone="danger"><AlertTriangle size={11} /> {w.complete ? 'Langgar' : 'Belum lengkap'}</Badge>
-                                            )}
+                                    <Col key={w.label} xs={24} sm={12} lg={6}>
+                                        <div className="rounded-lg border border-[#E7E1D9] px-3 py-2">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm font-medium text-[#1C1B1A]">{w.label}</span>
+                                                {w.ok ? (
+                                                    <Badge tone="success"><CheckCircle2 size={11} /> Patuh</Badge>
+                                                ) : (
+                                                    <Badge tone="danger"><AlertTriangle size={11} /> {w.complete ? 'Langgar' : 'Belum lengkap'}</Badge>
+                                                )}
+                                            </div>
+                                            <div className="mt-1 text-xs text-[#8A8580]">{w.range} · {w.restH} jam {w.complete ? '' : `(${w.restH}/77)`}</div>
                                         </div>
-                                        <div className="mt-1 text-xs text-muted">{w.range} · {w.restH} jam {w.complete ? '' : `(${w.restH}/77)`}</div>
-                                    </div>
+                                    </Col>
                                 ))}
-                            </div>
+                            </Row>
                         </Card>
                     )}
 
                     <Card
                         title="Catatan Harian"
                         actions={canHorManage && horFilter.crew_id ? (
-                            <PrimaryButton onClick={openHorAdd}><Plus size={14} className="inline me-1" /> Catat</PrimaryButton>
+                            <PrimaryButton onClick={openHorAdd} icon={<Plus size={14} />}>Catat</PrimaryButton>
                         ) : null}
                     >
                         {horLogsList.length === 0 ? (
                             <EmptyState
                                 icon={Clock}
                                 title="Belum ada catatan jam istirahat"
-                                description="Pilih awak lalu klik “Catat Istirahat”. Saat offline, catatan masuk antrean sinkronisasi."
+                                description={'Pilih awak lalu klik "Catat Istirahat". Saat offline, catatan masuk antrean sinkronisasi.'}
                             />
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full text-sm">
-                                    <thead className="bg-appbg text-left text-xs uppercase tracking-wide text-muted">
-                                        <tr>{['Tanggal', 'Awak', 'Blok Istirahat', 'Istirahat', 'Kerja', 'Status WLR', ...(canHorManage ? ['Aksi'] : [])].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-hairline">
-                                        {horLogsList.map((log: any) => (
-                                            <tr key={log.id} className="hover:bg-appbg">
-                                                <td className="px-3 py-2 whitespace-nowrap">{formatDate(log.log_date)}</td>
-                                                <td className="px-3 py-2">{log.crew_name}</td>
-                                                <td className="px-3 py-2">
-                                                    {(log.rest_entries ?? []).length > 0
-                                                        ? (log.rest_entries as any[]).map((en, i) => `${en.start}-${en.end}`).join(', ')
-                                                        : '—'}
-                                                </td>
-                                                <td className="px-3 py-2">{Math.round(Number(log.total_rest_minutes) / 6) / 10} jam</td>
-                                                <td className="px-3 py-2">{Math.round(Number(log.total_work_minutes) / 6) / 10} jam</td>
-                                                <td className="px-3 py-2">{horStatusBadge(log)}</td>
-                                                {canHorManage && (
-                                                    <td className="px-3 py-2">
-                                                        <div className="flex gap-2">
-                                                            <button type="button" onClick={() => openHorEdit(log)} className="text-primary hover:underline" title="Ubah">
-                                                                <ShieldCheck size={14} />
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setConfirmDel({ url: `/sdm/hor/${log.id}`, label: `Jam istirahat ${log.log_date}` })}
-                                                                className="text-primary hover:underline"
-                                                                title="Hapus"
-                                                            >
-                                                                <Trash2 size={14} />
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                )}
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                            <Table
+                                dataSource={horLogsList}
+                                columns={horColumns}
+                                rowKey="id"
+                                pagination={false}
+                                size="small"
+                                scroll={{ x: 700 }}
+                                rowClassName={() => 'hover:bg-[#FAF7F2]'}
+                            />
                         )}
-                        <p className="mt-3 text-xs text-muted">
+                        <p className="mt-3 text-xs text-[#8A8580]">
                             Hari tanpa catatan berarti belum dilaporkan awak. Cetak register bulanan lewat tombol di atas untuk berkas inspeksi PSC.
                         </p>
                     </Card>
@@ -514,8 +567,7 @@ export default function HrIndex({
                                     description={`${c.rank_label ?? RANKS.find((r) => r[0] === c.rank)?.[1] ?? c.rank} · ${c.status} · Gaji pokok ${formatRupiah(c.base_salary)}`}
                                     actions={
                                         <div className="flex gap-2">
-                                            <button
-                                                type="button"
+                                            <SecondaryButton
                                                 onClick={() => {
                                                     setEditCrew(c);
                                                     editCrewForm.setData({
@@ -528,47 +580,44 @@ export default function HrIndex({
                                                     });
                                                     setModal('editCrew');
                                                 }}
-                                                className="inline-flex items-center gap-1.5 rounded-lg border border-hairline px-2.5 py-1.5 text-xs font-medium text-ink hover:border-primary/40"
                                             >
                                                 Edit ABK
-                                            </button>
-                                            <button
-                                                type="button"
+                                            </SecondaryButton>
+                                            <Button
+                                                danger
                                                 onClick={() => setConfirmDel({ url: `/sdm/abk/${c.id}`, label: `ABK ${c.name}` })}
-                                                className="inline-flex items-center gap-1.5 rounded-lg border border-hairline px-2.5 py-1.5 text-xs font-medium text-primary hover:border-primary/40"
                                             >
                                                 Hapus
-                                            </button>
-                                            <button
-                                                type="button"
+                                            </Button>
+                                            <SecondaryButton
                                                 onClick={() => { setCertCrewId(c.id); setModal('cert'); }}
-                                                className="inline-flex items-center gap-1.5 rounded-lg border border-hairline px-2.5 py-1.5 text-xs font-medium text-ink hover:border-primary/40"
+                                                icon={<ShieldCheck size={13} />}
                                             >
-                                                <ShieldCheck size={13} /> Tambah Sertifikat
-                                            </button>
+                                                Tambah Sertifikat
+                                            </SecondaryButton>
                                         </div>
                                     }
                                 >
-                                    <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-                                        <div>
+                                    <Row gutter={20}>
+                                        <Col xs={24} lg={12}>
                                             <div className="mb-1.5 flex items-center justify-between">
-                                                <p className="text-xs font-semibold uppercase tracking-wide text-muted">Penempatan</p>
+                                                <p className="text-xs font-semibold uppercase tracking-wide text-[#8A8580]">Penempatan</p>
                                                 <button
                                                     type="button"
                                                     onClick={() => { setAddAssignmentCrewId(c.id); assignmentForm.setData('crew_id', String(c.id)); assignmentForm.setData('role', c.rank); setModal('addAssignment'); }}
-                                                    className="text-xs font-medium text-primary hover:underline"
+                                                    className="text-xs font-medium text-[#C1121F] hover:underline"
                                                 >
                                                     + Tambah
                                                 </button>
                                             </div>
                                             {c.assignments.length === 0 ? (
-                                                <p className="text-sm text-muted">Belum ditempatkan.</p>
+                                                <p className="text-sm text-[#8A8580]">Belum ditempatkan.</p>
                                             ) : (
-                                                <ul className="space-y-1 text-sm">
+                                                <div className="space-y-1">
                                                     {c.assignments.map((a: any, i: number) => (
-                                                        <li key={i} className="flex items-center justify-between rounded-lg border border-hairline px-3 py-1.5">
-                                                            <span className="text-ink">{a.vessel_name}</span>
-                                                            <span className="text-xs text-muted">
+                                                        <div key={i} className="flex items-center justify-between rounded-lg border border-[#E7E1D9] px-3 py-1.5">
+                                                            <span className="text-[#1C1B1A]">{a.vessel_name}</span>
+                                                            <span className="text-xs text-[#8A8580]">
                                                                 {a.role} · {formatDate(a.start_date)} → {formatDate(a.end_date)}
                                                             </span>
                                                             <Badge tone={a.status === 'aktif' ? 'success' : 'neutral'}>{a.status}</Badge>
@@ -586,32 +635,32 @@ export default function HrIndex({
                                                                         });
                                                                         setModal('editAssignment');
                                                                     }}
-                                                                    className="text-primary hover:underline"
+                                                                    className="text-[#C1121F] hover:underline"
                                                                 >
                                                                     Edit
                                                                 </button>
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => setConfirmDel({ url: `/sdm/penempatan/${a.id}`, label: `penempatan ${a.vessel_name} — ${c.name}` })}
-                                                                    className="text-primary hover:underline"
+                                                                    className="text-[#C1121F] hover:underline"
                                                                 >
                                                                     Lepas
                                                                 </button>
                                                             </span>
-                                                        </li>
+                                                        </div>
                                                     ))}
-                                                </ul>
+                                                </div>
                                             )}
-                                            <p className="mt-3 text-xs text-muted">
+                                            <p className="mt-3 text-xs text-[#8A8580]">
                                                 NIK: {c.nik ?? '—'} · {c.birth_place ?? '—'}, {formatDate(c.birth_date)} · HP: {c.phone ?? '—'}
                                             </p>
-                                        </div>
-                                        <div>
-                                            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted">Sertifikat & Kesehatan</p>
+                                        </Col>
+                                        <Col xs={24} lg={12}>
+                                            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[#8A8580]">Sertifikat & Kesehatan</p>
                                             {c.certificates.length === 0 ? (
-                                                <p className="text-sm text-muted">Belum ada sertifikat.</p>
+                                                <p className="text-sm text-[#8A8580]">Belum ada sertifikat.</p>
                                             ) : (
-                                                <ul className="space-y-1.5">
+                                                <div className="space-y-1.5">
                                                     {c.certificates.map((cert: any) => {
                                                         const tone: BadgeTone = cert.days_left === null
                                                             ? 'neutral'
@@ -621,10 +670,10 @@ export default function HrIndex({
                                                                 ? 'warning'
                                                                 : 'success';
                                                         return (
-                                                            <li key={cert.id} id={`record-cert-${cert.id}`} className="flex items-center justify-between rounded-lg border border-hairline px-3 py-1.5 text-sm">
-                                                                <span className="text-ink">
+                                                            <div key={cert.id} id={`record-cert-${cert.id}`} className="flex items-center justify-between rounded-lg border border-[#E7E1D9] px-3 py-1.5 text-sm">
+                                                                <span className="text-[#1C1B1A]">
                                                                     {CERT_TYPES.find((t) => t[0] === cert.cert_type)?.[1] ?? cert.cert_type}
-                                                                    <span className="ms-1.5 text-xs text-muted">{cert.number}</span>
+                                                                    <span className="ms-1.5 text-xs text-[#8A8580]">{cert.number}</span>
                                                                 </span>
                                                                 <Badge tone={tone}>
                                                                     {cert.days_left === null
@@ -647,25 +696,25 @@ export default function HrIndex({
                                                                             });
                                                                             setModal('editCert');
                                                                         }}
-                                                                        className="text-primary hover:underline"
+                                                                        className="text-[#C1121F] hover:underline"
                                                                     >
                                                                         Edit
                                                                     </button>
                                                                     <button
                                                                         type="button"
                                                                         onClick={() => setConfirmDel({ url: `/sdm/abk/${c.id}/sertifikat/${cert.id}`, label: `sertifikat ${cert.cert_type} milik ${c.name}` })}
-                                                                        className="text-primary hover:underline"
+                                                                        className="text-[#C1121F] hover:underline"
                                                                     >
                                                                         Hapus
                                                                     </button>
                                                                 </span>
-                                                            </li>
+                                                            </div>
                                                         );
                                                     })}
-                                                </ul>
+                                                </div>
                                             )}
-                                        </div>
-                                    </div>
+                                        </Col>
+                                    </Row>
                                 </Card>
                                 </div>
                             ))}
@@ -675,365 +724,522 @@ export default function HrIndex({
             )}
 
             {tab === 'karyawan' && (
-                <div className="overflow-hidden rounded-xl border border-hairline bg-white shadow-sm">
-                    <table className="min-w-full text-sm">
-                        <thead className="bg-appbg text-left text-xs uppercase tracking-wide text-muted">
-                            <tr>{['Nama', 'Jabatan', 'Departemen', 'Masuk', 'Pokok', 'Tunjangan', 'Status', 'Aksi'].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr>
-                        </thead>
-                        <tbody className="divide-y divide-hairline">
-                            {(employees ?? []).map((e) => (
-                                <tr key={e.id} className="hover:bg-appbg">
-                                    <td className="px-3 py-2 font-medium text-ink">{e.name}</td>
-                                    <td className="px-3 py-2 text-muted">{e.position}</td>
-                                    <td className="px-3 py-2 text-muted">{e.department}</td>
-                                    <td className="px-3 py-2 text-muted">{formatDate(e.join_date)}</td>
-                                    <td className="px-3 py-2 tabular-nums">{formatRupiah(e.base_salary)}</td>
-                                    <td className="px-3 py-2 tabular-nums">{formatRupiah(e.allowances)}</td>
-                                    <td className="px-3 py-2"><Badge tone={e.status === 'aktif' ? 'success' : 'neutral'}>{e.status}</Badge></td>
-                                    <td className="px-3 py-2">
-                                        <div className="flex gap-2 text-xs font-medium">
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setEditEmployee(e);
-                                                    editEmployeeForm.setData({
-                                                        name: e.name, nik: e.nik ?? '', npwp: e.npwp ?? '',
-                                                        position: e.position, department: e.department ?? '',
-                                                        join_date: e.join_date ? String(e.join_date).slice(0, 10) : '',
-                                                        status: e.status, base_salary: String(e.base_salary),
-                                                        allowances: String(e.allowances ?? 0),
-                                                    });
-                                                    setModal('editEmployee');
-                                                }}
-                                                className="text-primary hover:underline"
-                                            >
-                                                Edit
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setConfirmDel({ url: `/sdm/karyawan/${e.id}`, label: `karyawan ${e.name}` })}
-                                                className="text-primary hover:underline"
-                                            >
-                                                Hapus
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                <Table
+                    dataSource={employees ?? []}
+                    columns={employeeColumns}
+                    rowKey="id"
+                    pagination={false}
+                    size="small"
+                    scroll={{ x: 900 }}
+                    rowClassName={() => 'hover:bg-[#FAF7F2]'}
+                />
             )}
 
             <Modal show={modal === 'crew'} onClose={() => setModal(null)} maxWidth="lg">
                 <form onSubmit={submitCrew} className="p-6">
-                    <h2 className="text-lg font-semibold text-ink">Daftar ABK Baru</h2>
-                    <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">
-                        <div><label className="text-xs font-medium text-muted">Nama *</label>
-                            <input value={crewForm.data.name} onChange={(e) => crewForm.setData('name', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">NIK</label>
-                            <input value={crewForm.data.nik} onChange={(e) => crewForm.setData('nik', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Tempat Lahir</label>
-                            <input value={crewForm.data.birth_place} onChange={(e) => crewForm.setData('birth_place', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Tanggal Lahir</label>
-                            <input type="date" value={crewForm.data.birth_date} onChange={(e) => crewForm.setData('birth_date', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Gender</label>
-                            <select value={crewForm.data.gender} onChange={(e) => crewForm.setData('gender', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                <option value="L">Laki-laki</option><option value="P">Perempuan</option>
-                            </select></div>
-                        <div><label className="text-xs font-medium text-muted">HP</label>
-                            <input value={crewForm.data.phone} onChange={(e) => crewForm.setData('phone', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">NPWP</label>
-                            <input value={crewForm.data.npwp} onChange={(e) => crewForm.setData('npwp', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Kode NIK Internal</label>
-                            <input value={crewForm.data.kode_nik} onChange={(e) => crewForm.setData('kode_nik', e.target.value)} placeholder="020107" className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Kode Pelaut</label>
-                            <input value={crewForm.data.seafarer_code} onChange={(e) => crewForm.setData('seafarer_code', e.target.value)} placeholder="6201297511" className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">SCCW / Sert. Utama</label>
-                            <input value={crewForm.data.sccw} onChange={(e) => crewForm.setData('sccw', e.target.value)} placeholder="ANT IV M / RATINGS" className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">No PKL</label>
-                            <input value={crewForm.data.no_pkl} onChange={(e) => crewForm.setData('no_pkl', e.target.value)} placeholder="0107/BT-MI/S.ya/IV/2024" className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Tanggal Masuk</label>
-                            <input type="date" value={crewForm.data.joined_on} onChange={(e) => crewForm.setData('joined_on', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Jabatan Pelayaran *</label>
-                            <select value={crewForm.data.rank} onChange={(e) => crewForm.setData('rank', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                {RANKS.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                            </select></div>
-                        <div><label className="text-xs font-medium text-muted">Gaji Pokok *</label>
-                            <PriceInput value={crewForm.data.base_salary} onChange={(e) => crewForm.setData('base_salary', e.target.value)} className="mt-1 block w-full" /></div>
-                        <div><label className="text-xs font-medium text-muted">Penempatan Awal</label>
-                            <select value={crewForm.data.vessel_id} onChange={(e) => crewForm.setData('vessel_id', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                <option value="">— belum —</option>
-                                {(vessels ?? []).map((v) => <option key={v.id} value={v.id}>{v.vessel_name}</option>)}
-                            </select></div>
-                        <div><label className="text-xs font-medium text-muted">Status</label>
-                            <select value={crewForm.data.status} onChange={(e) => crewForm.setData('status', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                <option value="aktif">Aktif</option><option value="cuti">Cuti</option><option value="selesai">Selesai</option>
-                            </select></div>
-                    </div>
+                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Daftar ABK Baru</h2>
+                    <Row gutter={12} className="mt-4">
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Nama *</span>}>
+                                <Input value={crewForm.data.name} onChange={(e) => crewForm.setData('name', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">NIK</span>}>
+                                <Input value={crewForm.data.nik} onChange={(e) => crewForm.setData('nik', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Tempat Lahir</span>}>
+                                <Input value={crewForm.data.birth_place} onChange={(e) => crewForm.setData('birth_place', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Tanggal Lahir</span>}>
+                                <Input type="date" value={crewForm.data.birth_date} onChange={(e) => crewForm.setData('birth_date', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Gender</span>}>
+                                <AntSelect
+                                    value={crewForm.data.gender}
+                                    onChange={(v) => crewForm.setData('gender', v)}
+                                    style={{ width: '100%' }}
+                                    options={[{ value: 'L', label: 'Laki-laki' }, { value: 'P', label: 'Perempuan' }]}
+                                />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">HP</span>}>
+                                <Input value={crewForm.data.phone} onChange={(e) => crewForm.setData('phone', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">NPWP</span>}>
+                                <Input value={crewForm.data.npwp} onChange={(e) => crewForm.setData('npwp', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kode NIK Internal</span>}>
+                                <Input value={crewForm.data.kode_nik} onChange={(e) => crewForm.setData('kode_nik', e.target.value)} placeholder="020107" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kode Pelaut</span>}>
+                                <Input value={crewForm.data.seafarer_code} onChange={(e) => crewForm.setData('seafarer_code', e.target.value)} placeholder="6201297511" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">SCCW / Sert. Utama</span>}>
+                                <Input value={crewForm.data.sccw} onChange={(e) => crewForm.setData('sccw', e.target.value)} placeholder="ANT IV M / RATINGS" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">No PKL</span>}>
+                                <Input value={crewForm.data.no_pkl} onChange={(e) => crewForm.setData('no_pkl', e.target.value)} placeholder="0107/BT-MI/S.ya/IV/2024" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Tanggal Masuk</span>}>
+                                <Input type="date" value={crewForm.data.joined_on} onChange={(e) => crewForm.setData('joined_on', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Jabatan Pelayaran *</span>}>
+                                <AntSelect
+                                    value={crewForm.data.rank}
+                                    onChange={(v) => crewForm.setData('rank', v)}
+                                    style={{ width: '100%' }}
+                                    options={RANKS.map(([k, v]) => ({ value: k, label: v }))}
+                                />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Gaji Pokok *</span>}>
+                                <PriceInput value={crewForm.data.base_salary} onChange={(e) => crewForm.setData('base_salary', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Penempatan Awal</span>}>
+                                <AntSelect
+                                    value={crewForm.data.vessel_id || undefined}
+                                    onChange={(v) => crewForm.setData('vessel_id', v ?? '')}
+                                    placeholder="— belum —"
+                                    style={{ width: '100%' }}
+                                    allowClear
+                                    options={(vessels ?? []).map((v) => ({ value: String(v.id), label: v.vessel_name }))}
+                                />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Status</span>}>
+                                <AntSelect
+                                    value={crewForm.data.status}
+                                    onChange={(v) => crewForm.setData('status', v)}
+                                    style={{ width: '100%' }}
+                                    options={[
+                                        { value: 'aktif', label: 'Aktif' },
+                                        { value: 'cuti', label: 'Cuti' },
+                                        { value: 'selesai', label: 'Selesai' },
+                                    ]}
+                                />
+                            </Form.Item>
+                        </Col>
+                    </Row>
                     <div className="mt-5 flex justify-end gap-3">
-                        <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
-                        <PrimaryButton disabled={crewForm.processing}>Simpan ABK</PrimaryButton>
+                        <SecondaryButton onClick={() => setModal(null)}>Batal</SecondaryButton>
+                        <PrimaryButton htmlType="submit" disabled={crewForm.processing}>Simpan ABK</PrimaryButton>
                     </div>
                 </form>
             </Modal>
 
             <Modal show={modal === 'cert'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitCert} className="p-6">
-                    <h2 className="text-lg font-semibold text-ink">Tambah Sertifikat ABK</h2>
+                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Tambah Sertifikat ABK</h2>
                     <div className="mt-4 space-y-3">
-                        <div><label className="text-xs font-medium text-muted">Jenis *</label>
-                            <select value={certForm.data.cert_type} onChange={(e) => certForm.setData('cert_type', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                {CERT_TYPES.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                            </select></div>
-                        <div><label className="text-xs font-medium text-muted">Nomor</label>
-                            <input value={certForm.data.number} onChange={(e) => certForm.setData('number', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Tanggal Terbit</label>
-                            <input type="date" value={certForm.data.issued_at} onChange={(e) => certForm.setData('issued_at', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <label className="flex items-center gap-2 text-sm">
-                            <input type="checkbox" checked={certForm.data.has_expiry} onChange={(e) => certForm.setData('has_expiry', e.target.checked)} className="rounded border-gray-300 text-primary focus:ring-primary" />
+                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Jenis *</span>}>
+                            <AntSelect
+                                value={certForm.data.cert_type}
+                                onChange={(v) => certForm.setData('cert_type', v)}
+                                style={{ width: '100%' }}
+                                options={CERT_TYPES.map(([k, v]) => ({ value: k, label: v }))}
+                            />
+                        </Form.Item>
+                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Nomor</span>}>
+                            <Input value={certForm.data.number} onChange={(e) => certForm.setData('number', e.target.value)} />
+                        </Form.Item>
+                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Tanggal Terbit</span>}>
+                            <Input type="date" value={certForm.data.issued_at} onChange={(e) => certForm.setData('issued_at', e.target.value)} />
+                        </Form.Item>
+                        <Checkbox checked={certForm.data.has_expiry} onChange={(e) => certForm.setData('has_expiry', e.target.checked)}>
                             Punya masa berlaku (ikut reminder)
-                        </label>
+                        </Checkbox>
                         {certForm.data.has_expiry && (
-                            <div><label className="text-xs font-medium text-muted">Berlaku s/d *</label>
-                                <input type="date" value={certForm.data.expiry_date} onChange={(e) => certForm.setData('expiry_date', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Berlaku s/d *</span>}>
+                                <Input type="date" value={certForm.data.expiry_date} onChange={(e) => certForm.setData('expiry_date', e.target.value)} />
+                            </Form.Item>
                         )}
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
-                        <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
-                        <PrimaryButton disabled={certForm.processing}>Simpan Sertifikat</PrimaryButton>
+                        <SecondaryButton onClick={() => setModal(null)}>Batal</SecondaryButton>
+                        <PrimaryButton htmlType="submit" disabled={certForm.processing}>Simpan Sertifikat</PrimaryButton>
                     </div>
                 </form>
             </Modal>
 
             <Modal show={modal === 'employee'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitEmployee} className="p-6">
-                    <h2 className="text-lg font-semibold text-ink">Karyawan Kantor Baru</h2>
-                    <div className="mt-4 grid grid-cols-2 gap-3">
-                        <div><label className="text-xs font-medium text-muted">Nama *</label>
-                            <input value={employeeForm.data.name} onChange={(e) => employeeForm.setData('name', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Jabatan *</label>
-                            <input value={employeeForm.data.position} onChange={(e) => employeeForm.setData('position', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Departemen</label>
-                            <input value={employeeForm.data.department} onChange={(e) => employeeForm.setData('department', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Tanggal Masuk</label>
-                            <input type="date" value={employeeForm.data.join_date} onChange={(e) => employeeForm.setData('join_date', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Gaji Pokok *</label>
-                            <PriceInput value={employeeForm.data.base_salary} onChange={(e) => employeeForm.setData('base_salary', e.target.value)} className="mt-1 block w-full" /></div>
-                        <div><label className="text-xs font-medium text-muted">Tunjangan</label>
-                            <PriceInput value={employeeForm.data.allowances} onChange={(e) => employeeForm.setData('allowances', e.target.value)} className="mt-1 block w-full" /></div>
-                    </div>
+                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Karyawan Kantor Baru</h2>
+                    <Row gutter={12} className="mt-4">
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Nama *</span>}>
+                                <Input value={employeeForm.data.name} onChange={(e) => employeeForm.setData('name', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Jabatan *</span>}>
+                                <Input value={employeeForm.data.position} onChange={(e) => employeeForm.setData('position', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Departemen</span>}>
+                                <Input value={employeeForm.data.department} onChange={(e) => employeeForm.setData('department', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Tanggal Masuk</span>}>
+                                <Input type="date" value={employeeForm.data.join_date} onChange={(e) => employeeForm.setData('join_date', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Gaji Pokok *</span>}>
+                                <PriceInput value={employeeForm.data.base_salary} onChange={(e) => employeeForm.setData('base_salary', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Tunjangan</span>}>
+                                <PriceInput value={employeeForm.data.allowances} onChange={(e) => employeeForm.setData('allowances', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
                     <div className="mt-5 flex justify-end gap-3">
-                        <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
-                        <PrimaryButton disabled={employeeForm.processing}>Simpan Karyawan</PrimaryButton>
+                        <SecondaryButton onClick={() => setModal(null)}>Batal</SecondaryButton>
+                        <PrimaryButton htmlType="submit" disabled={employeeForm.processing}>Simpan Karyawan</PrimaryButton>
                     </div>
                 </form>
             </Modal>
 
-            {/* Modal: Edit ABK */}
             <Modal show={modal === 'editCrew'} onClose={() => setModal(null)} maxWidth="lg">
                 <form onSubmit={submitEditCrew} className="p-6">
-                    <h2 className="text-lg font-semibold text-ink">Edit ABK — {editCrew?.name}</h2>
-                    <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">
-                        <div><label className="text-xs font-medium text-muted">Nama *</label>
-                            <input value={editCrewForm.data.name} onChange={(e) => editCrewForm.setData('name', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">NIK</label>
-                            <input value={editCrewForm.data.nik} onChange={(e) => editCrewForm.setData('nik', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Tempat Lahir</label>
-                            <input value={editCrewForm.data.birth_place} onChange={(e) => editCrewForm.setData('birth_place', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Tanggal Lahir</label>
-                            <input type="date" value={editCrewForm.data.birth_date} onChange={(e) => editCrewForm.setData('birth_date', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Gender</label>
-                            <select value={editCrewForm.data.gender} onChange={(e) => editCrewForm.setData('gender', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                <option value="L">Laki-laki</option><option value="P">Perempuan</option>
-                            </select></div>
-                        <div><label className="text-xs font-medium text-muted">HP</label>
-                            <input value={editCrewForm.data.phone} onChange={(e) => editCrewForm.setData('phone', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">NPWP</label>
-                            <input value={editCrewForm.data.npwp} onChange={(e) => editCrewForm.setData('npwp', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Kode NIK Internal</label>
-                            <input value={editCrewForm.data.kode_nik} onChange={(e) => editCrewForm.setData('kode_nik', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Kode Pelaut</label>
-                            <input value={editCrewForm.data.seafarer_code} onChange={(e) => editCrewForm.setData('seafarer_code', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">SCCW / Sert. Utama</label>
-                            <input value={editCrewForm.data.sccw} onChange={(e) => editCrewForm.setData('sccw', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">No PKL</label>
-                            <input value={editCrewForm.data.no_pkl} onChange={(e) => editCrewForm.setData('no_pkl', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Tanggal Masuk</label>
-                            <input type="date" value={editCrewForm.data.joined_on} onChange={(e) => editCrewForm.setData('joined_on', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Jabatan *</label>
-                            <select value={editCrewForm.data.rank} onChange={(e) => editCrewForm.setData('rank', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                {RANKS.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                            </select></div>
-                        <div><label className="text-xs font-medium text-muted">Gaji Pokok *</label>
-                            <PriceInput value={editCrewForm.data.base_salary} onChange={(e) => editCrewForm.setData('base_salary', e.target.value)} className="mt-1 block w-full" /></div>
-                        <div><label className="text-xs font-medium text-muted">Status</label>
-                            <select value={editCrewForm.data.status} onChange={(e) => editCrewForm.setData('status', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                <option value="aktif">Aktif</option><option value="cuti">Cuti</option><option value="selesai">Selesai</option>
-                            </select></div>
-                    </div>
+                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit ABK — {editCrew?.name}</h2>
+                    <Row gutter={12} className="mt-4">
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Nama *</span>}>
+                                <Input value={editCrewForm.data.name} onChange={(e) => editCrewForm.setData('name', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">NIK</span>}>
+                                <Input value={editCrewForm.data.nik} onChange={(e) => editCrewForm.setData('nik', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Tempat Lahir</span>}>
+                                <Input value={editCrewForm.data.birth_place} onChange={(e) => editCrewForm.setData('birth_place', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Tanggal Lahir</span>}>
+                                <Input type="date" value={editCrewForm.data.birth_date} onChange={(e) => editCrewForm.setData('birth_date', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Gender</span>}>
+                                <AntSelect
+                                    value={editCrewForm.data.gender}
+                                    onChange={(v) => editCrewForm.setData('gender', v)}
+                                    style={{ width: '100%' }}
+                                    options={[{ value: 'L', label: 'Laki-laki' }, { value: 'P', label: 'Perempuan' }]}
+                                />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">HP</span>}>
+                                <Input value={editCrewForm.data.phone} onChange={(e) => editCrewForm.setData('phone', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">NPWP</span>}>
+                                <Input value={editCrewForm.data.npwp} onChange={(e) => editCrewForm.setData('npwp', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kode NIK Internal</span>}>
+                                <Input value={editCrewForm.data.kode_nik} onChange={(e) => editCrewForm.setData('kode_nik', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kode Pelaut</span>}>
+                                <Input value={editCrewForm.data.seafarer_code} onChange={(e) => editCrewForm.setData('seafarer_code', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">SCCW / Sert. Utama</span>}>
+                                <Input value={editCrewForm.data.sccw} onChange={(e) => editCrewForm.setData('sccw', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">No PKL</span>}>
+                                <Input value={editCrewForm.data.no_pkl} onChange={(e) => editCrewForm.setData('no_pkl', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Tanggal Masuk</span>}>
+                                <Input type="date" value={editCrewForm.data.joined_on} onChange={(e) => editCrewForm.setData('joined_on', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Jabatan *</span>}>
+                                <AntSelect
+                                    value={editCrewForm.data.rank}
+                                    onChange={(v) => editCrewForm.setData('rank', v)}
+                                    style={{ width: '100%' }}
+                                    options={RANKS.map(([k, v]) => ({ value: k, label: v }))}
+                                />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Gaji Pokok *</span>}>
+                                <PriceInput value={editCrewForm.data.base_salary} onChange={(e) => editCrewForm.setData('base_salary', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12} md={8}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Status</span>}>
+                                <AntSelect
+                                    value={editCrewForm.data.status}
+                                    onChange={(v) => editCrewForm.setData('status', v)}
+                                    style={{ width: '100%' }}
+                                    options={[
+                                        { value: 'aktif', label: 'Aktif' },
+                                        { value: 'cuti', label: 'Cuti' },
+                                        { value: 'selesai', label: 'Selesai' },
+                                    ]}
+                                />
+                            </Form.Item>
+                        </Col>
+                    </Row>
                     <div className="mt-5 flex justify-end gap-3">
-                        <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
-                        <PrimaryButton disabled={editCrewForm.processing}>Simpan</PrimaryButton>
+                        <SecondaryButton onClick={() => setModal(null)}>Batal</SecondaryButton>
+                        <PrimaryButton htmlType="submit" disabled={editCrewForm.processing}>Simpan</PrimaryButton>
                     </div>
                 </form>
             </Modal>
 
-            {/* Modal: Edit Sertifikat */}
             <Modal show={modal === 'editCert'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitEditCert} className="p-6">
-                    <h2 className="text-lg font-semibold text-ink">Edit Sertifikat ABK</h2>
+                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit Sertifikat ABK</h2>
                     <div className="mt-4 space-y-3">
-                        <div><label className="text-xs font-medium text-muted">Jenis *</label>
-                            <select value={editCertForm.data.cert_type} onChange={(e) => editCertForm.setData('cert_type', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                {CERT_TYPES.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                            </select></div>
-                        <div><label className="text-xs font-medium text-muted">Nomor</label>
-                            <input value={editCertForm.data.number} onChange={(e) => editCertForm.setData('number', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Tanggal Terbit</label>
-                            <input type="date" value={editCertForm.data.issued_at} onChange={(e) => editCertForm.setData('issued_at', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <label className="flex items-center gap-2 text-sm">
-                            <input type="checkbox" checked={editCertForm.data.has_expiry} onChange={(e) => editCertForm.setData('has_expiry', e.target.checked)} className="rounded border-gray-300 text-primary focus:ring-primary" />
+                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Jenis *</span>}>
+                            <AntSelect
+                                value={editCertForm.data.cert_type}
+                                onChange={(v) => editCertForm.setData('cert_type', v)}
+                                style={{ width: '100%' }}
+                                options={CERT_TYPES.map(([k, v]) => ({ value: k, label: v }))}
+                            />
+                        </Form.Item>
+                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Nomor</span>}>
+                            <Input value={editCertForm.data.number} onChange={(e) => editCertForm.setData('number', e.target.value)} />
+                        </Form.Item>
+                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Tanggal Terbit</span>}>
+                            <Input type="date" value={editCertForm.data.issued_at} onChange={(e) => editCertForm.setData('issued_at', e.target.value)} />
+                        </Form.Item>
+                        <Checkbox checked={editCertForm.data.has_expiry} onChange={(e) => editCertForm.setData('has_expiry', e.target.checked)}>
                             Punya masa berlaku (ikut reminder)
-                        </label>
+                        </Checkbox>
                         {editCertForm.data.has_expiry && (
-                            <div><label className="text-xs font-medium text-muted">Berlaku s/d *</label>
-                                <input type="date" value={editCertForm.data.expiry_date} onChange={(e) => editCertForm.setData('expiry_date', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Berlaku s/d *</span>}>
+                                <Input type="date" value={editCertForm.data.expiry_date} onChange={(e) => editCertForm.setData('expiry_date', e.target.value)} />
+                            </Form.Item>
                         )}
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
-                        <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
-                        <PrimaryButton disabled={editCertForm.processing}>Simpan</PrimaryButton>
+                        <SecondaryButton onClick={() => setModal(null)}>Batal</SecondaryButton>
+                        <PrimaryButton htmlType="submit" disabled={editCertForm.processing}>Simpan</PrimaryButton>
                     </div>
                 </form>
             </Modal>
 
-            {/* Modal: Tambah Penempatan */}
             <Modal show={modal === 'addAssignment'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitAssignment} className="p-6">
-                    <h2 className="text-lg font-semibold text-ink">Tambah Penempatan ABK</h2>
-                    <p className="text-xs text-muted">Penempatan aktif sebelumnya (di kapal mana pun) akan otomatis ditutup.</p>
+                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Tambah Penempatan ABK</h2>
+                    <p className="text-xs text-[#8A8580]">Penempatan aktif sebelumnya (di kapal mana pun) akan otomatis ditutup.</p>
                     <div className="mt-4 space-y-3">
-                        <div><label className="text-xs font-medium text-muted">Kapal *</label>
-                            <select value={assignmentForm.data.vessel_id} onChange={(e) => assignmentForm.setData('vessel_id', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                <option value="">— pilih —</option>
-                                {(vessels ?? []).map((v: any) => <option key={v.id} value={v.id}>{v.vessel_name}</option>)}
-                            </select></div>
-                        <div><label className="text-xs font-medium text-muted">Jabatan di Kapal *</label>
-                            <input value={assignmentForm.data.role} onChange={(e) => assignmentForm.setData('role', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Mulai *</label>
-                            <input type="date" value={assignmentForm.data.start_date} onChange={(e) => assignmentForm.setData('start_date', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Selesai</label>
-                            <input type="date" value={assignmentForm.data.end_date} onChange={(e) => assignmentForm.setData('end_date', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kapal *</span>}>
+                            <AntSelect
+                                value={assignmentForm.data.vessel_id || undefined}
+                                onChange={(v) => assignmentForm.setData('vessel_id', v ?? '')}
+                                placeholder="— pilih —"
+                                style={{ width: '100%' }}
+                                options={(vessels ?? []).map((v: any) => ({ value: String(v.id), label: v.vessel_name }))}
+                            />
+                        </Form.Item>
+                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Jabatan di Kapal *</span>}>
+                            <Input value={assignmentForm.data.role} onChange={(e) => assignmentForm.setData('role', e.target.value)} />
+                        </Form.Item>
+                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Mulai *</span>}>
+                            <Input type="date" value={assignmentForm.data.start_date} onChange={(e) => assignmentForm.setData('start_date', e.target.value)} />
+                        </Form.Item>
+                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Selesai</span>}>
+                            <Input type="date" value={assignmentForm.data.end_date} onChange={(e) => assignmentForm.setData('end_date', e.target.value)} />
+                        </Form.Item>
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
-                        <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
-                        <PrimaryButton disabled={assignmentForm.processing}>Simpan Penempatan</PrimaryButton>
+                        <SecondaryButton onClick={() => setModal(null)}>Batal</SecondaryButton>
+                        <PrimaryButton htmlType="submit" disabled={assignmentForm.processing}>Simpan Penempatan</PrimaryButton>
                     </div>
                 </form>
             </Modal>
 
-            {/* Modal: Edit Penempatan */}
             <Modal show={modal === 'editAssignment'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitEditAssignment} className="p-6">
-                    <h2 className="text-lg font-semibold text-ink">Edit Penempatan</h2>
+                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit Penempatan</h2>
                     <div className="mt-4 space-y-3">
-                        <div><label className="text-xs font-medium text-muted">Kapal *</label>
-                            <select value={editAssignmentForm.data.vessel_id} onChange={(e) => editAssignmentForm.setData('vessel_id', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                {(vessels ?? []).map((v: any) => <option key={v.id} value={v.id}>{v.vessel_name}</option>)}
-                            </select></div>
-                        <div><label className="text-xs font-medium text-muted">Jabatan *</label>
-                            <input value={editAssignmentForm.data.role} onChange={(e) => editAssignmentForm.setData('role', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div><label className="text-xs font-medium text-muted">Mulai *</label>
-                                <input type="date" value={editAssignmentForm.data.start_date} onChange={(e) => editAssignmentForm.setData('start_date', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                            <div><label className="text-xs font-medium text-muted">Selesai</label>
-                                <input type="date" value={editAssignmentForm.data.end_date} onChange={(e) => editAssignmentForm.setData('end_date', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                            <div><label className="text-xs font-medium text-muted">Status</label>
-                                <select value={editAssignmentForm.data.status} onChange={(e) => editAssignmentForm.setData('status', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                    <option value="aktif">Aktif</option><option value="cuti">Cuti</option><option value="berakhir">Berakhir</option>
-                                </select></div>
-                        </div>
+                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kapal *</span>}>
+                            <AntSelect
+                                value={editAssignmentForm.data.vessel_id || undefined}
+                                onChange={(v) => editAssignmentForm.setData('vessel_id', v ?? '')}
+                                style={{ width: '100%' }}
+                                options={(vessels ?? []).map((v: any) => ({ value: String(v.id), label: v.vessel_name }))}
+                            />
+                        </Form.Item>
+                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Jabatan *</span>}>
+                            <Input value={editAssignmentForm.data.role} onChange={(e) => editAssignmentForm.setData('role', e.target.value)} />
+                        </Form.Item>
+                        <Row gutter={12}>
+                            <Col span={8}>
+                                <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Mulai *</span>}>
+                                    <Input type="date" value={editAssignmentForm.data.start_date} onChange={(e) => editAssignmentForm.setData('start_date', e.target.value)} />
+                                </Form.Item>
+                            </Col>
+                            <Col span={8}>
+                                <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Selesai</span>}>
+                                    <Input type="date" value={editAssignmentForm.data.end_date} onChange={(e) => editAssignmentForm.setData('end_date', e.target.value)} />
+                                </Form.Item>
+                            </Col>
+                            <Col span={8}>
+                                <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Status</span>}>
+                                    <AntSelect
+                                        value={editAssignmentForm.data.status}
+                                        onChange={(v) => editAssignmentForm.setData('status', v)}
+                                        style={{ width: '100%' }}
+                                        options={[
+                                            { value: 'aktif', label: 'Aktif' },
+                                            { value: 'cuti', label: 'Cuti' },
+                                            { value: 'berakhir', label: 'Berakhir' },
+                                        ]}
+                                    />
+                                </Form.Item>
+                            </Col>
+                        </Row>
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
-                        <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
-                        <PrimaryButton disabled={editAssignmentForm.processing}>Simpan</PrimaryButton>
+                        <SecondaryButton onClick={() => setModal(null)}>Batal</SecondaryButton>
+                        <PrimaryButton htmlType="submit" disabled={editAssignmentForm.processing}>Simpan</PrimaryButton>
                     </div>
                 </form>
             </Modal>
 
-            {/* Modal: Edit Karyawan */}
             <Modal show={modal === 'editEmployee'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitEditEmployee} className="p-6">
-                    <h2 className="text-lg font-semibold text-ink">Edit Karyawan — {editEmployee?.name}</h2>
-                    <div className="mt-4 grid grid-cols-2 gap-3">
-                        <div><label className="text-xs font-medium text-muted">Nama *</label>
-                            <input value={editEmployeeForm.data.name} onChange={(e) => editEmployeeForm.setData('name', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Jabatan *</label>
-                            <input value={editEmployeeForm.data.position} onChange={(e) => editEmployeeForm.setData('position', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Departemen</label>
-                            <input value={editEmployeeForm.data.department} onChange={(e) => editEmployeeForm.setData('department', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Masuk</label>
-                            <input type="date" value={editEmployeeForm.data.join_date} onChange={(e) => editEmployeeForm.setData('join_date', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Gaji Pokok *</label>
-                            <PriceInput value={editEmployeeForm.data.base_salary} onChange={(e) => editEmployeeForm.setData('base_salary', e.target.value)} className="mt-1 block w-full" /></div>
-                        <div><label className="text-xs font-medium text-muted">Tunjangan</label>
-                            <PriceInput value={editEmployeeForm.data.allowances} onChange={(e) => editEmployeeForm.setData('allowances', e.target.value)} className="mt-1 block w-full" /></div>
-                        <div><label className="text-xs font-medium text-muted">Status</label>
-                            <select value={editEmployeeForm.data.status} onChange={(e) => editEmployeeForm.setData('status', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                <option value="aktif">Aktif</option><option value="keluar">Keluar</option>
-                            </select></div>
-                    </div>
+                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit Karyawan — {editEmployee?.name}</h2>
+                    <Row gutter={12} className="mt-4">
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Nama *</span>}>
+                                <Input value={editEmployeeForm.data.name} onChange={(e) => editEmployeeForm.setData('name', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Jabatan *</span>}>
+                                <Input value={editEmployeeForm.data.position} onChange={(e) => editEmployeeForm.setData('position', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Departemen</span>}>
+                                <Input value={editEmployeeForm.data.department} onChange={(e) => editEmployeeForm.setData('department', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Masuk</span>}>
+                                <Input type="date" value={editEmployeeForm.data.join_date} onChange={(e) => editEmployeeForm.setData('join_date', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Gaji Pokok *</span>}>
+                                <PriceInput value={editEmployeeForm.data.base_salary} onChange={(e) => editEmployeeForm.setData('base_salary', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Tunjangan</span>}>
+                                <PriceInput value={editEmployeeForm.data.allowances} onChange={(e) => editEmployeeForm.setData('allowances', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Status</span>}>
+                                <AntSelect
+                                    value={editEmployeeForm.data.status}
+                                    onChange={(v) => editEmployeeForm.setData('status', v)}
+                                    style={{ width: '100%' }}
+                                    options={[
+                                        { value: 'aktif', label: 'Aktif' },
+                                        { value: 'keluar', label: 'Keluar' },
+                                    ]}
+                                />
+                            </Form.Item>
+                        </Col>
+                    </Row>
                     <div className="mt-5 flex justify-end gap-3">
-                        <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
-                        <PrimaryButton disabled={editEmployeeForm.processing}>Simpan</PrimaryButton>
+                        <SecondaryButton onClick={() => setModal(null)}>Batal</SecondaryButton>
+                        <PrimaryButton htmlType="submit" disabled={editEmployeeForm.processing}>Simpan</PrimaryButton>
                     </div>
                 </form>
             </Modal>
 
-            {/* Modal: Hours of Rest (catat/ubah blok istirahat) */}
             <Modal show={modal === 'hor'} onClose={() => { setModal(null); setEditHor(null); }} maxWidth="lg">
                 <form onSubmit={submitHor} className="p-6">
-                    <h2 className="text-lg font-semibold text-ink">
+                    <h2 className="text-lg font-semibold text-[#1C1B1A]">
                         {editHor ? `Ubah Jam Istirahat — ${editHor.log_date}` : 'Catat Jam Istirahat Awak'}
                     </h2>
-                    <p className="mt-1 text-xs text-muted">
+                    <p className="mt-1 text-xs text-[#8A8580]">
                         Aturan MLC 2006: istirahat ≥10 jam per 24 jam (satu blok ≥6 jam), kerja maksimal 14 jam per 24 jam.
                         Jam memakai waktu kapal (WITA).
                     </p>
 
-                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div>
-                            <label className="text-xs font-medium text-muted">Awak *</label>
-                            <select
-                                value={horForm.data.crew_id}
-                                onChange={(e) => horForm.setData('crew_id', e.target.value)}
-                                className={INPUT_CLS}
-                                required
-                            >
-                                <option value="">— pilih —</option>
-                                {(horCrew ?? []).map((c) => <option key={c.id} value={c.id}>{c.name} — {c.rank}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-xs font-medium text-muted">Tanggal *</label>
-                            <input
-                                type="date"
-                                value={horForm.data.log_date}
-                                onChange={(e) => horForm.setData('log_date', e.target.value)}
-                                className={INPUT_CLS}
-                                required
-                            />
-                        </div>
-                    </div>
+                    <Row gutter={12} className="mt-4">
+                        <Col xs={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Awak *</span>} required>
+                                <AntSelect
+                                    value={horForm.data.crew_id || undefined}
+                                    onChange={(v) => horForm.setData('crew_id', v ?? '')}
+                                    placeholder="— pilih —"
+                                    style={{ width: '100%' }}
+                                    options={(horCrew ?? []).map((c) => ({ value: String(c.id), label: `${c.name} — ${c.rank}` }))}
+                                />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Tanggal *</span>} required>
+                                <Input type="date" value={horForm.data.log_date} onChange={(e) => horForm.setData('log_date', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
 
                     <div className="mt-4">
                         <div className="flex items-center justify-between">
-                            <label className="text-xs font-medium text-muted">Blok Istirahat (WITA) *</label>
+                            <label className="text-xs font-medium text-[#8A8580]">Blok Istirahat (WITA) *</label>
                             <button
                                 type="button"
                                 onClick={() => horForm.setData('rest_entries', [...horForm.data.rest_entries, { start: '', end: '' }])}
-                                className="text-xs font-medium text-primary hover:underline"
+                                className="text-xs font-medium text-[#C1121F] hover:underline"
                             >
                                 + Tambah blok
                             </button>
@@ -1041,26 +1247,24 @@ export default function HrIndex({
                         <div className="mt-2 space-y-2">
                             {horForm.data.rest_entries.map((entry, idx) => (
                                 <div key={idx} className="flex items-center gap-2">
-                                    <input
+                                    <Input
                                         type="time"
                                         value={entry.start}
                                         onChange={(e) => setHorEntry(idx, 'start', e.target.value)}
-                                        className={classNames(INPUT_CLS, 'w-32')}
-                                        required
+                                        style={{ width: 128 }}
                                     />
-                                    <span className="text-muted">s/d</span>
-                                    <input
+                                    <span className="text-[#8A8580]">s/d</span>
+                                    <Input
                                         type="time"
                                         value={entry.end}
                                         onChange={(e) => setHorEntry(idx, 'end', e.target.value)}
-                                        className={classNames(INPUT_CLS, 'w-32')}
-                                        required
+                                        style={{ width: 128 }}
                                     />
                                     {horForm.data.rest_entries.length > 1 && (
                                         <button
                                             type="button"
                                             onClick={() => horForm.setData('rest_entries', horForm.data.rest_entries.filter((_, i) => i !== idx))}
-                                            className="text-primary hover:underline"
+                                            className="text-[#C1121F] hover:underline"
                                             title="Hapus blok"
                                         >
                                             <Trash2 size={14} />
@@ -1071,10 +1275,13 @@ export default function HrIndex({
                         </div>
                     </div>
 
-                    <div className={classNames(
-                        'mt-4 rounded-lg px-3 py-2 text-sm',
-                        horPreview.violations.length === 0 ? 'bg-ok/10 text-ok' : 'bg-primary/10 text-primary',
-                    )}>
+                    <div
+                        className="mt-4 rounded-lg px-3 py-2 text-sm"
+                        style={horPreview.violations.length === 0
+                            ? { background: '#2F8F681A', color: '#2F8F68' }
+                            : { background: '#C1121F1A', color: '#C1121F' }
+                        }
+                    >
                         {horPreview.violations.length === 0 ? (
                             <span className="inline-flex items-center gap-1.5">
                                 <CheckCircle2 size={14} /> Patuh WLR — istirahat {Math.round((horPreview.rest / 60) * 10) / 10} jam, kerja {Math.round((horPreview.work / 60) * 10) / 10} jam.
@@ -1091,18 +1298,18 @@ export default function HrIndex({
                     </div>
 
                     <div className="mt-3">
-                        <label className="text-xs font-medium text-muted">Catatan (opsional)</label>
-                        <input
-                            value={horForm.data.notes}
-                            onChange={(e) => horForm.setData('notes', e.target.value)}
-                            className={INPUT_CLS}
-                            placeholder="mis. istirahat terpecah saat penjagaan malam"
-                        />
+                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Catatan (opsional)</span>}>
+                            <Input
+                                value={horForm.data.notes}
+                                onChange={(e) => horForm.setData('notes', e.target.value)}
+                                placeholder="mis. istirahat terpecah saat penjagaan malam"
+                            />
+                        </Form.Item>
                     </div>
 
                     <div className="mt-5 flex justify-end gap-3">
-                        <SecondaryButton type="button" onClick={() => { setModal(null); setEditHor(null); }}>Batal</SecondaryButton>
-                        <PrimaryButton disabled={horForm.processing}>
+                        <SecondaryButton onClick={() => { setModal(null); setEditHor(null); }}>Batal</SecondaryButton>
+                        <PrimaryButton htmlType="submit" disabled={horForm.processing}>
                             {editHor ? 'Simpan Perubahan' : 'Catat Jam Istirahat'}
                         </PrimaryButton>
                     </div>

@@ -1,5 +1,6 @@
 import Badge, { type BadgeTone } from '@/Components/ui/Badge';
 import Card from '@/Components/ui/Card';
+import EmptyState from '@/Components/ui/EmptyState';
 import Modal from '@/Components/Modal';
 import NumericInput from '@/Components/NumericInput';
 import PageHeader from '@/Components/ui/PageHeader';
@@ -9,31 +10,39 @@ import TabNav from '@/Components/ui/TabNav';
 import ConfirmModal from '@/Components/ui/ConfirmModal';
 import { VOYAGE_STATUS_LABELS } from '@/Constants/navigation';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { classNames, formatDate, formatDateTime, formatNumber, formatRupiah } from '@/lib/format';
+import { formatDate, formatDateTime, formatNumber, formatRupiah } from '@/lib/format';
 import { type PageProps } from '@/types';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import {
     Anchor,
     ArrowLeft,
     CheckCircle2,
-    ClipboardCheck,
-    Coins,
-    ExternalLink,
     FileStack,
     GitCommitVertical,
     ListChecks,
     Loader2,
     Map as MapIcon,
-    MessageSquare,
     Printer,
     ShieldCheck,
-    ShieldX,
     Ship,
     Users,
     Wallet,
-    X,
 } from 'lucide-react';
 import { FormEvent, useState } from 'react';
+import {
+    Button,
+    Descriptions,
+    Divider,
+    Popconfirm,
+    Progress,
+    Select,
+    Skeleton,
+    Steps,
+    Timeline,
+    Typography,
+} from 'antd';
+
+const { Text, Paragraph } = Typography;
 
 const STATUS_TONES: Record<string, BadgeTone> = {
     draft: 'neutral',
@@ -79,6 +88,9 @@ const WORKFLOW_ORDER: Record<string, number> = {
     cancelled: 99,
 };
 
+const STATUS_STEPS = (Object.keys(VOYAGE_STATUS_LABELS) as string[])
+    .filter((s) => !['delayed', 'cancelled'].includes(s));
+
 const isBackwardTransition = (from: string, to: string): boolean => {
     const oFrom = WORKFLOW_ORDER[from] ?? 0;
     const oTo = WORKFLOW_ORDER[to] ?? 0;
@@ -123,6 +135,7 @@ export default function VoyagesShow({
     const [modal, setModal] = useState<null | 'approve' | 'external' | 'status' | 'cancel'>(null);
     const [nextStatus, setNextStatus] = useState('');
     const [busy, setBusy] = useState(false);
+    const [loading] = useState(false);
 
     const approveForm = useForm({ decision: 'approved', comments: '' });
     const externalForm = useForm({ evidence: null as File | null, source_note: '' });
@@ -186,6 +199,12 @@ export default function VoyagesShow({
 
     const checklistWajib = checklists.filter((c) => c.applicability === 'wajib');
     const checklistTerpenuhi = checklistWajib.filter((c) => c.completion_status === 'terpenuhi');
+    const checklistPct = checklistWajib.length > 0
+        ? Math.round((checklistTerpenuhi.length / checklistWajib.length) * 100)
+        : 100;
+
+    const currentStepIdx = STATUS_STEPS.indexOf(voyage.voyage_status);
+    const charterStepIdx = voyage.charter_stage ? CHARTER_STAGES.indexOf(voyage.charter_stage) : -1;
 
     return (
         <AuthenticatedLayout>
@@ -193,7 +212,7 @@ export default function VoyagesShow({
             <div id={`record-voyage-${voyage.id}`}>
 
             <div className="mb-4">
-                <Link href="/perjalanan" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink">
+                <Link href="/perjalanan" className="inline-flex items-center gap-1.5 text-sm text-[#8A8580] hover:text-[#1C1B1A]">
                     <ArrowLeft size={15} /> Kembali ke Voyage Management
                 </Link>
             </div>
@@ -219,129 +238,89 @@ export default function VoyagesShow({
                         </Badge>
                         {actions.can_update && (
                             <>
-                                <Link
-                                    href={`/perjalanan/${voyage.id}/edit`}
-                                    className="inline-flex items-center gap-2 rounded-lg border border-hairline bg-white px-3 py-2 text-sm font-medium text-ink transition hover:border-primary/40"
-                                >
-                                    Edit
+                                <Link href={`/perjalanan/${voyage.id}/edit`}>
+                                    <Button>Edit</Button>
                                 </Link>
                                 {!['cancelled', 'completed'].includes(voyage.voyage_status) && (
-                                    <button
-                                        type="button"
+                                    <Button
+                                        danger
                                         onClick={() => setModal('cancel')}
-                                        className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition hover:bg-primary/20"
                                     >
                                         Batalkan
-                                    </button>
+                                    </Button>
                                 )}
                             </>
                         )}
                         {actions.can_update && voyage.allowed_transitions.length > 0 && (
-                            <button
-                                type="button"
+                            <Button
+                                type="primary"
                                 onClick={() => {
                                     setNextStatus(voyage.allowed_transitions[0]);
                                     statusForm.setData('to', voyage.allowed_transitions[0]);
                                     setModal('status');
                                 }}
-                                className="inline-flex items-center gap-2 rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-primary-hover"
                             >
-                                Ubah Status →
-                            </button>
+                                Ubah Status
+                            </Button>
                         )}
                     </>
                 }
             />
 
-            <TabNav tabs={tabs} active={tab} onChange={setTab} />
+            <Skeleton loading={loading} active paragraph={{ rows: 8 }}>
+                <TabNav tabs={tabs} active={tab} onChange={setTab} />
 
-            {tab === 'overview' && (
-                <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-                    <Card title="Status Perjalanan" className="xl:col-span-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                            {(Object.keys(VOYAGE_STATUS_LABELS) as string[])
-                                .filter((s) => !['delayed', 'cancelled'].includes(s))
-                                .map((s, i, arr) => {
-                                    const currentIdx = arr.indexOf(voyage.voyage_status);
-                                    const isDone = currentIdx >= 0 && i < arr.indexOf(voyage.voyage_status) === false && false;
-                                    const reached = arr.indexOf(voyage.voyage_status) !== -1 && i <= arr.indexOf(voyage.voyage_status);
-                                    return (
-                                        <div key={s} className="flex items-center">
-                                            <span
-                                                className={classNames(
-                                                    'rounded-full px-2.5 py-1 text-xs font-medium',
-                                                    s === voyage.voyage_status
-                                                        ? 'bg-primary text-white'
-                                                        : reached
-                                                          ? 'bg-ok/15 text-ok'
-                                                          : 'bg-appbg text-muted',
-                                                )}
-                                            >
-                                                {VOYAGE_STATUS_LABELS[s]}
-                                            </span>
-                                            {i < arr.length - 1 && <span className="mx-1 h-px w-4 bg-hairline" />}
-                                        </div>
-                                    );
-                                })}
-                        </div>
-                        <div className="mt-5 grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
-                            <div>
-                                <p className="text-xs uppercase tracking-wide text-muted">Jadwal Berangkat</p>
-                                <p className="mt-0.5 font-medium text-ink">{formatDateTime(voyage.planned_departure)}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs uppercase tracking-wide text-muted">Berangkat Aktual</p>
-                                <p className="mt-0.5 font-medium text-ink">{formatDateTime(voyage.actual_departure)}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs uppercase tracking-wide text-muted">Perkiraan Tiba</p>
-                                <p className="mt-0.5 font-medium text-ink">{formatDateTime(voyage.estimated_arrival)}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs uppercase tracking-wide text-muted">Tiba Aktual</p>
-                                <p className="mt-0.5 font-medium text-ink">{formatDateTime(voyage.actual_arrival)}</p>
-                            </div>
-                        </div>
-                        <div className="mt-4">
-                            <p className="text-xs uppercase tracking-wide text-muted">Progres Checklist Wajib</p>
-                            <div className="mt-1.5 flex items-center gap-3">
-                                <div className="h-2 flex-1 overflow-hidden rounded-full bg-appbg">
-                                    <div
-                                        className={classNames(
-                                            'h-full rounded-full',
-                                            checklistWajib.length > 0 &&
-                                                checklistTerpenuhi.length === checklistWajib.length
-                                                ? 'bg-ok'
-                                                : 'bg-warn',
-                                        )}
-                                        style={{
-                                            width: `${
-                                                checklistWajib.length > 0
-                                                    ? (checklistTerpenuhi.length / checklistWajib.length) * 100
-                                                    : 100
-                                            }%`,
-                                        }}
+                {tab === 'overview' && (
+                    <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+                        <Card title="Status Perjalanan" className="xl:col-span-2">
+                            <Steps
+                                current={currentStepIdx >= 0 ? currentStepIdx : 0}
+                                size="small"
+                                items={STATUS_STEPS.map((s) => ({
+                                    title: VOYAGE_STATUS_LABELS[s],
+                                    status: STATUS_STEPS.indexOf(s) < currentStepIdx ? 'finish' : STATUS_STEPS.indexOf(s) === currentStepIdx ? 'process' : 'wait',
+                                }))}
+                                style={{ '--ant-primary-color': '#C1121F' } as React.CSSProperties}
+                            />
+
+                            <Descriptions
+                                column={{ xs: 1, sm: 2, md: 4 }}
+                                size="small"
+                                className="mt-5"
+                                items={[
+                                    { key: 'planned_dep', label: 'Jadwal Berangkat', children: formatDateTime(voyage.planned_departure) },
+                                    { key: 'actual_dep', label: 'Berangkat Aktual', children: formatDateTime(voyage.actual_departure) },
+                                    { key: 'est_arr', label: 'Perkiraan Tiba', children: formatDateTime(voyage.estimated_arrival) },
+                                    { key: 'actual_arr', label: 'Tiba Aktual', children: formatDateTime(voyage.actual_arrival) },
+                                ]}
+                            />
+
+                            <div className="mt-4">
+                                <Text type="secondary" className="text-xs uppercase tracking-wide">Progres Checklist Wajib</Text>
+                                <div className="mt-1.5 flex items-center gap-3">
+                                    <Progress
+                                        percent={checklistPct}
+                                        size="small"
+                                        strokeColor={checklistTerpenuhi.length === checklistWajib.length && checklistWajib.length > 0 ? '#2F8F68' : '#D99A2B'}
+                                        className="flex-1"
                                     />
+                                    <Text strong className="text-sm tabular-nums text-[#1C1B1A]">
+                                        {checklistTerpenuhi.length}/{checklistWajib.length}
+                                    </Text>
                                 </div>
-                                <span className="text-sm font-semibold tabular-nums text-ink">
-                                    {checklistTerpenuhi.length}/{checklistWajib.length}
-                                </span>
                             </div>
-                        </div>
 
-                        <div className="mt-4 rounded-lg border border-hairline bg-appbg/40 p-3">
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                                <div>
-                                    <p className="text-xs font-semibold uppercase tracking-wide text-muted">Tracking Status Vessel (Operasional)</p>
-                                    <p className="text-xs text-muted">
-                                        Status operasional kapal saat ini selaras dengan Status Perjalanan: <strong>{VOYAGE_STATUS_LABELS[voyage.voyage_status] ?? voyage.voyage_status}</strong>.
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <select
+                            <div className="mt-4 rounded-lg border border-[#E7E1D9] bg-[#FAF7F2]/40 p-3">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <Text strong className="text-xs uppercase tracking-wide text-[#8A8580]">Tracking Status Vessel (Operasional)</Text>
+                                        <Paragraph type="secondary" className="mt-0.5 text-xs mb-0">
+                                            Status operasional kapal saat ini selaras dengan Status Perjalanan: <strong>{VOYAGE_STATUS_LABELS[voyage.voyage_status] ?? voyage.voyage_status}</strong>.
+                                        </Paragraph>
+                                    </div>
+                                    <Select
                                         value={voyage.voyage_status}
-                                        onChange={(e) => {
-                                            const target = e.target.value;
+                                        onChange={(target) => {
                                             if (target && target !== voyage.voyage_status) {
                                                 setNextStatus(target);
                                                 statusForm.setData({ to: target, note: '' });
@@ -349,408 +328,368 @@ export default function VoyagesShow({
                                             }
                                         }}
                                         disabled={!actions.can_update || !voyage.allowed_transitions || voyage.allowed_transitions.length === 0}
-                                        className="rounded-md border-gray-300 py-1.5 pl-3 pr-8 text-xs font-medium text-ink shadow-sm focus:border-primary focus:ring-primary disabled:bg-gray-100"
-                                    >
-                                        <option value={voyage.voyage_status}>
-                                            {VOYAGE_STATUS_LABELS[voyage.voyage_status] ?? voyage.voyage_status} (Status Saat Ini)
-                                        </option>
-                                        {(voyage.allowed_transitions ?? []).map((s: string) => {
-                                            const isBwd = isBackwardTransition(voyage.voyage_status, s);
-                                            return (
-                                                <option key={s} value={s}>
-                                                    {isBwd ? '<< Mundur ke: ' : 'Ubah ke: '}{VOYAGE_STATUS_LABELS[s] ?? s}
-                                                </option>
-                                            );
-                                        })}
-                                    </select>
+                                        style={{ width: 240 }}
+                                        size="small"
+                                        options={[
+                                            { value: voyage.voyage_status, label: `${VOYAGE_STATUS_LABELS[voyage.voyage_status] ?? voyage.voyage_status} (Status Saat Ini)` },
+                                            ...(voyage.allowed_transitions ?? []).map((s: string) => ({
+                                                value: s,
+                                                label: `${isBackwardTransition(voyage.voyage_status, s) ? '<< Mundur ke: ' : 'Ubah ke: '}${VOYAGE_STATUS_LABELS[s] ?? s}`,
+                                            })),
+                                        ]}
+                                    />
                                 </div>
                             </div>
-                        </div>
-                        {voyage.notes && (
-                            <p className="mt-4 rounded-lg bg-appbg p-3 text-sm text-muted">{voyage.notes}</p>
-                        )}
-                        <p className="mt-4 rounded-lg bg-maritime/5 p-2.5 text-[11px] text-muted">
-                            Status kesiapan adalah <strong>indikator internal sistem</strong> - bukan
-                            pengganti penilaian nakhoda atau persetujuan otoritas pelayaran.
-                        </p>
-                    </Card>
-                    <Card title="Identitas Perjalanan">
-                        <dl className="space-y-3 text-sm">
-                            {[
-                                ['Kegiatan', voyage.activity_type?.replace('_', ' ')],
-                                ['PIC', voyage.person_in_charge],
-                                ['Customer', voyage.customer_name ?? '-'],
-                                ['No. Kontrak', voyage.contract_no ?? '-'],
-                                ['Tipe Rute', voyage.route_type],
-                            ].map(([k, v]) => (
-                                <div key={k as string}>
-                                    <dt className="text-xs uppercase tracking-wide text-muted">{k}</dt>
-                                    <dd className="font-medium capitalize text-ink">{v}</dd>
-                                </div>
-                            ))}
-                        </dl>
-                    </Card>
-
-                    {/* Ringkasan & Informasi Demurrage (SPAL) */}
-                    <Card
-                        title="Informasi Demurrage & Laytime (SPAL)"
-                        description="Data faktual berbasis waktu operasional riil - tanpa asumsi prediktif."
-                        className="xl:col-span-3"
-                    >
-                        <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-5">
-                            {[
-                                ['Laytime Kontrak', (demurrage?.laytime_days ?? 0) > 0 ? `${demurrage?.laytime_days} hari` : 'Tidak diatur'],
-                                ['Tarif Demurrage', (demurrage?.demurrage_rate ?? 0) > 0 ? `${formatRupiah(demurrage?.demurrage_rate ?? 0)} / hari` : 'Tidak diatur'],
-                                ['Waktu Operasi Aktual', `${demurrage?.elapsed_days ?? 0} hari`],
-                                ['Kelebihan Hari', (demurrage?.demurrage_days ?? 0) > 0 ? `${demurrage?.demurrage_days} hari` : 'Dalam batas'],
-                                ['Estimasi Demurrage', (demurrage?.demurrage_amount ?? 0) > 0 ? formatRupiah(demurrage?.demurrage_amount ?? 0) : 'Rp 0'],
-                            ].map(([k, v]) => (
-                                <div key={k as string} className="rounded-lg border border-hairline bg-appbg/30 p-3">
-                                    <p className="text-xs uppercase tracking-wide text-muted">{k}</p>
-                                    <p className="mt-1 font-semibold text-ink">{v as string}</p>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-hairline pt-3 text-xs">
-                            <span className="text-muted">
-                                Status kepatuhan: <strong className="text-ink">{demurrage?.status ?? 'Dalam batas laytime'}</strong>
-                            </span>
-                            <div className="flex gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setTab('berkas')}
-                                    className="font-medium text-primary hover:underline"
-                                >
-                                    Lihat Berkas SPAL & Kontrak &rarr;
-                                </button>
-                                <span className="text-muted">·</span>
-                                <button
-                                    type="button"
-                                    onClick={() => setTab('timeline')}
-                                    className="font-medium text-primary hover:underline"
-                                >
-                                    Histori Kejadian Perjalanan &rarr;
-                                </button>
-                            </div>
-                        </div>
-                    </Card>
-                </div>
-            )}
-
-            {tab === 'vessel' && (
-                <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-                    <Card title="Vessel Utama">
-                        <Link
-                            href={`/armada/${voyage.vessel_id}`}
-                            className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
-                        >
-                            <Ship size={16} /> {voyage.vessel_name} ({voyage.vessel_type?.replace('_', ' ')})
-                        </Link>
-                        <p className="mt-2 text-sm text-muted">
-                            Rute: {voyage.origin} → {voyage.destination} ({voyage.route_type})
-                        </p>
-                    </Card>
-                    <Card
-                        title="Relasi Tugboat ↔ Tongkang"
-                        description="Dicatat per perjalanan — bukan permanen."
-                    >
-                        {relationships.length === 0 ? (
-                            <p className="text-sm text-muted">
-                                Tidak ada relasi (kapal penumpang / tanpa penarikan).
-                            </p>
-                        ) : (
-                            relationships.map((r, i) => (
-                                <div key={i} className="flex items-center gap-3 text-sm">
-                                    <span className="rounded-lg bg-maritime/10 px-2.5 py-1 font-medium text-maritime">
-                                        {r.tugboat_name}
-                                    </span>
-                                    <span className="text-muted">menarik</span>
-                                    <span className="rounded-lg bg-warn/10 px-2.5 py-1 font-medium text-warn">
-                                        {r.barge_name}
-                                    </span>
-                                </div>
-                            ))
-                        )}
-                        {cargo.length > 0 && (
-                            <div className="mt-4 border-t border-hairline pt-4">
-                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Muatan</p>
-                                {cargo.map((c) => (
-                                    <div key={c.id} className="text-sm text-ink">
-                                        <span className="capitalize">{c.commodity_type?.replace('_', ' ')}</span>
-                                        {c.weight_ton && (
-                                            <span className="text-muted"> · {formatNumber(c.weight_ton, 1)} ton</span>
-                                        )}
-                                        <span className="text-muted"> · {c.origin} → {c.destination}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </Card>
-                </div>
-            )}
-
-            {tab === 'documents' && (
-                <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-                    <Card title="Dokumen Tertaut" description="Dipakai ulang tanpa upload ganda.">
-                        {documents.length === 0 ? (
-                            <p className="text-sm text-muted">Belum ada dokumen tertaut.</p>
-                        ) : (
-                            <ul className="space-y-2">
-                                {documents.map((d) => (
-                                    <li key={d.id} className="flex items-center justify-between gap-2 rounded-lg border border-hairline px-3 py-2 text-sm">
-                                        <Link href={`/dokumen/${d.id}`} className="font-medium text-ink hover:text-primary">
-                                            {d.document_name}
-                                        </Link>
-                                        <span className="text-xs text-muted">
-                                            {d.group_code} · {d.verification_status}
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                    </Card>
-                    <Card title="Tautkan Dokumen" description="Pilih dari dokumen kapal/perusahaan yang sudah ada.">
-                        <form
-                            onSubmit={(e) => {
-                                e.preventDefault();
-                                const sel = (e.currentTarget.elements.namedItem('document_id') as HTMLSelectElement).value;
-                                if (! sel) return;
-                                router.post(
-                                    `/perjalanan/${voyage.id}/link-document`,
-                                    { document_id: sel },
-                                    { preserveScroll: true },
-                                );
-                            }}
-                        >
-                            <select
-                                name="document_id"
-                                className="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
-                            >
-                                <option value="">— pilih dokumen —</option>
-                                {(linkableDocuments ?? []).map((d) => (
-                                    <option key={d.id} value={d.id}>
-                                        {d.document_name}
-                                    </option>
-                                ))}
-                            </select>
-                            <p className="mt-2 text-xs text-muted">
-                                Pilih dokumen kapal atau perusahaan yang BELUM tertaut ke perjalanan ini.
-                            </p>
-                        </form>
-                    </Card>
-                </div>
-            )}
-
-            {tab === 'checklist' && (
-                <div className="overflow-hidden rounded-xl border border-hairline bg-white shadow-sm">
-                    <table className="min-w-full divide-y divide-hairline text-sm">
-                        <thead className="bg-appbg">
-                            <tr>
-                                {['Grup', 'Persyaratan', 'Sifat', 'Status', 'Aksi'].map((h) => (
-                                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted">
-                                        {h}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-hairline">
-                            {checklists.map((c) => (
-                                <tr key={c.id}>
-                                    <td className="px-4 py-3 text-muted">{c.group_code}</td>
-                                    <td className="px-4 py-3 font-medium text-ink">{c.name}</td>
-                                    <td className="px-4 py-3">
-                                        <Badge tone={c.applicability === 'wajib' ? 'info' : 'neutral'}>
-                                            {c.applicability === 'wajib' ? 'Wajib' : c.applicability === 'kondisional' ? 'Kondisional' : 'Menunggu Konfirmasi'}
-                                        </Badge>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <Badge tone={CHECK_TONES[c.completion_status] ?? 'neutral'}>
-                                            {c.completion_status === 'terpenuhi'
-                                                ? 'Terpenuhi'
-                                                : c.completion_status === 'tidak_berlaku'
-                                                  ? 'Tidak Berlaku'
-                                                  : 'Belum'}
-                                        </Badge>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        {actions.can_update ? (
-                                            <form
-                                                onSubmit={(e) => {
-                                                    e.preventDefault();
-                                                    const sel = (e.currentTarget.elements.namedItem('completion_status') as HTMLSelectElement).value;
-                                                    router.post(
-                                                        `/perjalanan/${voyage.id}/checklist/${c.id}`,
-                                                        { completion_status: sel },
-                                                        { preserveScroll: true },
-                                                    );
-                                                }}
-                                                className="flex items-center gap-2"
-                                            >
-                                                <select
-                                                    name="completion_status"
-                                                    defaultValue={c.completion_status}
-                                                    className="rounded-md border-gray-300 py-1 text-xs shadow-sm focus:border-primary focus:ring-primary"
-                                                >
-                                                    <option value="terpenuhi">Terpenuhi</option>
-                                                    <option value="belum">Belum</option>
-                                                    <option value="tidak_berlaku">Tidak Berlaku</option>
-                                                </select>
-                                                <button type="submit" className="text-xs font-medium text-primary hover:underline">
-                                                    Simpan
-                                                </button>
-                                            </form>
-                                        ) : (
-                                            <span className="text-xs text-muted">—</span>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    <p className="border-t border-hairline bg-appbg p-3 text-xs text-muted">
-                        Item kondisional tidak diwajibkan untuk semua perjalanan — hanya berlaku sesuai
-                        jenis kapal & muatan.
-                    </p>
-                </div>
-            )}
-
-            {tab === 'berkas' && (
-                <div className="space-y-5">
-                    {/* Stepper tahap charter */}
-                    {voyage.charter_stage && (
-                        <Card title="Tahap Berkas SPAL" description="SI → SPAL → DP → Keagenan Muat → DSR → Pelunasan → Keagenan Bongkar → Closing.">
-                            {(() => {
-                                const stages = CHARTER_STAGES;
-                                const labels = CHARTER_LABELS;
-                                const currentIdx = stages.indexOf(voyage.charter_stage);
-                                return (
-                                    <div className="flex flex-wrap items-center gap-1">
-                                        {stages.map((s, i) => (
-                                            <span key={s} className="flex items-center">
-                                                <span
-                                                    className={classNames(
-                                                        'rounded-full px-2.5 py-1 text-xs font-medium',
-                                                        i === currentIdx
-                                                            ? 'bg-primary text-white'
-                                                            : i < currentIdx
-                                                              ? 'bg-ok/15 text-ok'
-                                                              : 'bg-appbg text-muted',
-                                                    )}
-                                                >
-                                                    {labels[s]}
-                                                </span>
-                                                {i < stages.length - 1 && <span className="mx-1 h-px w-3 bg-hairline" />}
-                                            </span>
-                                        ))}
-                                    </div>
-                                );
-                            })()}
-                            {actions.can_update && (
-                                <form
-                                    onSubmit={(e) => {
-                                        e.preventDefault();
-                                        const fd = new FormData(e.currentTarget as HTMLFormElement);
-                                        router.post(`/perjalanan/${voyage.id}/charter`, {
-                                            charter_stage: fd.get('charter_stage'),
-                                            dsr_mt: fd.get('dsr_mt') || null,
-                                            dsr_date: fd.get('dsr_date') || null,
-                                        }, { preserveScroll: true });
-                                    }}
-                                    className="mt-4 flex flex-wrap items-end gap-3 border-t border-hairline pt-4"
-                                >
-                                    <div>
-                                        <label className="text-xs font-medium text-muted">Tahap saat ini</label>
-                                        <select name="charter_stage" defaultValue={voyage.charter_stage} className="mt-1 block rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary">
-                                            {CHARTER_STAGES.map((s) => (
-                                                <option key={s} value={s}>{CHARTER_LABELS[s]}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-muted">DSR — Total Muatan (MT)</label>
-                                        <NumericInput name="dsr_mt" decimalPlaces={2} defaultValue={voyage.dsr_mt ?? ''} className="mt-1 block w-32 rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-muted">Tanggal DSR</label>
-                                        <input name="dsr_date" type="date" defaultValue={voyage.dsr_date ?? ''} className="mt-1 block rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
-                                    </div>
-                                    <button type="submit" className="rounded-lg bg-ink px-3.5 py-2 text-sm font-medium text-white hover:bg-black">
-                                        Simpan Tahap
-                                    </button>
-                                </form>
+                            {voyage.notes && (
+                                <Paragraph type="secondary" className="mt-4 rounded-lg bg-[#FAF7F2] p-3 text-sm mb-0">{voyage.notes}</Paragraph>
                             )}
-                            <p className="mt-3 text-xs text-muted">
-                                Tahap <strong>pelunasan</strong> membutuhkan DSR dari nakhoda. Invoice DP/pelunasan diterbitkan lewat menu Keuangan → Invoice (tag voyage ini).
-                            </p>
+                            <div className="mt-4 rounded-lg bg-[#1E4668]/5 p-2.5">
+                                <Text type="secondary" className="text-[11px]">
+                                    Status kesiapan adalah <strong>indikator internal sistem</strong> - bukan
+                                    pengganti penilaian nakhoda atau persetujuan otoritas pelayaran.
+                                </Text>
+                            </div>
                         </Card>
-                    )}
+                        <Card title="Identitas Perjalanan">
+                            <Descriptions
+                                column={1}
+                                size="small"
+                                items={[
+                                    { key: 'activity', label: 'Kegiatan', children: <span className="capitalize">{voyage.activity_type?.replace('_', ' ')}</span> },
+                                    { key: 'pic', label: 'PIC', children: voyage.person_in_charge },
+                                    { key: 'customer', label: 'Customer', children: voyage.customer_name ?? '-' },
+                                    { key: 'contract', label: 'No. Kontrak', children: voyage.contract_no ?? '-' },
+                                    { key: 'route', label: 'Tipe Rute', children: voyage.route_type },
+                                ]}
+                            />
+                        </Card>
 
-                    {/* Ringkasan SPAL */}
-                    {voyage.spal_number && (
                         <Card
-                            title={`SPAL ${voyage.spal_number}`}
-                            actions={
-                                <a
-                                    href={`/cetak/spal/${voyage.id}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-hover"
-                                >
-                                    <Printer size={13} /> Cetak SPAL (PDF)
-                                </a>
-                            }
+                            title="Informasi Demurrage & Laytime (SPAL)"
+                            description="Data faktual berbasis waktu operasional riil, tanpa asumsi prediktif."
+                            className="xl:col-span-3"
                         >
-                            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm md:grid-cols-3">
+                            <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
                                 {[
-                                    ['Tanggal SPAL', voyage.spal_date],
-                                    ['Sistem Bayar', (voyage.payment_terms ?? '').replace('_', ' ')],
-                                    ['Freight', voyage.freight_rate ? `${formatRupiah(voyage.freight_rate)}${voyage.freight_unit === 'MT' ? ' /MT' : ' lumpsum'}` : '—'],
-                                    ['Laytime', voyage.laytime_days ? `${voyage.laytime_days} hari` : '—'],
-                                    ['Demurrage', voyage.demurrage_per_day ? `${formatRupiah(voyage.demurrage_per_day)} /hari` : '—'],
-                                    ['Muat', voyage.jetty_loading ?? '—'],
-                                    ['Bongkar', voyage.jetty_discharge ?? '—'],
-                                    ['Shipper', voyage.shipper ?? '—'],
-                                    ['Consignee', voyage.consignee ?? '—'],
+                                    ['Laytime Kontrak', (demurrage?.laytime_days ?? 0) > 0 ? `${demurrage?.laytime_days} hari` : 'Tidak diatur'],
+                                    ['Tarif Demurrage', (demurrage?.demurrage_rate ?? 0) > 0 ? `${formatRupiah(demurrage?.demurrage_rate ?? 0)} / hari` : 'Tidak diatur'],
+                                    ['Waktu Operasi Aktual', `${demurrage?.elapsed_days ?? 0} hari`],
+                                    ['Kelebihan Hari', (demurrage?.demurrage_days ?? 0) > 0 ? `${demurrage?.demurrage_days} hari` : 'Dalam batas'],
+                                    ['Estimasi Demurrage', (demurrage?.demurrage_amount ?? 0) > 0 ? formatRupiah(demurrage?.demurrage_amount ?? 0) : 'Rp 0'],
                                 ].map(([k, v]) => (
-                                    <div key={k as string}>
-                                        <dt className="text-xs uppercase tracking-wide text-muted">{k}</dt>
-                                        <dd className="mt-0.5 font-medium capitalize text-ink">{v}</dd>
+                                    <div key={k as string} className="rounded-lg border border-[#E7E1D9] bg-[#FAF7F2]/30 p-3">
+                                        <Text type="secondary" className="text-xs uppercase tracking-wide">{k}</Text>
+                                        <p className="mt-1 font-semibold text-[#1C1B1A]">{v as string}</p>
                                     </div>
                                 ))}
-                            </dl>
-                            {(charterInvoices ?? []).length > 0 && (
-                                <div className="mt-4 border-t border-hairline pt-3">
-                                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
-                                        Invoice Charter (DP / Pelunasan)
-                                    </p>
-                                    <ul className="space-y-1.5">
-                                        {(charterInvoices ?? []).map((inv: any) => (
-                                            <li key={inv.id} className="flex items-center justify-between gap-2 rounded-lg border border-hairline px-3 py-2 text-sm">
-                                                <span className="font-medium text-ink">
-                                                    {inv.number}
-                                                    <span className="ms-2 text-xs font-normal text-muted">
-                                                        {inv.fp_number ? `FP: ${inv.fp_number}` : 'FP: —'}
-                                                    </span>
-                                                </span>
-                                                <span className="flex items-center gap-2">
-                                                    <Badge tone={inv.status === 'paid' ? 'success' : inv.status === 'partial' ? 'warning' : 'danger'}>
-                                                        {inv.status}
-                                                    </Badge>
-                                                    <span className="tabular-nums text-ink">{formatRupiah(inv.total)}</span>
-                                                    <a href={`/cetak/invoice-charter/${inv.id}?kind=${inv.invoice_kind === 'pelunasan' ? 'pelunasan' : 'dp'}`} target="_blank" rel="noreferrer" className="text-xs font-medium text-primary hover:underline">
-                                                        Cetak
-                                                    </a>
-                                                </span>
-                                            </li>
-                                        ))}
-                                    </ul>
+                            </div>
+                            <Divider style={{ margin: '16px 0 12px', borderColor: '#E7E1D9' }} />
+                            <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+                                <Text type="secondary">
+                                    Status kepatuhan: <Text strong className="text-[#1C1B1A]">{demurrage?.status ?? 'Dalam batas laytime'}</Text>
+                                </Text>
+                                <div className="flex gap-2">
+                                    <Button type="link" size="small" onClick={() => setTab('berkas')}>
+                                        Lihat Berkas SPAL & Kontrak &rarr;
+                                    </Button>
+                                    <Button type="link" size="small" onClick={() => setTab('timeline')}>
+                                        Histori Kejadian Perjalanan &rarr;
+                                    </Button>
                                 </div>
+                            </div>
+                        </Card>
+                    </div>
+                )}
+
+                {tab === 'vessel' && (
+                    <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+                        <Card title="Vessel Utama">
+                            <Link
+                                href={`/armada/${voyage.vessel_id}`}
+                                className="inline-flex items-center gap-2 text-sm font-semibold text-[#C1121F] hover:underline"
+                            >
+                                <Ship size={16} /> {voyage.vessel_name} ({voyage.vessel_type?.replace('_', ' ')})
+                            </Link>
+                            <Paragraph type="secondary" className="mt-2 text-sm mb-0">
+                                Rute: {voyage.origin} → {voyage.destination} ({voyage.route_type})
+                            </Paragraph>
+                        </Card>
+                        <Card title="Relasi Tugboat ↔ Tongkang" description="Dicatat per perjalanan, bukan permanen.">
+                            {relationships.length === 0 ? (
+                                <Paragraph type="secondary" className="text-sm mb-0">
+                                    Tidak ada relasi (kapal penumpang / tanpa penarikan).
+                                </Paragraph>
+                            ) : (
+                                relationships.map((r, i) => (
+                                    <div key={i} className="flex items-center gap-3 text-sm">
+                                        <span className="rounded-lg bg-[#1E4668]/10 px-2.5 py-1 font-medium text-[#1E4668]">
+                                            {r.tugboat_name}
+                                        </span>
+                                        <Text type="secondary">menarik</Text>
+                                        <span className="rounded-lg bg-[#D99A2B]/10 px-2.5 py-1 font-medium text-[#D99A2B]">
+                                            {r.barge_name}
+                                        </span>
+                                    </div>
+                                ))
                             )}
-                            <div className="mt-4 border-t border-hairline pt-3 text-sm">
-                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Terbitkan Invoice Charter</p>
-                                <p className="mb-2 text-xs text-muted">
-                                    Auto-fill dari SPAL (rate × MT) — pelunasan memakai DSR. PPN 11%, PPh 1,2%, nomor terbit urut, PDF otomatis terarsip. Kolom FP: nomor &amp; file (sistem tidak menerbitkan FP).
-                                </p>
+                            {cargo.length > 0 && (
+                                <>
+                                    <Divider style={{ margin: '16px 0', borderColor: '#E7E1D9' }} />
+                                    <Text type="secondary" className="mb-2 block text-xs font-semibold uppercase tracking-wide">Muatan</Text>
+                                    {cargo.map((c) => (
+                                        <div key={c.id} className="text-sm text-[#1C1B1A]">
+                                            <span className="capitalize">{c.commodity_type?.replace('_', ' ')}</span>
+                                            {c.weight_ton && (
+                                                <Text type="secondary"> · {formatNumber(c.weight_ton, 1)} ton</Text>
+                                            )}
+                                            <Text type="secondary"> · {c.origin} → {c.destination}</Text>
+                                        </div>
+                                    ))}
+                                </>
+                            )}
+                        </Card>
+                    </div>
+                )}
+
+                {tab === 'documents' && (
+                    <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+                        <Card title="Dokumen Tertaut" description="Dipakai ulang tanpa upload ganda.">
+                            {documents.length === 0 ? (
+                                <Paragraph type="secondary" className="text-sm mb-0">Belum ada dokumen tertaut.</Paragraph>
+                            ) : (
+                                <ul className="space-y-2">
+                                    {documents.map((d) => (
+                                        <li key={d.id} className="flex items-center justify-between gap-2 rounded-lg border border-[#E7E1D9] px-3 py-2 text-sm">
+                                            <Link href={`/dokumen/${d.id}`} className="font-medium text-[#1C1B1A] hover:text-[#C1121F]">
+                                                {d.document_name}
+                                            </Link>
+                                            <Text type="secondary" className="text-xs">
+                                                {d.group_code} · {d.verification_status}
+                                            </Text>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </Card>
+                        <Card title="Tautkan Dokumen" description="Pilih dari dokumen kapal/perusahaan yang sudah ada.">
+                            <form
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    const sel = (e.currentTarget.elements.namedItem('document_id') as HTMLSelectElement).value;
+                                    if (!sel) return;
+                                    router.post(
+                                        `/perjalanan/${voyage.id}/link-document`,
+                                        { document_id: sel },
+                                        { preserveScroll: true },
+                                    );
+                                }}
+                            >
+                                <select
+                                    name="document_id"
+                                    className="block w-full rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20"
+                                >
+                                    <option value="">— pilih dokumen —</option>
+                                    {(linkableDocuments ?? []).map((d) => (
+                                        <option key={d.id} value={d.id}>
+                                            {d.document_name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <Text type="secondary" className="mt-2 block text-xs">
+                                    Pilih dokumen kapal atau perusahaan yang BELUM tertaut ke perjalanan ini.
+                                </Text>
+                            </form>
+                        </Card>
+                    </div>
+                )}
+
+                {tab === 'checklist' && (
+                    <div className="overflow-hidden rounded-xl border border-[#E7E1D9] bg-white shadow-sm">
+                        <table className="min-w-full divide-y divide-[#E7E1D9] text-sm">
+                            <thead className="bg-[#FAF7F2]">
+                                <tr>
+                                    {['Grup', 'Persyaratan', 'Sifat', 'Status', 'Aksi'].map((h) => (
+                                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#8A8580]">
+                                            {h}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#E7E1D9]">
+                                {checklists.map((c) => (
+                                    <tr key={c.id}>
+                                        <td className="px-4 py-3 text-[#8A8580]">{c.group_code}</td>
+                                        <td className="px-4 py-3 font-medium text-[#1C1B1A]">{c.name}</td>
+                                        <td className="px-4 py-3">
+                                            <Badge tone={c.applicability === 'wajib' ? 'info' : 'neutral'}>
+                                                {c.applicability === 'wajib' ? 'Wajib' : c.applicability === 'kondisional' ? 'Kondisional' : 'Menunggu Konfirmasi'}
+                                            </Badge>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <Badge tone={CHECK_TONES[c.completion_status] ?? 'neutral'}>
+                                                {c.completion_status === 'terpenuhi'
+                                                    ? 'Terpenuhi'
+                                                    : c.completion_status === 'tidak_berlaku'
+                                                      ? 'Tidak Berlaku'
+                                                      : 'Belum'}
+                                            </Badge>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            {actions.can_update ? (
+                                                <form
+                                                    onSubmit={(e) => {
+                                                        e.preventDefault();
+                                                        const sel = (e.currentTarget.elements.namedItem('completion_status') as HTMLSelectElement).value;
+                                                        router.post(
+                                                            `/perjalanan/${voyage.id}/checklist/${c.id}`,
+                                                            { completion_status: sel },
+                                                            { preserveScroll: true },
+                                                        );
+                                                    }}
+                                                    className="flex items-center gap-2"
+                                                >
+                                                    <select
+                                                        name="completion_status"
+                                                        defaultValue={c.completion_status}
+                                                        className="rounded-md border border-[#E7E1D9] bg-white py-1 text-xs shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20"
+                                                    >
+                                                        <option value="terpenuhi">Terpenuhi</option>
+                                                        <option value="belum">Belum</option>
+                                                        <option value="tidak_berlaku">Tidak Berlaku</option>
+                                                    </select>
+                                                    <button type="submit" className="text-xs font-medium text-[#C1121F] hover:underline">
+                                                        Simpan
+                                                    </button>
+                                                </form>
+                                            ) : (
+                                                <Text type="secondary" className="text-xs">—</Text>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        <div className="border-t border-[#E7E1D9] bg-[#FAF7F2] p-3">
+                            <Text type="secondary" className="text-xs">
+                                Item kondisional tidak diwajibkan untuk semua perjalanan, hanya berlaku sesuai
+                                jenis kapal & muatan.
+                            </Text>
+                        </div>
+                    </div>
+                )}
+
+                {tab === 'berkas' && (
+                    <div className="space-y-5">
+                        {voyage.charter_stage && (
+                            <Card title="Tahap Berkas SPAL" description="SI → SPAL → DP → Keagenan Muat → DSR → Pelunasan → Keagenan Bongkar → Closing.">
+                                <Steps
+                                    current={charterStepIdx >= 0 ? charterStepIdx : 0}
+                                    size="small"
+                                    items={CHARTER_STAGES.map((s) => ({
+                                        title: CHARTER_LABELS[s],
+                                        status: CHARTER_STAGES.indexOf(s) < charterStepIdx ? 'finish' : CHARTER_STAGES.indexOf(s) === charterStepIdx ? 'process' : 'wait',
+                                    }))}
+                                />
+                                {actions.can_update && (
+                                    <form
+                                        onSubmit={(e) => {
+                                            e.preventDefault();
+                                            const fd = new FormData(e.currentTarget as HTMLFormElement);
+                                            router.post(`/perjalanan/${voyage.id}/charter`, {
+                                                charter_stage: fd.get('charter_stage'),
+                                                dsr_mt: fd.get('dsr_mt') || null,
+                                                dsr_date: fd.get('dsr_date') || null,
+                                            }, { preserveScroll: true });
+                                        }}
+                                        className="mt-4 flex flex-wrap items-end gap-3 border-t border-[#E7E1D9] pt-4"
+                                    >
+                                        <div>
+                                            <Text type="secondary" className="text-xs font-medium">Tahap saat ini</Text>
+                                            <select name="charter_stage" defaultValue={voyage.charter_stage} className="mt-1 block rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20">
+                                                {CHARTER_STAGES.map((s) => (
+                                                    <option key={s} value={s}>{CHARTER_LABELS[s]}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <Text type="secondary" className="text-xs font-medium">DSR — Total Muatan (MT)</Text>
+                                            <NumericInput name="dsr_mt" decimalPlaces={2} defaultValue={voyage.dsr_mt ?? ''} className="mt-1 block w-32 rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20" />
+                                        </div>
+                                        <div>
+                                            <Text type="secondary" className="text-xs font-medium">Tanggal DSR</Text>
+                                            <input name="dsr_date" type="date" defaultValue={voyage.dsr_date ?? ''} className="mt-1 block rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20" />
+                                        </div>
+                                        <Button type="primary" htmlType="submit" style={{ background: '#1C1B1A', borderColor: '#1C1B1A' }}>
+                                            Simpan Tahap
+                                        </Button>
+                                    </form>
+                                )}
+                                <Text type="secondary" className="mt-3 block text-xs">
+                                    Tahap <strong>pelunasan</strong> membutuhkan DSR dari nakhoda. Invoice DP/pelunasan diterbitkan lewat menu Keuangan → Invoice (tag voyage ini).
+                                </Text>
+                            </Card>
+                        )}
+
+                        {voyage.spal_number && (
+                            <Card
+                                title={`SPAL ${voyage.spal_number}`}
+                                actions={
+                                    <a href={`/cetak/spal/${voyage.id}`} target="_blank" rel="noreferrer">
+                                        <Button type="primary" size="small" icon={<Printer size={13} />}>
+                                            Cetak SPAL (PDF)
+                                        </Button>
+                                    </a>
+                                }
+                            >
+                                <Descriptions
+                                    column={{ xs: 1, sm: 2, md: 3 }}
+                                    size="small"
+                                    items={[
+                                        { key: 'spal_date', label: 'Tanggal SPAL', children: voyage.spal_date },
+                                        { key: 'payment', label: 'Sistem Bayar', children: <span className="capitalize">{(voyage.payment_terms ?? '').replace('_', ' ')}</span> },
+                                        { key: 'freight', label: 'Freight', children: voyage.freight_rate ? `${formatRupiah(voyage.freight_rate)}${voyage.freight_unit === 'MT' ? ' /MT' : ' lumpsum'}` : '—' },
+                                        { key: 'laytime', label: 'Laytime', children: voyage.laytime_days ? `${voyage.laytime_days} hari` : '—' },
+                                        { key: 'demurrage', label: 'Demurrage', children: voyage.demurrage_per_day ? `${formatRupiah(voyage.demurrage_per_day)} /hari` : '—' },
+                                        { key: 'loading', label: 'Muat', children: voyage.jetty_loading ?? '—' },
+                                        { key: 'discharge', label: 'Bongkar', children: voyage.jetty_discharge ?? '—' },
+                                        { key: 'shipper', label: 'Shipper', children: voyage.shipper ?? '—' },
+                                        { key: 'consignee', label: 'Consignee', children: voyage.consignee ?? '—' },
+                                    ]}
+                                />
+                                {(charterInvoices ?? []).length > 0 && (
+                                    <>
+                                        <Divider style={{ margin: '16px 0 12px', borderColor: '#E7E1D9' }} />
+                                        <Text type="secondary" className="mb-2 block text-xs font-semibold uppercase tracking-wide">
+                                            Invoice Charter (DP / Pelunasan)
+                                        </Text>
+                                        <ul className="space-y-1.5">
+                                            {(charterInvoices ?? []).map((inv: any) => (
+                                                <li key={inv.id} className="flex items-center justify-between gap-2 rounded-lg border border-[#E7E1D9] px-3 py-2 text-sm">
+                                                    <span className="font-medium text-[#1C1B1A]">
+                                                        {inv.number}
+                                                        <Text type="secondary" className="ms-2 text-xs font-normal">
+                                                            {inv.fp_number ? `FP: ${inv.fp_number}` : 'FP: —'}
+                                                        </Text>
+                                                    </span>
+                                                    <span className="flex items-center gap-2">
+                                                        <Badge tone={inv.status === 'paid' ? 'success' : inv.status === 'partial' ? 'warning' : 'danger'}>
+                                                            {inv.status}
+                                                        </Badge>
+                                                        <span className="tabular-nums text-[#1C1B1A]">{formatRupiah(inv.total)}</span>
+                                                        <a href={`/cetak/invoice-charter/${inv.id}?kind=${inv.invoice_kind === 'pelunasan' ? 'pelunasan' : 'dp'}`} target="_blank" rel="noreferrer" className="text-xs font-medium text-[#C1121F] hover:underline">
+                                                            Cetak
+                                                        </a>
+                                                    </span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </>
+                                )}
+                                <Divider style={{ margin: '16px 0 12px', borderColor: '#E7E1D9' }} />
+                                <Text type="secondary" className="mb-2 block text-xs font-semibold uppercase tracking-wide">Terbitkan Invoice Charter</Text>
+                                <Text type="secondary" className="mb-2 block text-xs">
+                                    Auto-fill dari SPAL (rate x MT). Pelunasan memakai DSR. PPN 11%, PPh 1,2%, nomor terbit urut, PDF otomatis terarsip. Kolom FP: nomor & file (sistem tidak menerbitkan FP).
+                                </Text>
                                 <form
                                     onSubmit={(e: FormEvent) => {
                                         e.preventDefault();
@@ -759,11 +698,11 @@ export default function VoyagesShow({
                                     className="flex flex-wrap items-end gap-2"
                                 >
                                     <div>
-                                        <label className="text-xs text-muted">Tahap</label>
+                                        <Text type="secondary" className="text-xs">Tahap</Text>
                                         <select
                                             value={issueInvForm.data.kind}
                                             onChange={(e) => issueInvForm.setData('kind', e.target.value)}
-                                            className="mt-1 block w-44 rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
+                                            className="mt-1 block w-44 rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20"
                                         >
                                             <option value="dp">DP (50% / terms)</option>
                                             <option value="dp100">DP 100% (penuh)</option>
@@ -771,446 +710,423 @@ export default function VoyagesShow({
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="text-xs text-muted">Nomor FP (opsional)</label>
+                                        <Text type="secondary" className="text-xs">Nomor FP (opsional)</Text>
                                         <input
                                             value={issueInvForm.data.fp_number}
                                             onChange={(e) => issueInvForm.setData('fp_number', e.target.value)}
                                             placeholder="010.045-777.197.2026"
-                                            className="mt-1 block w-56 rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
+                                            className="mt-1 block w-56 rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20"
                                         />
                                     </div>
                                     <PrimaryButton disabled={issueInvForm.processing || !voyage.spal_number || !voyage.freight_rate}>
-                                        Terbitkan &amp; Cetak
+                                        Terbitkan & Cetak
                                     </PrimaryButton>
                                 </form>
-                                {!voyage.spal_number && <p className="mt-1.5 text-xs text-muted">Terbitkan SPAL terlebih dahulu.</p>}
-                                {issueInvForm.errors?.kind && <p className="mt-1 text-xs text-danger">{issueInvForm.errors.kind}</p>}
-                            </div>
-                        </Card>
-                    )}
-
-                    {/* Keagenan */}
-                    <Card title="Penunjukan Keagenan" description="Surat penunjukan agen sebelum kapal tiba di pelabuhan muat & bongkar.">
-                        {(agency ?? []).length === 0 ? (
-                            <p className="text-sm text-muted">Belum ada surat keagenan.</p>
-                        ) : (
-                            <ul className="space-y-2">
-                                {(agency ?? []).map((ag: any) => (
-                                    <li key={ag.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-hairline px-3 py-2.5 text-sm">
-                                        <div>
-                                            <p className="font-medium text-ink">
-                                                <span className="font-mono text-xs text-muted">{ag.letter_no}</span> · {ag.agent_name}
-                                            </p>
-                                            <p className="text-xs capitalize text-muted">
-                                                {ag.port_type} · {ag.port_name ?? '—'} · Nakhoda: {ag.captain_name ?? '—'} {ag.captain_phone ? `(${ag.captain_phone})` : ''} · GRT {ag.grt ?? '—'}
-                                            </p>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-xs font-medium">
-                                            <a href={`/cetak/keagenan/${ag.id}`} target="_blank" rel="noreferrer" className="text-primary hover:underline">Cetak</a>
-                                            <span className="text-muted">{formatDate(ag.letter_date)}</span>
-                                            {actions.can_update && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => router.delete(`/perjalanan/${voyage.id}/keagenan/${ag.id}`, { preserveScroll: true })}
-                                                    className="text-primary hover:underline"
-                                                >
-                                                    Hapus
-                                                </button>
-                                            )}
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                        {actions.can_update && (
-                            <form
-                                onSubmit={(e) => {
-                                    e.preventDefault();
-                                    const fd = new FormData(e.currentTarget as HTMLFormElement);
-                                    router.post(`/perjalanan/${voyage.id}/keagenan`, Object.fromEntries(fd), {
-                                        preserveScroll: true,
-                                        onSuccess: () => (e.currentTarget as HTMLFormElement).reset(),
-                                    });
-                                }}
-                                className="mt-4 grid grid-cols-2 gap-3 border-t border-hairline pt-4 md:grid-cols-4"
-                            >
-                                <div>
-                                    <label className="text-xs font-medium text-muted">Jenis Pelabuhan *</label>
-                                    <select name="port_type" className="mt-1 block rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary">
-                                        <option value="muat">Muat</option>
-                                        <option value="bongkar">Bongkar</option>
-                                        <option value="lainnya">Lainnya</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="text-xs font-medium text-muted">Nama Pelabuhan</label>
-                                    <input name="port_name" className="mt-1 block rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-medium text-muted">Agen *</label>
-                                    <input name="agent_name" required className="mt-1 block rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-medium text-muted">Alamat Agen</label>
-                                    <input name="agent_address" className="mt-1 block rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-medium text-muted">Nakhoda</label>
-                                    <input name="captain_name" className="mt-1 block rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-medium text-muted">HP Nakhoda</label>
-                                    <input name="captain_phone" className="mt-1 block rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-medium text-muted">Tanggal Surat</label>
-                                    <input name="letter_date" type="date" className="mt-1 block rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
-                                </div>
-                                <div className="flex items-end">
-                                    <button type="submit" className="rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-white hover:bg-primary-hover">
-                                        Terbitkan Surat
-                                    </button>
-                                </div>
-                            </form>
-                        )}
-                    </Card>
-
-                    {/* Dokumen berkait */}
-                    <Card title="Dokumen Berkas Perjalanan" description="Dokumen tertaut perjalanan ini — arsip terpadu.">
-                        {documents.length === 0 ? (
-                            <p className="text-sm text-muted">Belum ada dokumen tertaut — gunakan tab Documents untuk menautkan.</p>
-                        ) : (
-                            <ul className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                                {documents.map((d: any) => (
-                                    <li key={d.id} className="flex items-center justify-between rounded-lg border border-hairline px-3 py-2 text-sm">
-                                        <Link href={`/dokumen/${d.id}`} className="font-medium text-ink hover:text-primary">
-                                            {d.document_name}
-                                        </Link>
-                                        <span className="text-xs text-muted">{d.group_code} · {d.verification_status}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                    </Card>
-                </div>
-            )}
-
-            {tab === 'manifest' && (
-                <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-                    {voyage.vessel_type === 'kapal_penumpang' ? (
-                        <>
-                            <Card title="Rekap Penumpang">
-                                <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
-                                    {[
-                                        ['Kapasitas', voyage.capacity],
-                                        ['Tiket Terjual', voyage.tickets_sold],
-                                        ['Naik (Boarded)', voyage.boarded],
-                                        ['Turun (Landed)', voyage.landed],
-                                        ['Batal', voyage.cancelled],
-                                    ].map(([k, v]) => (
-                                        <div key={k as string} className="rounded-lg bg-appbg p-3">
-                                            <p className="text-xs uppercase tracking-wide text-muted">{k}</p>
-                                            <p className="mt-0.5 text-xl font-semibold tabular-nums text-ink">
-                                                {v == null ? '—' : formatNumber(Number(v))}
-                                            </p>
-                                        </div>
-                                    ))}
-                                </div>
-                                {actions.can_update && (
-                                    <form
-                                        onSubmit={(e) => {
-                                            e.preventDefault();
-                                            const type = (e.currentTarget.elements.namedItem('type') as HTMLSelectElement).value;
-                                            const count = (e.currentTarget.elements.namedItem('count') as HTMLInputElement).value;
-                                            router.post(
-                                                `/perjalanan/${voyage.id}/passenger-log`,
-                                                { type, count: count || null },
-                                                { preserveScroll: true },
-                                            );
-                                        }}
-                                        className="mt-4 flex flex-wrap items-end gap-2 border-t border-hairline pt-4"
-                                    >
-                                        <div>
-                                            <label className="text-xs font-medium text-muted">Jenis Log</label>
-                                            <select name="type" className="mt-1 block rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary">
-                                                <option value="keberangkatan">Keberangkatan (jumlah naik)</option>
-                                                <option value="kedatangan">Kedatangan (jumlah turun)</option>
-                                                <option value="batal">Pembatalan tiket</option>
-                                                <option value="perubahan_jumlah">Perubahan jumlah</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-medium text-muted">Jumlah</label>
-                                            <NumericInput name="count" min={0} className="mt-1 block w-28 rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
-                                        </div>
-                                        <button type="submit" className="rounded-lg bg-ink px-3.5 py-2 text-sm font-medium text-white hover:bg-black">
-                                            Catat Log
-                                        </button>
-                                    </form>
-                                )}
-                                <p className="mt-3 text-xs text-muted">
-                                    Data penumpang bersifat simulasi/ agregat — produksi wajib
-                                    pembatasan akses data pribadi.
-                                </p>
+                                {!voyage.spal_number && <Text type="secondary" className="mt-1.5 block text-xs">Terbitkan SPAL terlebih dahulu.</Text>}
+                                {issueInvForm.errors?.kind && <p className="mt-1 text-xs text-[#C1121F]">{issueInvForm.errors.kind}</p>}
                             </Card>
-                            <Card title="Cek Kesiapan Penumpang">
-                                <p className="text-sm text-muted">
-                                    Cek kesiapan (kapasitas vs jumlah, life jacket, APAR) dicatat pada
-                                    pemeriksaan kesiapan sebelum berangkat — lihat Operations & Dokumen
-                                    keselamatan kapal.
-                                </p>
-                            </Card>
-                        </>
-                    ) : (
-                        <Card title="Muatan" description="Data terstruktur perjalanan tongkang/tugboat.">
-                            {cargo.length === 0 ? (
-                                <p className="text-sm text-muted">Tidak ada data muatan.</p>
+                        )}
+
+                        <Card title="Penunjukan Keagenan" description="Surat penunjukan agen sebelum kapal tiba di pelabuhan muat & bongkar.">
+                            {(agency ?? []).length === 0 ? (
+                                <Paragraph type="secondary" className="text-sm mb-0">Belum ada surat keagenan.</Paragraph>
                             ) : (
-                                cargo.map((c) => (
-                                    <div key={c.id} className="rounded-lg border border-hairline p-3 text-sm">
-                                        <p className="font-semibold capitalize text-ink">
-                                            {c.commodity_type?.replace('_', ' ')}
-                                        </p>
-                                        <p className="text-muted">
-                                            {formatNumber(c.weight_ton, 1)} ton · {c.origin} → {c.destination}
-                                        </p>
+                                <ul className="space-y-2">
+                                    {(agency ?? []).map((ag: any) => (
+                                        <li key={ag.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#E7E1D9] px-3 py-2.5 text-sm">
+                                            <div>
+                                                <p className="font-medium text-[#1C1B1A]">
+                                                    <Text type="secondary" className="font-mono text-xs">{ag.letter_no}</Text> · {ag.agent_name}
+                                                </p>
+                                                <p className="text-xs capitalize text-[#8A8580]">
+                                                    {ag.port_type} · {ag.port_name ?? '—'} · Nakhoda: {ag.captain_name ?? '—'} {ag.captain_phone ? `(${ag.captain_phone})` : ''} · GRT {ag.grt ?? '—'}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-xs font-medium">
+                                                <a href={`/cetak/keagenan/${ag.id}`} target="_blank" rel="noreferrer" className="text-[#C1121F] hover:underline">Cetak</a>
+                                                <Text type="secondary">{formatDate(ag.letter_date)}</Text>
+                                                {actions.can_update && (
+                                                    <Popconfirm
+                                                        title="Hapus surat keagenan ini?"
+                                                        onConfirm={() => router.delete(`/perjalanan/${voyage.id}/keagenan/${ag.id}`, { preserveScroll: true })}
+                                                    >
+                                                        <button type="button" className="text-[#C1121F] hover:underline">Hapus</button>
+                                                    </Popconfirm>
+                                                )}
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                            {actions.can_update && (
+                                <form
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        const fd = new FormData(e.currentTarget as HTMLFormElement);
+                                        router.post(`/perjalanan/${voyage.id}/keagenan`, Object.fromEntries(fd), {
+                                            preserveScroll: true,
+                                            onSuccess: () => (e.currentTarget as HTMLFormElement).reset(),
+                                        });
+                                    }}
+                                    className="mt-4 grid grid-cols-2 gap-3 border-t border-[#E7E1D9] pt-4 md:grid-cols-4"
+                                >
+                                    <div>
+                                        <Text type="secondary" className="text-xs font-medium">Jenis Pelabuhan *</Text>
+                                        <select name="port_type" className="mt-1 block rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20">
+                                            <option value="muat">Muat</option>
+                                            <option value="bongkar">Bongkar</option>
+                                            <option value="lainnya">Lainnya</option>
+                                        </select>
                                     </div>
-                                ))
+                                    <div>
+                                        <Text type="secondary" className="text-xs font-medium">Nama Pelabuhan</Text>
+                                        <input name="port_name" className="mt-1 block rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20" />
+                                    </div>
+                                    <div>
+                                        <Text type="secondary" className="text-xs font-medium">Agen *</Text>
+                                        <input name="agent_name" required className="mt-1 block rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20" />
+                                    </div>
+                                    <div>
+                                        <Text type="secondary" className="text-xs font-medium">Alamat Agen</Text>
+                                        <input name="agent_address" className="mt-1 block rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20" />
+                                    </div>
+                                    <div>
+                                        <Text type="secondary" className="text-xs font-medium">Nakhoda</Text>
+                                        <input name="captain_name" className="mt-1 block rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20" />
+                                    </div>
+                                    <div>
+                                        <Text type="secondary" className="text-xs font-medium">HP Nakhoda</Text>
+                                        <input name="captain_phone" className="mt-1 block rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20" />
+                                    </div>
+                                    <div>
+                                        <Text type="secondary" className="text-xs font-medium">Tanggal Surat</Text>
+                                        <input name="letter_date" type="date" className="mt-1 block rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20" />
+                                    </div>
+                                    <div className="flex items-end">
+                                        <Button type="primary" htmlType="submit">
+                                            Terbitkan Surat
+                                        </Button>
+                                    </div>
+                                </form>
                             )}
                         </Card>
-                    )}
-                </div>
-            )}
 
-            {tab === 'approvals' && (
-                <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-                    <Card
-                        title="Persetujuan Internal"
-                        actions={
-                            actions.can_approve && (
-                                <button
-                                    type="button"
-                                    onClick={() => setModal('approve')}
-                                    className="rounded-lg bg-ok px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
-                                >
-                                    Beri Keputusan
-                                </button>
-                            )
-                        }
-                    >
-                        {approvals.filter((a) => a.scope === 'internal').length === 0 ? (
-                            <p className="text-sm text-muted">
-                                Belum ada persetujuan internal. Diberikan supervisor setelah pemeriksaan.
-                            </p>
+                        <Card title="Dokumen Berkas Perjalanan" description="Dokumen tertaut perjalanan ini, arsip terpadu.">
+                            {documents.length === 0 ? (
+                                <Paragraph type="secondary" className="text-sm mb-0">Belum ada dokumen tertaut. Gunakan tab Documents untuk menautkan.</Paragraph>
+                            ) : (
+                                <ul className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                                    {documents.map((d: any) => (
+                                        <li key={d.id} className="flex items-center justify-between rounded-lg border border-[#E7E1D9] px-3 py-2 text-sm">
+                                            <Link href={`/dokumen/${d.id}`} className="font-medium text-[#1C1B1A] hover:text-[#C1121F]">
+                                                {d.document_name}
+                                            </Link>
+                                            <Text type="secondary" className="text-xs">{d.group_code} · {d.verification_status}</Text>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </Card>
+                    </div>
+                )}
+
+                {tab === 'manifest' && (
+                    <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+                        {voyage.vessel_type === 'kapal_penumpang' ? (
+                            <>
+                                <Card title="Rekap Penumpang">
+                                    <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
+                                        {[
+                                            ['Kapasitas', voyage.capacity],
+                                            ['Tiket Terjual', voyage.tickets_sold],
+                                            ['Naik (Boarded)', voyage.boarded],
+                                            ['Turun (Landed)', voyage.landed],
+                                            ['Batal', voyage.cancelled],
+                                        ].map(([k, v]) => (
+                                            <div key={k as string} className="rounded-lg bg-[#FAF7F2] p-3">
+                                                <Text type="secondary" className="text-xs uppercase tracking-wide">{k}</Text>
+                                                <p className="mt-0.5 text-xl font-semibold tabular-nums text-[#1C1B1A]">
+                                                    {v == null ? '—' : formatNumber(Number(v))}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {actions.can_update && (
+                                        <form
+                                            onSubmit={(e) => {
+                                                e.preventDefault();
+                                                const type = (e.currentTarget.elements.namedItem('type') as HTMLSelectElement).value;
+                                                const count = (e.currentTarget.elements.namedItem('count') as HTMLInputElement).value;
+                                                router.post(
+                                                    `/perjalanan/${voyage.id}/passenger-log`,
+                                                    { type, count: count || null },
+                                                    { preserveScroll: true },
+                                                );
+                                            }}
+                                            className="mt-4 flex flex-wrap items-end gap-2 border-t border-[#E7E1D9] pt-4"
+                                        >
+                                            <div>
+                                                <Text type="secondary" className="text-xs font-medium">Jenis Log</Text>
+                                                <select name="type" className="mt-1 block rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20">
+                                                    <option value="keberangkatan">Keberangkatan (jumlah naik)</option>
+                                                    <option value="kedatangan">Kedatangan (jumlah turun)</option>
+                                                    <option value="batal">Pembatalan tiket</option>
+                                                    <option value="perubahan_jumlah">Perubahan jumlah</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <Text type="secondary" className="text-xs font-medium">Jumlah</Text>
+                                                <NumericInput name="count" min={0} className="mt-1 block w-28 rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20" />
+                                            </div>
+                                            <Button type="primary" htmlType="submit" style={{ background: '#1C1B1A', borderColor: '#1C1B1A' }}>
+                                                Catat Log
+                                            </Button>
+                                        </form>
+                                    )}
+                                    <Text type="secondary" className="mt-3 block text-xs">
+                                        Data penumpang bersifat simulasi/agregat. Produksi wajib
+                                        pembatasan akses data pribadi.
+                                    </Text>
+                                </Card>
+                                <Card title="Cek Kesiapan Penumpang">
+                                    <Paragraph type="secondary" className="text-sm mb-0">
+                                        Cek kesiapan (kapasitas vs jumlah, life jacket, APAR) dicatat pada
+                                        pemeriksaan kesiapan sebelum berangkat. Lihat Operations & Dokumen
+                                        keselamatan kapal.
+                                    </Paragraph>
+                                </Card>
+                            </>
                         ) : (
-                            <ul className="space-y-3">
-                                {approvals.filter((a) => a.scope === 'internal').map((a) => (
-                                    <li key={a.id} className="rounded-lg border border-hairline p-3">
-                                        <div className="flex items-center justify-between">
-                                            <Badge
-                                                tone={
-                                                    a.status === 'approved'
-                                                        ? 'success'
-                                                        : a.status === 'rejected'
-                                                          ? 'danger'
-                                                          : 'warning'
-                                                }
-                                            >
-                                                {a.status === 'approved' ? 'Disetujui' : a.status === 'rejected' ? 'Ditolak' : 'Perlu Revisi'}
-                                            </Badge>
-                                            <span className="text-xs text-muted">{formatDateTime(a.decision_timestamp)}</span>
+                            <Card title="Muatan" description="Data terstruktur perjalanan tongkang/tugboat.">
+                                {cargo.length === 0 ? (
+                                    <Paragraph type="secondary" className="text-sm mb-0">Tidak ada data muatan.</Paragraph>
+                                ) : (
+                                    cargo.map((c) => (
+                                        <div key={c.id} className="rounded-lg border border-[#E7E1D9] p-3 text-sm">
+                                            <p className="font-semibold capitalize text-[#1C1B1A]">
+                                                {c.commodity_type?.replace('_', ' ')}
+                                            </p>
+                                            <Text type="secondary">
+                                                {formatNumber(c.weight_ton, 1)} ton · {c.origin} → {c.destination}
+                                            </Text>
                                         </div>
-                                        <p className="mt-1.5 text-xs text-muted">{a.approver_name} · persetujuan internal</p>
-                                        {a.comments && <p className="mt-1 text-sm italic text-ink">“{a.comments}”</p>}
-                                    </li>
-                                ))}
-                            </ul>
+                                    ))
+                                )}
+                            </Card>
+                        )}
+                    </div>
+                )}
+
+                {tab === 'approvals' && (
+                    <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+                        <Card
+                            title="Persetujuan Internal"
+                            actions={
+                                actions.can_approve && (
+                                    <Button type="primary" size="small" style={{ background: '#2F8F68', borderColor: '#2F8F68' }} onClick={() => setModal('approve')}>
+                                        Beri Keputusan
+                                    </Button>
+                                )
+                            }
+                        >
+                            {approvals.filter((a) => a.scope === 'internal').length === 0 ? (
+                                <Paragraph type="secondary" className="text-sm mb-0">
+                                    Belum ada persetujuan internal. Diberikan supervisor setelah pemeriksaan.
+                                </Paragraph>
+                            ) : (
+                                <ul className="space-y-3">
+                                    {approvals.filter((a) => a.scope === 'internal').map((a) => (
+                                        <li key={a.id} className="rounded-lg border border-[#E7E1D9] p-3">
+                                            <div className="flex items-center justify-between">
+                                                <Badge
+                                                    tone={
+                                                        a.status === 'approved'
+                                                            ? 'success'
+                                                            : a.status === 'rejected'
+                                                              ? 'danger'
+                                                              : 'warning'
+                                                    }
+                                                >
+                                                    {a.status === 'approved' ? 'Disetujui' : a.status === 'rejected' ? 'Ditolak' : 'Perlu Revisi'}
+                                                </Badge>
+                                                <Text type="secondary" className="text-xs">{formatDateTime(a.decision_timestamp)}</Text>
+                                            </div>
+                                            <p className="mt-1.5 text-xs text-[#8A8580]">{a.approver_name} · persetujuan internal</p>
+                                            {a.comments && <p className="mt-1 text-sm italic text-[#1C1B1A]">"{a.comments}"</p>}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </Card>
+                        <Card
+                            title="Persetujuan Eksternal"
+                            actions={
+                                actions.can_confirm_external && (
+                                    <Button type="primary" size="small" onClick={() => setModal('external')}>
+                                        Catat dengan Bukti
+                                    </Button>
+                                )
+                            }
+                        >
+                            <div className="rounded-lg border border-[#E7E1D9] p-3 text-sm">
+                                <p className="font-medium text-[#1C1B1A]">
+                                    Status:{' '}
+                                    {voyage.external_approval_status === 'terkonfirmasi'
+                                        ? 'Terkonfirmasi'
+                                        : voyage.external_approval_status === 'menunggu'
+                                          ? 'Menunggu'
+                                          : 'Tidak berlaku untuk jenis perjalanan ini'}
+                                </p>
+                                {voyage.has_external_evidence && (
+                                    <p className="mt-1 flex items-center gap-1.5 text-xs text-[#2F8F68]">
+                                        <CheckCircle2 size={14} /> Bukti lampiran tersimpan
+                                    </p>
+                                )}
+                            </div>
+                            <div className="mt-3 rounded-lg bg-[#D99A2B]/5 p-3">
+                                <Text type="secondary" className="text-xs leading-relaxed">
+                                    Persetujuan eksternal hanya dapat dikonfirmasi dengan <strong>lampiran
+                                    bukti/sumber sah</strong> (berkas dari pihak otoritas/agen/penerima).
+                                    Persetujuan internal di sistem ini <strong>bukan</strong> persetujuan resmi
+                                    otoritas pelayaran.
+                                </Text>
+                            </div>
+                        </Card>
+                    </div>
+                )}
+
+                {tab === 'timeline' && (
+                    <Card title="Timeline Perjalanan" description="Semua kejadian riil perjalanan beserta waktu, pelaku, dan status.">
+                        {events.length === 0 ? (
+                            <Paragraph type="secondary" className="text-sm mb-0">Belum ada riwayat kejadian tercatat.</Paragraph>
+                        ) : (
+                            <Timeline
+                                items={events.map((e) => {
+                                    const fromLabel = e.from_label || (e.from_status ? (VOYAGE_STATUS_LABELS[e.from_status] ?? e.from_status) : null);
+                                    const toLabel = e.to_label || (e.to_status ? (VOYAGE_STATUS_LABELS[e.to_status] ?? e.to_status) : null);
+                                    const hasStatusChange = Boolean(fromLabel && toLabel);
+                                    const isBackward = Boolean(e.is_backward);
+                                    const reason = e.reason || (e.payload && e.payload.reason) || null;
+
+                                    return {
+                                        color: isBackward ? '#D99A2B' : '#C1121F',
+                                        children: (
+                                            <div>
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <p className="text-sm font-semibold text-[#1C1B1A]">
+                                                        {isBackward
+                                                            ? 'Status Dimundurkan'
+                                                            : (hasStatusChange ? 'Perubahan Status' : e.description)}
+                                                    </p>
+                                                    {isBackward && (
+                                                        <span className="rounded bg-[#D99A2B]/15 px-2 py-0.5 text-[11px] font-semibold text-[#D99A2B]">
+                                                            Status Mundur
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {hasStatusChange && (
+                                                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                                                        <Text type="secondary">Status sebelumnya:</Text>
+                                                        <span className="rounded bg-[#FAF7F2] px-2 py-0.5 font-medium text-[#1C1B1A]">
+                                                            {fromLabel}
+                                                        </span>
+                                                        <Text type="secondary">menjadi</Text>
+                                                        <span className="rounded bg-[#C1121F]/10 px-2 py-0.5 font-semibold text-[#C1121F]">
+                                                            {toLabel}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {reason && (
+                                                    <p className="mt-1.5 rounded bg-[#FAF7F2]/80 px-2.5 py-1.5 text-xs text-[#1C1B1A]">
+                                                        <Text type="secondary" className="font-semibold">Alasan: </Text>
+                                                        {reason}
+                                                    </p>
+                                                )}
+                                                <p className="mt-1 text-xs text-[#8A8580]">
+                                                    {formatDateTime(e.occurred_at)} · Pelaku: {e.user_name ?? 'Sistem'}
+                                                </p>
+                                            </div>
+                                        ),
+                                    };
+                                })}
+                            />
                         )}
                     </Card>
+                )}
+
+                {tab === 'expenses' && (
+                    <Card title="Operational Expenses" description="Biaya ter-tag perjalanan (bill), dari modul Keuangan.">
+                        {expenses.bills.length === 0 ? (
+                            <Paragraph type="secondary" className="text-sm mb-0">
+                                Belum ada biaya tercatat untuk perjalanan ini.
+                            </Paragraph>
+                        ) : (
+                            <>
+                                <ul className="space-y-2">
+                                    {expenses.bills.map((b) => (
+                                        <li key={b.id} className="flex items-center justify-between rounded-lg border border-[#E7E1D9] px-3 py-2 text-sm">
+                                            <span className="font-medium text-[#1C1B1A]">{b.number} · {b.category}</span>
+                                            <span className="tabular-nums text-[#1C1B1A]">{formatRupiah(b.total)}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                                <Divider style={{ margin: '16px 0', borderColor: '#E7E1D9' }} />
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-semibold text-[#1C1B1A]">Total Biaya</span>
+                                    <span className="text-lg font-semibold tabular-nums text-[#C1121F]">
+                                        {formatRupiah(expenses.total)}
+                                    </span>
+                                </div>
+                            </>
+                        )}
+                    </Card>
+                )}
+
+                {tab === 'reports' && (
                     <Card
-                        title="Persetujuan Eksternal"
+                        title="Ringkasan Perjalanan"
                         actions={
-                            actions.can_confirm_external && (
-                                <button
-                                    type="button"
-                                    onClick={() => setModal('external')}
-                                    className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-hover"
-                                >
-                                    Catat dengan Bukti
-                                </button>
-                            )
+                            <Button icon={<Printer size={14} />} onClick={() => window.print()}>
+                                Cetak
+                            </Button>
                         }
                     >
-                        <div className="rounded-lg border border-hairline p-3 text-sm">
-                            <p className="font-medium text-ink">
-                                Status:{' '}
-                                {voyage.external_approval_status === 'terkonfirmasi'
-                                    ? 'Terkonfirmasi'
-                                    : voyage.external_approval_status === 'menunggu'
-                                      ? 'Menunggu'
-                                      : 'Tidak berlaku untuk jenis perjalanan ini'}
-                            </p>
-                            {voyage.has_external_evidence && (
-                                <p className="mt-1 flex items-center gap-1.5 text-xs text-ok">
-                                    <CheckCircle2 size={14} /> Bukti lampiran tersimpan
-                                </p>
-                            )}
+                        <Descriptions
+                            column={{ xs: 1, sm: 2, md: 3 }}
+                            size="small"
+                            items={[
+                                { key: 'code', label: 'Kode', children: voyage.voyage_code },
+                                { key: 'vessel', label: 'Vessel', children: voyage.vessel_name },
+                                { key: 'route', label: 'Rute', children: `${voyage.origin} → ${voyage.destination}` },
+                                { key: 'status', label: 'Status', children: VOYAGE_STATUS_LABELS[voyage.voyage_status] },
+                                { key: 'dep', label: 'Berangkat', children: formatDateTime(voyage.actual_departure) },
+                                { key: 'arr', label: 'Tiba', children: formatDateTime(voyage.actual_arrival) },
+                                { key: 'checklist', label: 'Checklist Wajib', children: `${checklistTerpenuhi.length}/${checklistWajib.length} terpenuhi` },
+                                { key: 'cost', label: 'Biaya', children: formatRupiah(expenses.total) },
+                                { key: 'pic', label: 'PIC', children: voyage.person_in_charge },
+                            ]}
+                        />
+                        <div className="mt-6 rounded-lg bg-[#FAF7F2] p-3">
+                            <Text type="secondary" className="text-xs">
+                                Dokumen resmi PT Bunga Teratai - DEMO DATA. Indikator kesiapan bersifat internal.
+                            </Text>
                         </div>
-                        <p className="mt-3 rounded-lg bg-warn/5 p-3 text-xs leading-relaxed text-muted">
-                            Persetujuan eksternal hanya dapat dikonfirmasi dengan <strong>lampiran
-                            bukti/sumber sah</strong> (berkas dari pihak otoritas/agen/penerima).
-                            Persetujuan internal di sistem ini <strong>bukan</strong> persetujuan resmi
-                            otoritas pelayaran.
-                        </p>
                     </Card>
-                </div>
-            )}
+                )}
+            </Skeleton>
 
-            {tab === 'timeline' && (
-                <Card title="Timeline Perjalanan" description="Semua kejadian riil perjalanan beserta waktu, pelaku, dan status.">
-                    {events.length === 0 ? (
-                        <p className="text-sm text-muted">Belum ada riwayat kejadian tercatat.</p>
-                    ) : (
-                        <ol className="relative ms-3 space-y-5 border-s border-hairline ps-5">
-                            {events.map((e) => {
-                                const fromLabel = e.from_label || (e.from_status ? (VOYAGE_STATUS_LABELS[e.from_status] ?? e.from_status) : null);
-                                const toLabel = e.to_label || (e.to_status ? (VOYAGE_STATUS_LABELS[e.to_status] ?? e.to_status) : null);
-                                const hasStatusChange = Boolean(fromLabel && toLabel);
-                                const isBackward = Boolean(e.is_backward);
-                                const reason = e.reason || (e.payload && e.payload.reason) || null;
-
-                                return (
-                                    <li key={e.id} className="relative">
-                                        <span
-                                            className={classNames(
-                                                'absolute -start-[27px] top-1.5 h-3.5 w-3.5 rounded-full border-2 border-white',
-                                                isBackward ? 'bg-warn' : 'bg-primary',
-                                            )}
-                                        />
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <p className="text-sm font-semibold text-ink">
-                                                {isBackward
-                                                    ? 'Status Dimundurkan'
-                                                    : (hasStatusChange ? 'Perubahan Status' : e.description)}
-                                            </p>
-                                            {isBackward && (
-                                                <span className="rounded bg-warn/15 px-2 py-0.5 text-[11px] font-semibold text-warn">
-                                                    Status Mundur
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        {hasStatusChange && (
-                                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-                                                <span className="text-muted">Status sebelumnya:</span>
-                                                <span className="rounded bg-appbg px-2 py-0.5 font-medium text-ink">
-                                                    {fromLabel}
-                                                </span>
-                                                <span className="text-muted">menjadi</span>
-                                                <span className="rounded bg-primary/10 px-2 py-0.5 font-semibold text-primary">
-                                                    {toLabel}
-                                                </span>
-                                            </div>
-                                        )}
-
-                                        {reason && (
-                                            <p className="mt-1.5 rounded bg-appbg/80 px-2.5 py-1.5 text-xs text-ink">
-                                                <span className="font-semibold text-muted">Alasan: </span>
-                                                {reason}
-                                            </p>
-                                        )}
-
-                                        <p className="mt-1 text-xs text-muted">
-                                            {formatDateTime(e.occurred_at)} · Pelaku: {e.user_name ?? 'Sistem'}
-                                        </p>
-                                    </li>
-                                );
-                            })}
-                        </ol>
-                    )}
-                </Card>
-            )}
-
-            {tab === 'expenses' && (
-                <Card
-                    title="Operational Expenses"
-                    description="Biaya ter-tag perjalanan (bill) - dari modul Keuangan."
-                >
-                    {expenses.bills.length === 0 ? (
-                        <p className="text-sm text-muted">
-                            Belum ada biaya tercatat untuk perjalanan ini.
-                        </p>
-                    ) : (
-                        <>
-                            <ul className="space-y-2">
-                                {expenses.bills.map((b) => (
-                                    <li key={b.id} className="flex items-center justify-between rounded-lg border border-hairline px-3 py-2 text-sm">
-                                        <span className="font-medium text-ink">{b.number} · {b.category}</span>
-                                        <span className="tabular-nums text-ink">{formatRupiah(b.total)}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                            <div className="mt-4 flex items-center justify-between border-t border-hairline pt-4">
-                                <span className="text-sm font-semibold text-ink">Total Biaya</span>
-                                <span className="text-lg font-semibold tabular-nums text-primary">
-                                    {formatRupiah(expenses.total)}
-                                </span>
-                            </div>
-                        </>
-                    )}
-                </Card>
-            )}
-
-            {tab === 'reports' && (
-                <Card
-                    title="Ringkasan Perjalanan"
-                    actions={
-                        <button
-                            type="button"
-                            onClick={() => window.print()}
-                            className="inline-flex items-center gap-2 rounded-lg border border-hairline bg-white px-3 py-1.5 text-xs font-medium text-ink hover:border-primary/40"
-                        >
-                            <Printer size={14} /> Cetak
-                        </button>
-                    }
-                >
-                    <dl className="grid grid-cols-2 gap-4 text-sm md:grid-cols-3">
-                        {[
-                            ['Kode', voyage.voyage_code],
-                            ['Vessel', voyage.vessel_name],
-                            ['Rute', `${voyage.origin} → ${voyage.destination}`],
-                            ['Status', VOYAGE_STATUS_LABELS[voyage.voyage_status]],
-                            ['Berangkat', formatDateTime(voyage.actual_departure)],
-                            ['Tiba', formatDateTime(voyage.actual_arrival)],
-                            ['Checklist Wajib', `${checklistTerpenuhi.length}/${checklistWajib.length} terpenuhi`],
-                            ['Biaya', formatRupiah(expenses.total)],
-                            ['PIC', voyage.person_in_charge],
-                        ].map(([k, v]) => (
-                            <div key={k as string}>
-                                <dt className="text-xs uppercase tracking-wide text-muted">{k}</dt>
-                                <dd className="mt-0.5 font-medium text-ink">{v}</dd>
-                            </div>
-                        ))}
-                    </dl>
-                    <p className="mt-6 rounded-lg bg-appbg p-3 text-xs text-muted">
-                        Dokumen resmi PT Bunga Teratai - DEMO DATA. Indikator kesiapan bersifat internal.
-                    </p>
-                </Card>
-            )}
-
-            {/* Modal: Persetujuan internal */}
             <Modal show={modal === 'approve'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitApprove} className="p-6">
-                    <h2 className="text-lg font-semibold text-ink">Keputusan Persetujuan Internal</h2>
-                    <p className="mt-1 text-sm text-muted">
+                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Keputusan Persetujuan Internal</h2>
+                    <p className="mt-1 text-sm text-[#8A8580]">
                         Keputusan tercatat di histori & audit trail. Bukan persetujuan otoritas.
                     </p>
                     <div className="mt-4">
-                        <label className="text-sm font-medium text-ink">Keputusan</label>
+                        <label className="text-sm font-medium text-[#1C1B1A]">Keputusan</label>
                         <select
                             value={approveForm.data.decision}
                             onChange={(e) => approveForm.setData('decision', e.target.value)}
-                            className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
+                            className="mt-1 block w-full rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20"
                         >
                             <option value="approved">Approve — Setujui</option>
                             <option value="revision_required">Request Revision — Minta Revisi</option>
@@ -1218,15 +1134,15 @@ export default function VoyagesShow({
                         </select>
                     </div>
                     <div className="mt-4">
-                        <label className="text-sm font-medium text-ink">Komentar *</label>
+                        <label className="text-sm font-medium text-[#1C1B1A]">Komentar *</label>
                         <textarea
                             value={approveForm.data.comments}
                             onChange={(e) => approveForm.setData('comments', e.target.value)}
                             rows={3}
-                            className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
+                            className="mt-1 block w-full rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20"
                         />
                         {approveForm.errors.comments && (
-                            <p className="mt-1 text-xs text-primary">{approveForm.errors.comments}</p>
+                            <p className="mt-1 text-xs text-[#C1121F]">{approveForm.errors.comments}</p>
                         )}
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
@@ -1240,29 +1156,28 @@ export default function VoyagesShow({
                 </form>
             </Modal>
 
-            {/* Modal: Konfirmasi eksternal */}
             <Modal show={modal === 'external'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitExternal} className="p-6">
-                    <h2 className="text-lg font-semibold text-ink">Catat Persetujuan Eksternal</h2>
-                    <p className="mt-1 text-sm text-muted">
+                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Catat Persetujuan Eksternal</h2>
+                    <p className="mt-1 text-sm text-[#8A8580]">
                         Wajib melampirkan bukti sah (berkas dari otoritas/agen/penerima).
                     </p>
                     <div className="mt-4">
-                        <label className="text-sm font-medium text-ink">Lampiran Bukti *</label>
+                        <label className="text-sm font-medium text-[#1C1B1A]">Lampiran Bukti *</label>
                         <input
                             type="file"
                             accept=".pdf,.jpg,.jpeg,.png"
                             onChange={(e) => externalForm.setData('evidence', e.target.files?.[0] ?? null)}
-                            className="mt-1 block w-full text-sm text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-appbg file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-ink hover:file:bg-hairline"
+                            className="mt-1 block w-full text-sm text-[#8A8580] file:mr-3 file:rounded-lg file:border-0 file:bg-[#FAF7F2] file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-[#1C1B1A] hover:file:bg-[#E7E1D9]"
                         />
                     </div>
                     <div className="mt-4">
-                        <label className="text-sm font-medium text-ink">Sumber / Keterangan *</label>
+                        <label className="text-sm font-medium text-[#1C1B1A]">Sumber / Keterangan *</label>
                         <input
                             value={externalForm.data.source_note}
                             onChange={(e) => externalForm.setData('source_note', e.target.value)}
-                            placeholder="mis. Surat Persetujuan KSOP Samarinda No. …"
-                            className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
+                            placeholder="mis. Surat Persetujuan KSOP Samarinda No. ..."
+                            className="mt-1 block w-full rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20"
                         />
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
@@ -1276,29 +1191,28 @@ export default function VoyagesShow({
                 </form>
             </Modal>
 
-            {/* Modal: Ubah status */}
             <Modal show={modal === 'status'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitStatus} className="p-6">
-                    <h2 className="text-lg font-semibold text-ink">Ubah Status Perjalanan</h2>
-                    <p className="mt-1 text-sm text-muted">
+                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Ubah Status Perjalanan</h2>
+                    <p className="mt-1 text-sm text-[#8A8580]">
                         Status saat ini: <strong>{VOYAGE_STATUS_LABELS[voyage.voyage_status] ?? voyage.voyage_status}</strong>.
                     </p>
 
                     {isBackwardTransition(voyage.voyage_status, statusForm.data.to) && (
-                        <div className="mt-3 rounded-md bg-warn/15 p-3 text-xs text-warn">
+                        <div className="mt-3 rounded-md bg-[#D99A2B]/15 p-3 text-xs text-[#D99A2B]">
                             <strong>Perhatian:</strong> Anda sedang memundurkan status. Deskripsi alasan perubahan wajib diisi dan tidak boleh kosong atau hanya berisi spasi.
                         </div>
                     )}
 
                     <div className="mt-4">
-                        <label className="text-sm font-medium text-ink">Pindah ke</label>
+                        <label className="text-sm font-medium text-[#1C1B1A]">Pindah ke</label>
                         <select
                             value={statusForm.data.to}
                             onChange={(e) => {
                                 setNextStatus(e.target.value);
                                 statusForm.setData('to', e.target.value);
                             }}
-                            className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
+                            className="mt-1 block w-full rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20"
                         >
                             {voyage.allowed_transitions.map((s: string) => {
                                 const isBwd = isBackwardTransition(voyage.voyage_status, s);
@@ -1311,12 +1225,12 @@ export default function VoyagesShow({
                         </select>
                     </div>
                     <div className="mt-4">
-                        <label className="text-sm font-medium text-ink">
+                        <label className="text-sm font-medium text-[#1C1B1A]">
                             {isBackwardTransition(voyage.voyage_status, statusForm.data.to)
                                 ? 'Alasan Perubahan Status (Wajib)'
                                 : statusForm.data.to === 'ready_for_departure'
-                                    ? 'Catatan — jadi alasan override bila kesiapan awak < 100%'
-                                    : 'Catatan'}
+                                  ? 'Catatan — jadi alasan override bila kesiapan awak < 100%'
+                                  : 'Catatan'}
                         </label>
                         <input
                             value={statusForm.data.note}
@@ -1325,11 +1239,11 @@ export default function VoyagesShow({
                                 isBackwardTransition(voyage.voyage_status, statusForm.data.to)
                                     ? 'Tuliskan alasan jelas pemunduran status...'
                                     : statusForm.data.to === 'ready_for_departure'
-                                        ? 'Wajib diisi jika kesiapan awak kapal belum 100% (tercatat di timeline)...'
-                                        : 'Catatan opsional...'
+                                      ? 'Wajib diisi jika kesiapan awak kapal belum 100% (tercatat di timeline)...'
+                                      : 'Catatan opsional...'
                             }
                             required={isBackwardTransition(voyage.voyage_status, statusForm.data.to)}
-                            className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
+                            className="mt-1 block w-full rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20"
                         />
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
@@ -1349,7 +1263,7 @@ export default function VoyagesShow({
                     </div>
                 </form>
             </Modal>
-            {/* Modal: Batalkan perjalanan */}
+
             <ConfirmModal
                 show={modal === 'cancel'}
                 title="Batalkan perjalanan ini?"

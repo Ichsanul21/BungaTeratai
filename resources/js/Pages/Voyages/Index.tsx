@@ -1,13 +1,15 @@
 import Badge, { type BadgeTone } from '@/Components/ui/Badge';
 import DataTable from '@/Components/ui/DataTable';
+import EmptyState from '@/Components/ui/EmptyState';
 import PageHeader from '@/Components/ui/PageHeader';
 import { VOYAGE_STATUS_LABELS } from '@/Constants/navigation';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { classNames, formatDateTime } from '@/lib/format';
+import { formatDateTime } from '@/lib/format';
 import { type PageProps } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import { Anchor, Plus, Search } from 'lucide-react';
-import { FormEvent, useState } from 'react';
+import { useState } from 'react';
+import { Button, Input, Skeleton, Tabs, Tag } from 'antd';
 
 const STATUS_TONES: Record<string, BadgeTone> = {
     draft: 'neutral',
@@ -40,6 +42,7 @@ export default function VoyagesIndex({
     canCreate?: boolean;
 }>) {
     const [search, setSearch] = useState(filters.search ?? '');
+    const [loading] = useState(false);
 
     const groups = [
         { key: 'semua', label: 'Semua' },
@@ -48,10 +51,106 @@ export default function VoyagesIndex({
         { key: 'completed', label: 'Selesai', count: statusCounts.completed },
     ];
 
-    const apply = (e: FormEvent) => {
-        e.preventDefault();
+    const apply = () => {
         router.get('/perjalanan', { group, search }, { preserveState: true, replace: true });
     };
+
+    const tabItems = groups.map((g) => ({
+        key: g.key,
+        label: (
+            <span className="inline-flex items-center gap-2">
+                {g.label}
+                {g.count !== undefined && (
+                    <span
+                        className={`inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1.5 py-0.5 text-xs ${
+                            group === g.key
+                                ? 'bg-[#C1121F]/10 text-[#C1121F]'
+                                : 'bg-[#FAF7F2] text-[#8A8580]'
+                        }`}
+                    >
+                        {g.count}
+                    </span>
+                )}
+            </span>
+        ),
+    }));
+
+    const columns = [
+        {
+            key: 'voyage_code',
+            label: 'Kode',
+            render: (r: any) => (
+                <Link
+                    href={`/perjalanan/${r.id}`}
+                    className="font-semibold text-[#1C1B1A] hover:text-[#C1121F] hover:underline"
+                >
+                    {r.voyage_code}
+                </Link>
+            ),
+        },
+        {
+            key: 'vessel_name',
+            label: 'Vessel & Aktivitas',
+            render: (r: any) => (
+                <div>
+                    <p className="font-medium text-[#1C1B1A]">{r.vessel_name}</p>
+                    <p className="text-xs capitalize text-[#8A8580]">
+                        {r.activity_type?.replace('_', ' ')}
+                    </p>
+                </div>
+            ),
+        },
+        {
+            key: 'origin',
+            label: 'Rute',
+            render: (r: any) => `${r.origin} → ${r.destination}`,
+        },
+        {
+            key: 'planned_departure',
+            label: 'Jadwal',
+            render: (r: any) => formatDateTime(r.planned_departure),
+        },
+        {
+            key: 'voyage_status',
+            label: 'Status',
+            render: (r: any) => (
+                <Badge tone={STATUS_TONES[r.voyage_status] ?? 'neutral'}>
+                    {VOYAGE_STATUS_LABELS[r.voyage_status] ?? r.voyage_status}
+                </Badge>
+            ),
+        },
+        {
+            key: 'external_approval_status',
+            label: 'Persetujuan Eksternal',
+            render: (r: any) => (
+                <Badge
+                    tone={
+                        r.external_approval_status === 'terkonfirmasi'
+                            ? 'success'
+                            : r.external_approval_status === 'menunggu'
+                              ? 'warning'
+                              : 'neutral'
+                    }
+                >
+                    {r.external_approval_status === 'terkonfirmasi'
+                        ? 'Terkonfirmasi'
+                        : r.external_approval_status === 'menunggu'
+                          ? 'Menunggu'
+                          : 'Tidak Berlaku'}
+                </Badge>
+            ),
+        },
+        {
+            key: 'id',
+            label: '',
+            className: 'text-right',
+            render: (r: any) => (
+                <Link href={`/perjalanan/${r.id}`} className="text-sm font-medium text-[#C1121F] hover:underline">
+                    Detail →
+                </Link>
+            ),
+        },
+    ];
 
     return (
         <AuthenticatedLayout>
@@ -59,134 +158,46 @@ export default function VoyagesIndex({
 
             <PageHeader
                 title="Voyage Management"
-                description="Perencanaan hingga penutupan perjalanan — checklist dinamis, persetujuan internal, dan bukti persetujuan eksternal."
+                description="Perencanaan hingga penutupan perjalanan: checklist dinamis, persetujuan internal, dan bukti persetujuan eksternal."
                 actions={
                     canCreate && (
-                        <Link
-                            href="/perjalanan/create"
-                            className="inline-flex items-center gap-2 rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover"
-                        >
-                            <Plus size={16} /> Buat Perjalanan
+                        <Link href="/perjalanan/create">
+                            <Button type="primary" icon={<Plus size={16} />}>
+                                Buat Perjalanan
+                            </Button>
                         </Link>
                     )
                 }
             />
 
-            <div className="mb-5 flex flex-wrap items-center gap-1.5">
-                {groups.map((g) => (
-                    <Link
-                        key={g.key}
-                        href={`/perjalanan?group=${g.key}`}
-                        className={classNames(
-                            'rounded-full border px-3.5 py-1.5 text-xs font-medium transition',
-                            group === g.key
-                                ? 'border-primary bg-primary text-white'
-                                : 'border-hairline bg-white text-muted hover:border-primary/40 hover:text-ink',
-                        )}
-                    >
-                        {g.label}
-                        {g.count !== undefined && <span className="ms-1.5 opacity-70">{g.count}</span>}
-                    </Link>
-                ))}
+            <Tabs
+                activeKey={group}
+                onChange={(key) => router.get('/perjalanan', { group: key }, { preserveState: true, replace: true })}
+                items={tabItems}
+                className="mb-5"
+            />
+
+            <div className="mb-5 flex max-w-lg gap-2">
+                <Input.Search
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    onSearch={apply}
+                    placeholder="Cari kode / rute..."
+                    enterButton="Cari"
+                    allowClear
+                    prefix={<Search size={15} className="text-[#8A8580]" />}
+                />
             </div>
 
-            <form onSubmit={apply} className="mb-5 flex max-w-lg gap-2">
-                <div className="relative flex-1">
-                    <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-                    <input
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Cari kode / rute…"
-                        className="h-9 w-full rounded-lg border-hairline bg-white pl-9 pr-3 text-sm focus:border-primary focus:ring-primary"
-                    />
-                </div>
-                <button type="submit" className="h-9 rounded-lg bg-ink px-3.5 text-sm font-medium text-white hover:bg-black">
-                    Cari
-                </button>
-            </form>
-
-            <DataTable
-                columns={[
-                    {
-                        key: 'voyage_code',
-                        label: 'Kode',
-                        render: (r: any) => (
-                            <Link
-                                href={`/perjalanan/${r.id}`}
-                                className="font-semibold text-ink hover:text-primary hover:underline"
-                            >
-                                {r.voyage_code}
-                            </Link>
-                        ),
-                    },
-                    {
-                        key: 'vessel_name',
-                        label: 'Vessel & Aktivitas',
-                        render: (r: any) => (
-                            <div>
-                                <p className="font-medium text-ink">{r.vessel_name}</p>
-                                <p className="text-xs capitalize text-muted">
-                                    {r.activity_type?.replace('_', ' ')}
-                                </p>
-                            </div>
-                        ),
-                    },
-                    {
-                        key: 'origin',
-                        label: 'Rute',
-                        render: (r: any) => `${r.origin} → ${r.destination}`,
-                    },
-                    {
-                        key: 'planned_departure',
-                        label: 'Jadwal',
-                        render: (r: any) => formatDateTime(r.planned_departure),
-                    },
-                    {
-                        key: 'voyage_status',
-                        label: 'Status',
-                        render: (r: any) => (
-                            <Badge tone={STATUS_TONES[r.voyage_status] ?? 'neutral'}>
-                                {VOYAGE_STATUS_LABELS[r.voyage_status] ?? r.voyage_status}
-                            </Badge>
-                        ),
-                    },
-                    {
-                        key: 'external_approval_status',
-                        label: 'Persetujuan Eksternal',
-                        render: (r: any) => (
-                            <Badge
-                                tone={
-                                    r.external_approval_status === 'terkonfirmasi'
-                                        ? 'success'
-                                        : r.external_approval_status === 'menunggu'
-                                          ? 'warning'
-                                          : 'neutral'
-                                }
-                            >
-                                {r.external_approval_status === 'terkonfirmasi'
-                                    ? 'Terkonfirmasi'
-                                    : r.external_approval_status === 'menunggu'
-                                      ? 'Menunggu'
-                                      : 'Tidak Berlaku'}
-                            </Badge>
-                        ),
-                    },
-                    {
-                        key: 'id',
-                        label: '',
-                        className: 'text-right',
-                        render: (r: any) => (
-                            <Link href={`/perjalanan/${r.id}`} className="text-sm font-medium text-primary hover:underline">
-                                Detail →
-                            </Link>
-                        ),
-                    },
-                ]}
-                rows={voyages}
-                emptyTitle="Belum ada perjalanan"
-                emptyDescription="Buat perjalanan pertama — sistem akan membuat checklist otomatis sesuai kapal & muatan."
-                emptyIcon={Anchor}
-            />
+            <Skeleton loading={loading} active paragraph={{ rows: 6 }}>
+                <DataTable
+                    columns={columns}
+                    rows={voyages}
+                    emptyTitle="Belum ada perjalanan"
+                    emptyDescription="Buat perjalanan pertama. Sistem akan membuat checklist otomatis sesuai kapal & muatan."
+                    emptyIcon={Anchor}
+                />
+            </Skeleton>
         </AuthenticatedLayout>
     );
 }

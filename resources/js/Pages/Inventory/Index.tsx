@@ -12,6 +12,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { classNames, daysUntil, formatDate, formatNumber, formatRupiah } from '@/lib/format';
 import { type PageProps } from '@/types';
 import { Head, router, useForm } from '@inertiajs/react';
+import { Button, Checkbox, Col, DatePicker, Divider, Form, Input, InputNumber, Row, Select as AntSelect, Table, Tag } from 'antd';
 import { AlertTriangle, Boxes, Package, Plus, Ship, Truck } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 
@@ -97,6 +98,63 @@ export default function InventoryIndex({
         editBatchForm.put(`/inventory/batches/${editBatch.id}`, { preserveScroll: true, onSuccess: () => { setModal(null); setEditBatch(null); } });
     };
 
+    const itemColumns = [
+        { title: 'SKU', dataIndex: 'sku', key: 'sku', render: (sku: string) => <span className="font-mono text-xs text-[#1C1B1A]">{sku}</span> },
+        { title: 'Nama', dataIndex: 'name', key: 'name', render: (name: string) => <span className="font-medium text-[#1C1B1A]">{name}</span> },
+        { title: 'Kategori', dataIndex: 'category', key: 'category', render: (cat: string) => <span className="text-[#8A8580]">{CAT_LABELS[cat] ?? cat}</span> },
+        { title: 'Harga', dataIndex: 'unit_price', key: 'unit_price', render: (v: any) => <span className="tabular-nums">{formatRupiah(v)}</span> },
+        {
+            title: 'Qty', key: 'qty',
+            render: (_: any, r: Record<string, any>) => (
+                <span className={classNames('font-semibold tabular-nums', r.qty < r.min_stock ? 'text-[#D99A2B]' : 'text-[#1C1B1A]')}>
+                    {formatNumber(r.qty, 2)} {r.unit}
+                </span>
+            ),
+        },
+        { title: 'Nilai', dataIndex: 'nilai', key: 'nilai', render: (v: any) => <span className="tabular-nums text-[#8A8580]">{formatRupiah(v)}</span> },
+        { title: 'Min', dataIndex: 'min_stock', key: 'min_stock', render: (v: any) => <span className="tabular-nums text-[#8A8580]">{formatNumber(v, 2)}</span> },
+        {
+            title: 'Flag', key: 'flag',
+            render: (_: any, r: Record<string, any>) => (
+                <div className="flex gap-1">
+                    {r.is_consumable && <Badge tone="info">Habis Pakai</Badge>}
+                    {r.is_perishable && <Badge tone="warning">Expired-able</Badge>}
+                </div>
+            ),
+        },
+        ...(canManage ? [{
+            title: 'Aksi', key: 'aksi',
+            render: (_: any, r: Record<string, any>) => (
+                <div className="flex gap-2 text-xs font-medium">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setEditItem(r);
+                            editItemForm.setData({
+                                sku: r.sku, name: r.name, category: r.category, unit: r.unit,
+                                unit_price: String(r.unit_price),
+                                is_consumable: Boolean(r.is_consumable),
+                                is_perishable: Boolean(r.is_perishable),
+                                min_stock: String(r.min_stock),
+                            });
+                            setModal('editItem');
+                        }}
+                        className="text-[#C1121F] hover:underline"
+                    >
+                        Edit
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setConfirmDel({ url: `/inventory/items/${r.id}`, label: `item ${r.sku}` })}
+                        className="text-[#C1121F] hover:underline"
+                    >
+                        Hapus
+                    </button>
+                </div>
+            ),
+        }] : []),
+    ];
+
     return (
         <AuthenticatedLayout>
             <Head title="Inventory" />
@@ -107,23 +165,9 @@ export default function InventoryIndex({
                 actions={
                     canManage && (
                         <div className="flex gap-2">
-                            <button
-                                type="button"
-                                onClick={() => setModal('batch')}
-                                className="inline-flex items-center gap-2 rounded-lg border border-hairline bg-white px-3.5 py-2 text-sm font-medium text-ink hover:border-primary/40"
-                            >
-                                <Plus size={16} /> Tambah Batch
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setModal('movement')}
-                                className="inline-flex items-center gap-2 rounded-lg border border-hairline bg-white px-3.5 py-2 text-sm font-medium text-ink hover:border-primary/40"
-                            >
-                                <Truck size={16} /> Mutasi Stok
-                            </button>
-                            <PrimaryButton onClick={() => setModal('item')}>
-                                <Plus size={15} className="inline me-1" /> Item Baru
-                            </PrimaryButton>
+                            <SecondaryButton onClick={() => setModal('batch')} icon={<Plus size={16} />}>Tambah Batch</SecondaryButton>
+                            <SecondaryButton onClick={() => setModal('movement')} icon={<Truck size={16} />}>Mutasi Stok</SecondaryButton>
+                            <PrimaryButton onClick={() => setModal('item')} icon={<Plus size={15} />}>Item Baru</PrimaryButton>
                         </div>
                     )
                 }
@@ -139,347 +183,441 @@ export default function InventoryIndex({
 
             {tab === 'kapal' && (
                 <div className="mb-4 flex items-center gap-2">
-                    <span className="text-sm text-muted">Tampilkan kapal:</span>
-                    <select
+                    <span className="text-sm text-[#8A8580]">Tampilkan kapal:</span>
+                    <AntSelect
                         defaultValue={vesselId}
-                        onChange={(e) => router.get('/inventory', { tab: 'kapal', vessel_id: e.target.value }, { preserveState: true })}
-                        className="rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary"
-                    >
-                        {vessels.map((v) => (
-                            <option key={v.id} value={v.id}>{v.vessel_name}</option>
-                        ))}
-                    </select>
+                        onChange={(value) => router.get('/inventory', { tab: 'kapal', vessel_id: value }, { preserveState: true })}
+                        style={{ width: 240 }}
+                        options={vessels.map((v) => ({ value: v.id, label: v.vessel_name }))}
+                    />
                 </div>
             )}
 
-            <div className="mb-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <Card title="Stok Minimum" description="Perlu pengadaan / restock.">
-                    {lowStock.length === 0 ? (
-                        <p className="text-sm text-muted">Semua stok di atas minimum.</p>
-                    ) : (
-                        <ul className="space-y-1.5">
-                            {lowStock.map((i) => (
-                                <li key={i.id} className="flex justify-between rounded-lg bg-warn/5 px-3 py-2 text-sm">
-                                    <span className="text-ink">{i.sku} · {i.name}</span>
-                                    <span className="font-semibold text-warn">
-                                        {formatNumber(i.qty, 2)} / min {formatNumber(i.min_stock, 2)} {i.unit}
-                                    </span>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </Card>
-                <Card title="Batch Kedaluwarsa / Mendekati" description="Item perishable.">
-                    {expiringBatches.length === 0 ? (
-                        <p className="text-sm text-muted">Tidak ada batch bermasalah.</p>
-                    ) : (
-                        <ul className="space-y-1.5">
-                            {expiringBatches.map((b) => (
-                                <li key={b.id} className="flex items-center justify-between rounded-lg border border-hairline px-3 py-2 text-sm">
-                                    <div>
-                                        <p className="text-ink">{b.item_name} · batch {b.batch_no}</p>
-                                        <p className="text-xs text-muted">{b.location} · {formatDate(b.expires_at)}</p>
+            <Row gutter={16} className="mb-5">
+                <Col xs={24} lg={12}>
+                    <Card title="Stok Minimum" description="Perlu pengadaan / restock.">
+                        {lowStock.length === 0 ? (
+                            <p className="text-sm text-[#8A8580]">Semua stok di atas minimum.</p>
+                        ) : (
+                            <div className="space-y-1.5">
+                                {lowStock.map((i) => (
+                                    <div key={i.id} className="flex justify-between rounded-lg px-3 py-2 text-sm" style={{ background: '#D99A2B0D' }}>
+                                        <span className="text-[#1C1B1A]">{i.sku} · {i.name}</span>
+                                        <span className="font-semibold text-[#D99A2B]">
+                                            {formatNumber(i.qty, 2)} / min {formatNumber(i.min_stock, 2)} {i.unit}
+                                        </span>
                                     </div>
-                                    <Badge tone={b.is_expired ? 'danger' : 'warning'}>
-                                        {b.is_expired ? `Kedaluwarsa ${Math.abs(daysUntil(b.expires_at) ?? 0)} hr lalu` : `${daysUntil(b.expires_at)} hr lagi`}
-                                    </Badge>
-                                    {canManage && (
-                                        <div className="flex gap-2 text-xs font-medium">
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setEditBatch(b);
-                                                    editBatchForm.setData({
-                                                        batch_no: b.batch_no,
-                                                        qty: String(b.qty),
-                                                        expires_at: b.expires_at ? String(b.expires_at).slice(0, 10) : '',
-                                                    });
-                                                    setModal('editBatch');
-                                                }}
-                                                className="text-primary hover:underline"
-                                            >
-                                                Edit
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setConfirmDel({ url: `/inventory/batches/${b.id}`, label: `batch ${b.batch_no}` })}
-                                                className="text-primary hover:underline"
-                                            >
-                                                Hapus
-                                            </button>
+                                ))}
+                            </div>
+                        )}
+                    </Card>
+                </Col>
+                <Col xs={24} lg={12}>
+                    <Card title="Batch Kedaluwarsa / Mendekati" description="Item perishable.">
+                        {expiringBatches.length === 0 ? (
+                            <p className="text-sm text-[#8A8580]">Tidak ada batch bermasalah.</p>
+                        ) : (
+                            <div className="space-y-1.5">
+                                {expiringBatches.map((b) => (
+                                    <div key={b.id} className="flex items-center justify-between rounded-lg border border-[#E7E1D9] px-3 py-2 text-sm">
+                                        <div>
+                                            <p className="text-[#1C1B1A]">{b.item_name} · batch {b.batch_no}</p>
+                                            <p className="text-xs text-[#8A8580]">{b.location} · {formatDate(b.expires_at)}</p>
                                         </div>
-                                    )}
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </Card>
-            </div>
-
-            <Card title={tab === 'kantor' ? 'Item — Gudang Kantor' : 'Item — Stok Kapal'}>
-                <div className="overflow-x-auto">
-                    <table className="min-w-full text-sm">
-                        <thead className="bg-appbg text-left text-xs uppercase tracking-wide text-muted">
-                            <tr>{['SKU', 'Nama', 'Kategori', 'Harga', 'Qty', 'Nilai', 'Min', 'Flag', ...(canManage ? ['Aksi'] : [])].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr>
-                        </thead>
-                        <tbody className="divide-y divide-hairline">
-                            {items.map((i) => (
-                                <tr key={i.id} className="hover:bg-appbg">
-                                    <td className="px-3 py-2 font-mono text-xs text-ink">{i.sku}</td>
-                                    <td className="px-3 py-2 font-medium text-ink">{i.name}</td>
-                                    <td className="px-3 py-2 text-muted">{CAT_LABELS[i.category] ?? i.category}</td>
-                                    <td className="px-3 py-2 tabular-nums">{formatRupiah(i.unit_price)}</td>
-                                    <td className={classNames('px-3 py-2 font-semibold tabular-nums', i.qty < i.min_stock ? 'text-warn' : 'text-ink')}>
-                                        {formatNumber(i.qty, 2)} {i.unit}
-                                    </td>
-                                    <td className="px-3 py-2 tabular-nums text-muted">{formatRupiah(i.nilai)}</td>
-                                    <td className="px-3 py-2 tabular-nums text-muted">{formatNumber(i.min_stock, 2)}</td>
-                                    <td className="px-3 py-2">
-                                        <div className="flex gap-1">
-                                            {i.is_consumable && <Badge tone="info">Habis Pakai</Badge>}
-                                            {i.is_perishable && <Badge tone="warning">Expired-able</Badge>}
-                                        </div>
-                                    </td>
-                                    {canManage && (
-                                        <td className="px-3 py-2">
+                                        <Badge tone={b.is_expired ? 'danger' : 'warning'}>
+                                            {b.is_expired ? `Kedaluwarsa ${Math.abs(daysUntil(b.expires_at) ?? 0)} hr lalu` : `${daysUntil(b.expires_at)} hr lagi`}
+                                        </Badge>
+                                        {canManage && (
                                             <div className="flex gap-2 text-xs font-medium">
                                                 <button
                                                     type="button"
                                                     onClick={() => {
-                                                        setEditItem(i);
-                                                        editItemForm.setData({
-                                                            sku: i.sku,
-                                                            name: i.name,
-                                                            category: i.category,
-                                                            unit: i.unit,
-                                                            unit_price: String(i.unit_price),
-                                                            is_consumable: Boolean(i.is_consumable),
-                                                            is_perishable: Boolean(i.is_perishable),
-                                                            min_stock: String(i.min_stock),
+                                                        setEditBatch(b);
+                                                        editBatchForm.setData({
+                                                            batch_no: b.batch_no,
+                                                            qty: String(b.qty),
+                                                            expires_at: b.expires_at ? String(b.expires_at).slice(0, 10) : '',
                                                         });
-                                                        setModal('editItem');
+                                                        setModal('editBatch');
                                                     }}
-                                                    className="text-primary hover:underline"
+                                                    className="text-[#C1121F] hover:underline"
                                                 >
                                                     Edit
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    onClick={() => setConfirmDel({ url: `/inventory/items/${i.id}`, label: `item ${i.sku}` })}
-                                                    className="text-primary hover:underline"
+                                                    onClick={() => setConfirmDel({ url: `/inventory/batches/${b.id}`, label: `batch ${b.batch_no}` })}
+                                                    className="text-[#C1121F] hover:underline"
                                                 >
                                                     Hapus
                                                 </button>
                                             </div>
-                                        </td>
-                                    )}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </Card>
+                </Col>
+            </Row>
+
+            <Card title={tab === 'kantor' ? 'Item — Gudang Kantor' : 'Item — Stok Kapal'}>
+                <Table
+                    dataSource={items}
+                    columns={itemColumns}
+                    rowKey="id"
+                    pagination={false}
+                    size="small"
+                    scroll={{ x: 800 }}
+                    rowClassName={() => 'hover:bg-[#FAF7F2]'}
+                />
             </Card>
 
             <Card title="Mutasi Terakhir" className="mt-5">
-                <ul className="divide-y divide-hairline text-sm">
+                <div className="divide-y divide-[#E7E1D9] text-sm">
                     {movements.map((m) => (
-                        <li key={m.id} className="flex items-center justify-between py-2">
+                        <div key={m.id} className="flex items-center justify-between py-2">
                             <div>
-                                <p className="text-ink">{m.item_name} — <span className="capitalize font-medium">{m.type}</span> {formatNumber(m.qty, 2)}</p>
-                                <p className="text-xs text-muted">
+                                <p className="text-[#1C1B1A]">{m.item_name} — <span className="capitalize font-medium">{m.type}</span> {formatNumber(m.qty, 2)}</p>
+                                <p className="text-xs text-[#8A8580]">
                                     {m.from_location ?? '—'} → {m.to_location ?? '—'} · {formatDate(m.movement_date)} · {m.user_name ?? '—'}
                                     {m.ref_type === 'service' ? ' · servis' : ''}
                                 </p>
                             </div>
-                            {m.notes && <p className="max-w-64 text-xs italic text-muted">{m.notes}</p>}
+                            {m.notes && <p className="max-w-64 text-xs italic text-[#8A8580]">{m.notes}</p>}
                             {canManage && m.ref_type === 'manual' && (
                                 <button
                                     type="button"
                                     onClick={() => setConfirmDel({ url: `/inventory/movements/${m.id}`, label: `mutasi ${m.item_name} (${m.type})`, note: 'Saldo stok otomatis dibalikkan.' })}
-                                    className="text-xs font-medium text-primary hover:underline"
+                                    className="text-xs font-medium text-[#C1121F] hover:underline"
                                 >
                                     Hapus
                                 </button>
                             )}
-                        </li>
+                        </div>
                     ))}
-                </ul>
+                </div>
             </Card>
 
             <Modal show={modal === 'item'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitItem} className="p-6">
-                    <h2 className="text-lg font-semibold text-ink">Item Inventory Baru</h2>
-                    <div className="mt-4 grid grid-cols-2 gap-3">
-                        <div><label className="text-xs font-medium text-muted">SKU *</label>
-                            <input value={itemForm.data.sku} onChange={(e) => itemForm.setData('sku', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Nama *</label>
-                            <input value={itemForm.data.name} onChange={(e) => itemForm.setData('name', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Kategori</label>
-                            <select value={itemForm.data.category} onChange={(e) => itemForm.setData('category', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                {Object.entries(CAT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                            </select></div>
-                        <div><label className="text-xs font-medium text-muted">Satuan</label>
-                            <input value={itemForm.data.unit} onChange={(e) => itemForm.setData('unit', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Harga Satuan</label>
-                            <PriceInput value={itemForm.data.unit_price} onChange={(e) => itemForm.setData('unit_price', e.target.value)} className="mt-1 block w-full" /></div>
-                        <div><label className="text-xs font-medium text-muted">Stok Minimum</label>
-                            <NumericInput value={itemForm.data.min_stock} onChange={(e) => itemForm.setData('min_stock', e.target.value)} className="mt-1 block w-full" /></div>
-                        <div><label className="text-xs font-medium text-muted">Stok Awal (kantor)</label>
-                            <NumericInput value={itemForm.data.stok_awal} onChange={(e) => itemForm.setData('stok_awal', e.target.value)} className="mt-1 block w-full" /></div>
-                        <div className="flex flex-col justify-end gap-2 pb-1">
-                            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={itemForm.data.is_consumable} onChange={(e) => itemForm.setData('is_consumable', e.target.checked)} className="rounded border-gray-300 text-primary focus:ring-primary" /> Habis pakai</label>
-                            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={itemForm.data.is_perishable} onChange={(e) => itemForm.setData('is_perishable', e.target.checked)} className="rounded border-gray-300 text-primary focus:ring-primary" /> Ada masa berlaku (batch)</label>
-                        </div>
-                    </div>
+                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Item Inventory Baru</h2>
+                    <Row gutter={12} className="mt-4">
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">SKU *</span>}>
+                                <Input value={itemForm.data.sku} onChange={(e) => itemForm.setData('sku', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Nama *</span>}>
+                                <Input value={itemForm.data.name} onChange={(e) => itemForm.setData('name', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kategori</span>}>
+                                <AntSelect
+                                    value={itemForm.data.category}
+                                    onChange={(value) => itemForm.setData('category', value)}
+                                    style={{ width: '100%' }}
+                                    options={Object.entries(CAT_LABELS).map(([k, v]) => ({ value: k, label: v }))}
+                                />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Satuan</span>}>
+                                <Input value={itemForm.data.unit} onChange={(e) => itemForm.setData('unit', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Harga Satuan</span>}>
+                                <PriceInput value={itemForm.data.unit_price} onChange={(e) => itemForm.setData('unit_price', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Stok Minimum</span>}>
+                                <NumericInput value={itemForm.data.min_stock} onChange={(e) => itemForm.setData('min_stock', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Stok Awal (kantor)</span>}>
+                                <NumericInput value={itemForm.data.stok_awal} onChange={(e) => itemForm.setData('stok_awal', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <div className="flex flex-col justify-end gap-2 pb-1">
+                                <Checkbox checked={itemForm.data.is_consumable} onChange={(e) => itemForm.setData('is_consumable', e.target.checked)}>
+                                    Habis pakai
+                                </Checkbox>
+                                <Checkbox checked={itemForm.data.is_perishable} onChange={(e) => itemForm.setData('is_perishable', e.target.checked)}>
+                                    Ada masa berlaku (batch)
+                                </Checkbox>
+                            </div>
+                        </Col>
+                    </Row>
                     <div className="mt-5 flex justify-end gap-3">
-                        <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
-                        <PrimaryButton disabled={itemForm.processing}>Simpan Item</PrimaryButton>
+                        <SecondaryButton onClick={() => setModal(null)}>Batal</SecondaryButton>
+                        <PrimaryButton htmlType="submit" disabled={itemForm.processing}>Simpan Item</PrimaryButton>
                     </div>
                 </form>
             </Modal>
 
             <Modal show={modal === 'movement'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitMovement} className="p-6">
-                    <h2 className="text-lg font-semibold text-ink">Mutasi Stok</h2>
+                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Mutasi Stok</h2>
                     <div className="mt-4 space-y-3">
-                        <div><label className="text-xs font-medium text-muted">Item *</label>
-                            <select value={movementForm.data.item_id} onChange={(e) => movementForm.setData('item_id', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                <option value="">— pilih —</option>
-                                {items.map((i) => <option key={i.id} value={i.id}>{i.sku} · {i.name}</option>)}
-                            </select></div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div><label className="text-xs font-medium text-muted">Jenis *</label>
-                                <select value={movementForm.data.type} onChange={(e) => movementForm.setData('type', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                    <option value="masuk">Masuk</option>
-                                    <option value="keluar">Keluar</option>
-                                    <option value="transfer">Transfer kantor ↔ kapal</option>
-                                    <option value="penyesuaian">Penyesuaian</option>
-                                </select></div>
-                            <div><label className="text-xs font-medium text-muted">Qty *</label>
-                                <NumericInput decimalPlaces={2} value={movementForm.data.qty} onChange={(e) => movementForm.setData('qty', e.target.value)} className="mt-1 block w-full" /></div>
-                        </div>
+                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Item *</span>}>
+                            <AntSelect
+                                value={movementForm.data.item_id || undefined}
+                                onChange={(value) => movementForm.setData('item_id', value)}
+                                placeholder="— pilih —"
+                                style={{ width: '100%' }}
+                                options={[
+                                    { value: '', label: '— pilih —' },
+                                    ...items.map((i) => ({ value: String(i.id), label: `${i.sku} · ${i.name}` })),
+                                ]}
+                                showSearch
+                                optionFilterProp="label"
+                            />
+                        </Form.Item>
+                        <Row gutter={12}>
+                            <Col span={12}>
+                                <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Jenis *</span>}>
+                                    <AntSelect
+                                        value={movementForm.data.type}
+                                        onChange={(value) => movementForm.setData('type', value)}
+                                        style={{ width: '100%' }}
+                                        options={[
+                                            { value: 'masuk', label: 'Masuk' },
+                                            { value: 'keluar', label: 'Keluar' },
+                                            { value: 'transfer', label: 'Transfer kantor ↔ kapal' },
+                                            { value: 'penyesuaian', label: 'Penyesuaian' },
+                                        ]}
+                                    />
+                                </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                                <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Qty *</span>}>
+                                    <NumericInput decimalPlaces={2} value={movementForm.data.qty} onChange={(e) => movementForm.setData('qty', e.target.value)} />
+                                </Form.Item>
+                            </Col>
+                        </Row>
                         {['keluar', 'transfer', 'penyesuaian'].includes(movementForm.data.type) && (
-                            <div className="grid grid-cols-2 gap-3">
-                                <div><label className="text-xs font-medium text-muted">Dari</label>
-                                    <select value={movementForm.data.from_location} onChange={(e) => movementForm.setData('from_location', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                        <option value="kantor">Kantor</option><option value="kapal">Kapal</option>
-                                    </select></div>
+                            <Row gutter={12}>
+                                <Col span={12}>
+                                    <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Dari</span>}>
+                                        <AntSelect
+                                            value={movementForm.data.from_location}
+                                            onChange={(value) => movementForm.setData('from_location', value)}
+                                            style={{ width: '100%' }}
+                                            options={[
+                                                { value: 'kantor', label: 'Kantor' },
+                                                { value: 'kapal', label: 'Kapal' },
+                                            ]}
+                                        />
+                                    </Form.Item>
+                                </Col>
                                 {movementForm.data.from_location === 'kapal' && (
-                                    <div><label className="text-xs font-medium text-muted">Kapal Asal</label>
-                                        <select value={movementForm.data.from_vessel_id} onChange={(e) => movementForm.setData('from_vessel_id', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                            <option value="">— pilih —</option>
-                                            {vessels.map((v) => <option key={v.id} value={v.id}>{v.vessel_name}</option>)}
-                                        </select></div>
+                                    <Col span={12}>
+                                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kapal Asal</span>}>
+                                            <AntSelect
+                                                value={movementForm.data.from_vessel_id || undefined}
+                                                onChange={(value) => movementForm.setData('from_vessel_id', value)}
+                                                placeholder="— pilih —"
+                                                style={{ width: '100%' }}
+                                                options={vessels.map((v) => ({ value: String(v.id), label: v.vessel_name }))}
+                                                showSearch
+                                                optionFilterProp="label"
+                                            />
+                                        </Form.Item>
+                                    </Col>
                                 )}
-                            </div>
+                            </Row>
                         )}
                         {['masuk', 'transfer'].includes(movementForm.data.type) && (
-                            <div className="grid grid-cols-2 gap-3">
-                                <div><label className="text-xs font-medium text-muted">Ke</label>
-                                    <select value={movementForm.data.to_location} onChange={(e) => movementForm.setData('to_location', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                        <option value="kantor">Kantor</option><option value="kapal">Kapal</option>
-                                    </select></div>
+                            <Row gutter={12}>
+                                <Col span={12}>
+                                    <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Ke</span>}>
+                                        <AntSelect
+                                            value={movementForm.data.to_location}
+                                            onChange={(value) => movementForm.setData('to_location', value)}
+                                            style={{ width: '100%' }}
+                                            options={[
+                                                { value: 'kantor', label: 'Kantor' },
+                                                { value: 'kapal', label: 'Kapal' },
+                                            ]}
+                                        />
+                                    </Form.Item>
+                                </Col>
                                 {movementForm.data.to_location === 'kapal' && (
-                                    <div><label className="text-xs font-medium text-muted">Kapal Tujuan</label>
-                                        <select value={movementForm.data.to_vessel_id} onChange={(e) => movementForm.setData('to_vessel_id', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                            <option value="">— pilih —</option>
-                                            {vessels.map((v) => <option key={v.id} value={v.id}>{v.vessel_name}</option>)}
-                                        </select></div>
+                                    <Col span={12}>
+                                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kapal Tujuan</span>}>
+                                            <AntSelect
+                                                value={movementForm.data.to_vessel_id || undefined}
+                                                onChange={(value) => movementForm.setData('to_vessel_id', value)}
+                                                placeholder="— pilih —"
+                                                style={{ width: '100%' }}
+                                                options={vessels.map((v) => ({ value: String(v.id), label: v.vessel_name }))}
+                                                showSearch
+                                                optionFilterProp="label"
+                                            />
+                                        </Form.Item>
+                                    </Col>
                                 )}
-                            </div>
+                            </Row>
                         )}
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
-                        <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
-                        <PrimaryButton disabled={movementForm.processing}>Simpan Mutasi</PrimaryButton>
+                        <SecondaryButton onClick={() => setModal(null)}>Batal</SecondaryButton>
+                        <PrimaryButton htmlType="submit" disabled={movementForm.processing}>Simpan Mutasi</PrimaryButton>
                     </div>
                 </form>
             </Modal>
 
-            {/* Modal: Edit Item */}
             <Modal show={modal === 'editItem'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitEditItem} className="p-6">
-                    <h2 className="text-lg font-semibold text-ink">Edit Item Inventory</h2>
-                    <div className="mt-4 grid grid-cols-2 gap-3">
-                        <div><label className="text-xs font-medium text-muted">SKU *</label>
-                            <input value={editItemForm.data.sku} onChange={(e) => editItemForm.setData('sku', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Nama *</label>
-                            <input value={editItemForm.data.name} onChange={(e) => editItemForm.setData('name', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Kategori</label>
-                            <select value={editItemForm.data.category} onChange={(e) => editItemForm.setData('category', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                {Object.entries(CAT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                            </select></div>
-                        <div><label className="text-xs font-medium text-muted">Satuan</label>
-                            <input value={editItemForm.data.unit} onChange={(e) => editItemForm.setData('unit', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Harga Satuan</label>
-                            <PriceInput value={editItemForm.data.unit_price} onChange={(e) => editItemForm.setData('unit_price', e.target.value)} className="mt-1 block w-full" /></div>
-                        <div><label className="text-xs font-medium text-muted">Stok Minimum</label>
-                            <NumericInput value={editItemForm.data.min_stock} onChange={(e) => editItemForm.setData('min_stock', e.target.value)} className="mt-1 block w-full" /></div>
-                        <div className="flex flex-col justify-end gap-2 pb-1">
-                            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={editItemForm.data.is_consumable} onChange={(e) => editItemForm.setData('is_consumable', e.target.checked)} className="rounded border-gray-300 text-primary focus:ring-primary" /> Habis pakai</label>
-                            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={editItemForm.data.is_perishable} onChange={(e) => editItemForm.setData('is_perishable', e.target.checked)} className="rounded border-gray-300 text-primary focus:ring-primary" /> Ada masa berlaku (batch)</label>
-                        </div>
-                    </div>
+                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit Item Inventory</h2>
+                    <Row gutter={12} className="mt-4">
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">SKU *</span>}>
+                                <Input value={editItemForm.data.sku} onChange={(e) => editItemForm.setData('sku', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Nama *</span>}>
+                                <Input value={editItemForm.data.name} onChange={(e) => editItemForm.setData('name', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kategori</span>}>
+                                <AntSelect
+                                    value={editItemForm.data.category}
+                                    onChange={(value) => editItemForm.setData('category', value)}
+                                    style={{ width: '100%' }}
+                                    options={Object.entries(CAT_LABELS).map(([k, v]) => ({ value: k, label: v }))}
+                                />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Satuan</span>}>
+                                <Input value={editItemForm.data.unit} onChange={(e) => editItemForm.setData('unit', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Harga Satuan</span>}>
+                                <PriceInput value={editItemForm.data.unit_price} onChange={(e) => editItemForm.setData('unit_price', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Stok Minimum</span>}>
+                                <NumericInput value={editItemForm.data.min_stock} onChange={(e) => editItemForm.setData('min_stock', e.target.value)} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <div className="flex flex-col justify-end gap-2 pb-1">
+                                <Checkbox checked={editItemForm.data.is_consumable} onChange={(e) => editItemForm.setData('is_consumable', e.target.checked)}>
+                                    Habis pakai
+                                </Checkbox>
+                                <Checkbox checked={editItemForm.data.is_perishable} onChange={(e) => editItemForm.setData('is_perishable', e.target.checked)}>
+                                    Ada masa berlaku (batch)
+                                </Checkbox>
+                            </div>
+                        </Col>
+                    </Row>
                     <div className="mt-5 flex justify-end gap-3">
-                        <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
-                        <PrimaryButton disabled={editItemForm.processing}>Simpan Perubahan</PrimaryButton>
+                        <SecondaryButton onClick={() => setModal(null)}>Batal</SecondaryButton>
+                        <PrimaryButton htmlType="submit" disabled={editItemForm.processing}>Simpan Perubahan</PrimaryButton>
                     </div>
                 </form>
             </Modal>
 
-            {/* Modal: Tambah Batch */}
             <Modal show={modal === 'batch'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitBatch} className="p-6">
-                    <h2 className="text-lg font-semibold text-ink">Tambah Batch (Barang Berkadaluarsa)</h2>
+                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Tambah Batch (Barang Berkadaluarsa)</h2>
                     <div className="mt-4 space-y-3">
-                        <div><label className="text-xs font-medium text-muted">Item *</label>
-                            <select value={batchForm.data.item_id} onChange={(e) => batchForm.setData('item_id', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                <option value="">— pilih item —</option>
-                                {items.map((i) => <option key={i.id} value={i.id}>{i.sku} · {i.name}</option>)}
-                            </select></div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div><label className="text-xs font-medium text-muted">Lokasi</label>
-                                <select value={batchForm.data.location_type} onChange={(e) => batchForm.setData('location_type', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                    <option value="kantor">Kantor</option>
-                                    <option value="kapal">Kapal</option>
-                                </select></div>
+                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Item *</span>}>
+                            <AntSelect
+                                value={batchForm.data.item_id || undefined}
+                                onChange={(value) => batchForm.setData('item_id', value)}
+                                placeholder="— pilih item —"
+                                style={{ width: '100%' }}
+                                options={[
+                                    { value: '', label: '— pilih item —' },
+                                    ...items.map((i) => ({ value: String(i.id), label: `${i.sku} · ${i.name}` })),
+                                ]}
+                                showSearch
+                                optionFilterProp="label"
+                            />
+                        </Form.Item>
+                        <Row gutter={12}>
+                            <Col span={12}>
+                                <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Lokasi</span>}>
+                                    <AntSelect
+                                        value={batchForm.data.location_type}
+                                        onChange={(value) => batchForm.setData('location_type', value)}
+                                        style={{ width: '100%' }}
+                                        options={[
+                                            { value: 'kantor', label: 'Kantor' },
+                                            { value: 'kapal', label: 'Kapal' },
+                                        ]}
+                                    />
+                                </Form.Item>
+                            </Col>
                             {batchForm.data.location_type === 'kapal' && (
-                                <div><label className="text-xs font-medium text-muted">Kapal *</label>
-                                    <select value={batchForm.data.vessel_id} onChange={(e) => batchForm.setData('vessel_id', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary">
-                                        <option value="">— pilih —</option>
-                                        {vessels.map((v) => <option key={v.id} value={v.id}>{v.vessel_name}</option>)}
-                                    </select></div>
+                                <Col span={12}>
+                                    <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kapal *</span>}>
+                                        <AntSelect
+                                            value={batchForm.data.vessel_id || undefined}
+                                            onChange={(value) => batchForm.setData('vessel_id', value)}
+                                            placeholder="— pilih —"
+                                            style={{ width: '100%' }}
+                                            options={vessels.map((v) => ({ value: String(v.id), label: v.vessel_name }))}
+                                            showSearch
+                                            optionFilterProp="label"
+                                        />
+                                    </Form.Item>
+                                </Col>
                             )}
-                            <div><label className="text-xs font-medium text-muted">No. Batch *</label>
-                                <input value={batchForm.data.batch_no} onChange={(e) => batchForm.setData('batch_no', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                            <div><label className="text-xs font-medium text-muted">Qty *</label>
-                                <NumericInput decimalPlaces={2} value={batchForm.data.qty} onChange={(e) => batchForm.setData('qty', e.target.value)} className="mt-1 block w-full" /></div>
-                            <div><label className="text-xs font-medium text-muted">Kadaluarsa</label>
-                                <input type="date" value={batchForm.data.expires_at} onChange={(e) => batchForm.setData('expires_at', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        </div>
+                            <Col span={12}>
+                                <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">No. Batch *</span>}>
+                                    <Input value={batchForm.data.batch_no} onChange={(e) => batchForm.setData('batch_no', e.target.value)} />
+                                </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                                <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Qty *</span>}>
+                                    <NumericInput decimalPlaces={2} value={batchForm.data.qty} onChange={(e) => batchForm.setData('qty', e.target.value)} />
+                                </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                                <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kadaluarsa</span>}>
+                                    <Input type="date" value={batchForm.data.expires_at} onChange={(e) => batchForm.setData('expires_at', e.target.value)} />
+                                </Form.Item>
+                            </Col>
+                        </Row>
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
-                        <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
-                        <PrimaryButton disabled={batchForm.processing}>Simpan Batch</PrimaryButton>
+                        <SecondaryButton onClick={() => setModal(null)}>Batal</SecondaryButton>
+                        <PrimaryButton htmlType="submit" disabled={batchForm.processing}>Simpan Batch</PrimaryButton>
                     </div>
                 </form>
             </Modal>
 
-            {/* Modal: Edit Batch */}
             <Modal show={modal === 'editBatch'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitEditBatch} className="p-6">
-                    <h2 className="text-lg font-semibold text-ink">Edit Batch {editBatch?.batch_no}</h2>
+                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit Batch {editBatch?.batch_no}</h2>
                     <div className="mt-4 space-y-3">
-                        <div><label className="text-xs font-medium text-muted">No. Batch *</label>
-                            <input value={editBatchForm.data.batch_no} onChange={(e) => editBatchForm.setData('batch_no', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
-                        <div><label className="text-xs font-medium text-muted">Qty *</label>
-                            <NumericInput decimalPlaces={2} value={editBatchForm.data.qty} onChange={(e) => editBatchForm.setData('qty', e.target.value)} className="mt-1 block w-full" /></div>
-                        <div><label className="text-xs font-medium text-muted">Kadaluarsa</label>
-                            <input type="date" value={editBatchForm.data.expires_at} onChange={(e) => editBatchForm.setData('expires_at', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" /></div>
+                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">No. Batch *</span>}>
+                            <Input value={editBatchForm.data.batch_no} onChange={(e) => editBatchForm.setData('batch_no', e.target.value)} />
+                        </Form.Item>
+                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Qty *</span>}>
+                            <NumericInput decimalPlaces={2} value={editBatchForm.data.qty} onChange={(e) => editBatchForm.setData('qty', e.target.value)} />
+                        </Form.Item>
+                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kadaluarsa</span>}>
+                            <Input type="date" value={editBatchForm.data.expires_at} onChange={(e) => editBatchForm.setData('expires_at', e.target.value)} />
+                        </Form.Item>
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
-                        <SecondaryButton type="button" onClick={() => setModal(null)}>Batal</SecondaryButton>
-                        <PrimaryButton disabled={editBatchForm.processing}>Simpan</PrimaryButton>
+                        <SecondaryButton onClick={() => setModal(null)}>Batal</SecondaryButton>
+                        <PrimaryButton htmlType="submit" disabled={editBatchForm.processing}>Simpan</PrimaryButton>
                     </div>
                 </form>
             </Modal>

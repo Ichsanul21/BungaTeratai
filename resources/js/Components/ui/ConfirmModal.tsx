@@ -1,11 +1,7 @@
-import SecondaryButton from '@/Components/SecondaryButton';
-import PrimaryButton from '@/Components/PrimaryButton';
 import Modal from '@/Components/Modal';
 import { AlertTriangle } from 'lucide-react';
+import { Button } from 'antd';
 
-/**
- * Modal konfirmasi aksi destruktif (hapus/arsip/batalkan).
- */
 export default function ConfirmModal({
     show,
     title,
@@ -30,33 +26,32 @@ export default function ConfirmModal({
             <div className="p-6">
                 <div className="flex items-start gap-3">
                     <span
-                        className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-                            tone === 'danger' ? 'bg-primary/10 text-primary' : 'bg-warn/10 text-warn'
-                        }`}
+                        className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+                        style={{
+                            background: tone === 'danger' ? '#C1121F1A' : '#D99A2B1A',
+                            color: tone === 'danger' ? '#C1121F' : '#D99A2B',
+                        }}
                     >
                         <AlertTriangle size={18} />
                     </span>
                     <div>
-                        <h2 className="text-lg font-semibold text-ink">{title}</h2>
-                        <p className="mt-1 text-sm text-muted">{message}</p>
+                        <h2 className="text-lg font-semibold text-[#1C1B1A]">{title}</h2>
+                        <p className="mt-1 text-sm text-[#8A8580]">{message}</p>
                     </div>
                 </div>
                 <div className="mt-6 flex justify-end gap-3">
-                    <SecondaryButton type="button" onClick={onClose} disabled={processing}>
+                    <Button onClick={onClose} disabled={processing}>
                         Batal
-                    </SecondaryButton>
-                    <button
-                        type="button"
+                    </Button>
+                    <Button
+                        type="primary"
+                        danger={tone === 'danger'}
                         onClick={onConfirm}
-                        disabled={processing}
-                        className={`rounded-lg px-4 py-2 text-sm font-semibold text-white transition disabled:opacity-50 ${
-                            tone === 'danger'
-                                ? 'bg-primary hover:bg-primary-hover'
-                                : 'bg-warn hover:opacity-90'
-                        }`}
+                        loading={processing}
+                        style={tone === 'warning' ? { background: '#D99A2B', borderColor: '#D99A2B' } : undefined}
                     >
-                        {processing ? 'Memproses…' : confirmLabel}
-                    </button>
+                        {confirmLabel}
+                    </Button>
                 </div>
             </div>
         </Modal>

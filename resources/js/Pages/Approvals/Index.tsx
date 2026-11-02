@@ -6,7 +6,10 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { classNames, formatDateTime } from '@/lib/format';
 import { type PageProps } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
+import { Table, Typography } from 'antd';
 import { CheckCircle2, ClipboardCheck, FileStack, History, MessageSquare } from 'lucide-react';
+
+const { Text } = Typography;
 
 export default function ApprovalsIndex({
     tab,
@@ -24,6 +27,89 @@ export default function ApprovalsIndex({
         { key: 'approved', label: 'Disetujui', icon: CheckCircle2, count: counts.approved },
         { key: 'revision', label: 'Perlu Revisi', icon: MessageSquare, count: counts.revision },
         { key: 'history', label: 'Histori Lengkap', icon: History },
+    ];
+
+    const historyColumns = [
+        {
+            title: 'Nama',
+            dataIndex: 'name',
+            key: 'name',
+            render: (name: string, record: Record<string, any>) => (
+                <Link
+                    href={record.link}
+                    className="font-medium text-[#1C1B1A] hover:text-[#C1121F] hover:underline"
+                >
+                    {name}
+                </Link>
+            ),
+        },
+        {
+            title: 'Jenis',
+            dataIndex: 'type',
+            key: 'type',
+            render: (type: string) => (
+                <Badge tone={type === 'voyage' ? 'info' : 'neutral'}>
+                    {type === 'voyage' ? 'Perjalanan' : 'Dokumen'}
+                </Badge>
+            ),
+        },
+        {
+            title: 'Lingkup',
+            dataIndex: 'scope',
+            key: 'scope',
+            render: (scope: string) => (
+                <Text type="secondary">{scope === 'external' ? 'Eksternal*' : 'Internal'}</Text>
+            ),
+        },
+        {
+            title: 'Keputusan',
+            dataIndex: 'status',
+            key: 'status',
+            render: (status: string) => (
+                <Badge
+                    tone={
+                        status === 'approved'
+                            ? 'success'
+                            : status === 'rejected'
+                              ? 'danger'
+                              : 'warning'
+                    }
+                >
+                    {status === 'approved'
+                        ? 'Disetujui'
+                        : status === 'rejected'
+                          ? 'Ditolak'
+                          : 'Perlu Revisi'}
+                </Badge>
+            ),
+        },
+        {
+            title: 'Pemeriksa',
+            dataIndex: 'approver',
+            key: 'approver',
+            render: (approver: string) => <Text type="secondary">{approver}</Text>,
+        },
+        {
+            title: 'Komentar',
+            dataIndex: 'comments',
+            key: 'comments',
+            ellipsis: true,
+            render: (comments: string | null) => (
+                <Text type="secondary" italic className="line-clamp-2 text-xs">
+                    {comments ?? '—'}
+                </Text>
+            ),
+        },
+        {
+            title: 'Waktu',
+            dataIndex: 'decision_timestamp',
+            key: 'decision_timestamp',
+            render: (ts: string) => (
+                <Text type="secondary" className="text-xs">
+                    {formatDateTime(ts)}
+                </Text>
+            ),
+        },
     ];
 
     return (
@@ -54,112 +140,53 @@ export default function ApprovalsIndex({
                             <Link
                                 key={i}
                                 href={item.link}
-                                className="flex items-center gap-4 rounded-xl border border-hairline bg-white p-4 shadow-sm transition hover:border-primary/40"
+                                className="flex items-center gap-4 rounded-xl border border-[#E7E1D9] bg-white p-4 shadow-sm transition hover:border-[#C1121F]/40"
                             >
-                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-maritime/10 text-maritime">
+                                <span
+                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+                                    style={{ background: '#1E46681A', color: '#1E4668' }}
+                                >
                                     {item.type === 'voyage' ? <ClipboardCheck size={18} /> : <FileStack size={18} />}
                                 </span>
                                 <div className="min-w-0 flex-1">
                                     <div className="flex flex-wrap items-center gap-2">
-                                        <p className="font-semibold text-ink">{item.name}</p>
+                                        <p className="font-semibold text-[#1C1B1A]">{item.name}</p>
                                         <Badge tone={item.type === 'voyage' ? 'info' : 'warning'}>
                                             {item.type === 'voyage' ? 'Perjalanan' : 'Dokumen'}
                                         </Badge>
                                     </div>
-                                    <p className="text-xs text-muted">
+                                    <p className="text-xs text-[#8A8580]">
                                         {item.code ? `${item.code} · ` : ''}
                                         {item.owner} · {item.status}
                                     </p>
                                 </div>
-                                <span className="text-xs text-muted">
+                                <span className="text-xs text-[#8A8580]">
                                     {formatDateTime(item.updated_at)}
                                 </span>
-                                <span className="text-sm font-medium text-primary">Periksa →</span>
+                                <span className="text-sm font-medium text-[#C1121F]">Periksa →</span>
                             </Link>
                         ))}
                     </div>
                 )
             ) : (
-                <div className="overflow-hidden rounded-xl border border-hairline bg-white shadow-sm">
-                    <table className="min-w-full divide-y divide-hairline text-sm">
-                        <thead className="bg-appbg">
-                            <tr>
-                                {['Nama', 'Jenis', 'Lingkup', 'Keputusan', 'Pemeriksa', 'Komentar', 'Waktu'].map(
-                                    (h) => (
-                                        <th
-                                            key={h}
-                                            className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted"
-                                        >
-                                            {h}
-                                        </th>
-                                    ),
-                                )}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-hairline">
-                            {history.length === 0 ? (
-                                <tr>
-                                    <td colSpan={7} className="px-4 py-8 text-center text-muted">
-                                        Belum ada riwayat keputusan.
-                                    </td>
-                                </tr>
-                            ) : (
-                                history.map((h, i) => (
-                                    <tr key={i} className="hover:bg-appbg">
-                                        <td className="px-4 py-3">
-                                            <Link
-                                                href={h.link}
-                                                className="font-medium text-ink hover:text-primary hover:underline"
-                                            >
-                                                {h.name}
-                                            </Link>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <Badge tone={h.type === 'voyage' ? 'info' : 'neutral'}>
-                                                {h.type === 'voyage' ? 'Perjalanan' : 'Dokumen'}
-                                            </Badge>
-                                        </td>
-                                        <td className="px-4 py-3 text-muted">
-                                            {h.scope === 'external' ? 'Eksternal*' : 'Internal'}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <Badge
-                                                tone={
-                                                    h.status === 'approved'
-                                                        ? 'success'
-                                                        : h.status === 'rejected'
-                                                          ? 'danger'
-                                                          : 'warning'
-                                                }
-                                            >
-                                                {h.status === 'approved'
-                                                    ? 'Disetujui'
-                                                    : h.status === 'rejected'
-                                                      ? 'Ditolak'
-                                                      : 'Perlu Revisi'}
-                                            </Badge>
-                                        </td>
-                                        <td className="px-4 py-3 text-muted">{h.approver}</td>
-                                        <td className={classNames('max-w-56 px-4 py-3 text-muted')}>
-                                            <span className="line-clamp-2 text-xs italic">
-                                                {h.comments ?? '—'}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-xs text-muted">
-                                            {formatDateTime(h.decision_timestamp)}
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                <Table
+                    dataSource={history}
+                    columns={historyColumns}
+                    rowKey={(_, i) => String(i)}
+                    pagination={false}
+                    size="middle"
+                    locale={{ emptyText: 'Belum ada riwayat keputusan.' }}
+                    rowClassName={() => 'hover:bg-[#FAF7F2]'}
+                />
             )}
 
-            <p className="mt-4 rounded-xl border border-hairline bg-appbg p-3 text-xs text-muted">
+            <div
+                className="mt-4 rounded-xl border border-[#E7E1D9] p-3 text-xs text-[#8A8580]"
+                style={{ background: '#FAF7F2' }}
+            >
                 * Persetujuan eksternal hanya dicatat berdasarkan lampiran bukti/berkas sah dari
                 pihak berwenang — sistem tidak mewakili otoritas pelayaran.
-            </p>
+            </div>
         </AuthenticatedLayout>
     );
 }

@@ -1,4 +1,4 @@
-import { DEMO_ACCOUNTS } from '@/Constants/navigation';
+﻿import { DEMO_ACCOUNTS } from '@/Constants/navigation';
 import { Head, Link, useForm } from '@inertiajs/react';
 import {
     FormEventHandler,
@@ -9,7 +9,7 @@ import {
 
 // Penanda "baru saja login" untuk animasi sambutan sidebar: dipasang
 // saat autentikasi berhasil, dibaca sekali oleh Sidebar lalu langsung
-// dihapus — muat ulang halaman atau berpindah modul tidak mengulang animasi.
+// dihapus ΓÇö muat ulang halaman atau berpindah modul tidak mengulang animasi.
 const POP_KEY = 'bt-sidebar-pop';
 
 export default function Login({
@@ -35,7 +35,7 @@ export default function Login({
             onSuccess: () => {
                 // Autentikasi berhasil: pasang penanda SEBELUM Inertia
                 // berpindah ke dasbor, sehingga Sidebar tahu bahwa ini
-                // momen "setelah login" — bukan muat ulang halaman dan
+                // momen "setelah login" ΓÇö bukan muat ulang halaman dan
                 // bukan pindah modul. Sidebar memakannya sekali lalu
                 // menghapusnya.
                 try {
@@ -306,7 +306,7 @@ export default function Login({
                                     onChange={(e) =>
                                         setData('password', e.target.value)
                                     }
-                                    placeholder="••••••••"
+                                    placeholder="ΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇó"
                                     className="mt-1.5 block h-11 w-full rounded-lg border border-muted/60 bg-white px-3.5 text-sm text-ink placeholder:text-muted/80 transition hover:border-ink/50 focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/15"
                                 />
                                 {errors.password && (

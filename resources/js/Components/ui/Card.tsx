@@ -1,4 +1,7 @@
+import { Card as AntCard, Typography } from 'antd';
 import { ReactNode } from 'react';
+
+const { Text } = Typography;
 
 export default function Card({
     title,
@@ -14,23 +17,29 @@ export default function Card({
     className?: string;
 }) {
     return (
-        <section
-            className={`rounded-xl border border-hairline bg-white shadow-sm ${className}`}
-        >
-            {(title || actions) && (
-                <header className="flex items-start justify-between gap-3 border-b border-hairline px-5 py-4">
+        <AntCard
+            title={
+                title ? (
                     <div>
-                        {title && (
-                            <h2 className="text-sm font-semibold text-ink">{title}</h2>
-                        )}
+                        <h2 className="text-sm font-semibold text-[#1C1B1A]">{title}</h2>
                         {description && (
-                            <p className="mt-0.5 text-xs text-muted">{description}</p>
+                            <p className="mt-0.5 text-xs text-[#8A8580]">{description}</p>
                         )}
                     </div>
-                    {actions && <div className="flex items-center gap-2">{actions}</div>}
-                </header>
-            )}
-            <div className="p-5">{children}</div>
-        </section>
+                ) : null
+            }
+            extra={actions}
+            className={className}
+            styles={{
+                header: {
+                    borderBottom: '1px solid #E7E1D9',
+                    padding: '16px 20px',
+                    minHeight: 'auto',
+                },
+                body: { padding: '20px' },
+            }}
+        >
+            {children}
+        </AntCard>
     );
 }

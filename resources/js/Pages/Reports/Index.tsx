@@ -7,8 +7,9 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { classNames, formatDate, formatNumber, formatRupiah } from '@/lib/format';
 import { type PageProps } from '@/types';
 import { Head, router } from '@inertiajs/react';
+import { Table, Button, Select, Row, Col, Space } from 'antd';
 import { Fuel, ClipboardList, Printer, Ship, FileStack } from 'lucide-react';
-import { FormEvent } from 'react';
+import { useState } from 'react';
 
 const VERIF_TONES: Record<string, BadgeTone> = {
     verified: 'success', under_review: 'info', uploaded: 'info',
@@ -31,6 +32,10 @@ export default function ReportsIndex({
     rows: Array<Record<string, any>>;
     summary: Record<string, any>;
 }>) {
+    const [vesselId, setVesselId] = useState(filters.vessel_id ?? '');
+    const [from, setFrom] = useState(filters.from ?? undefined);
+    const [to, setTo] = useState(filters.to ?? undefined);
+
     const tabs = [
         { key: 'armada', label: 'Laporan Armada', icon: Ship },
         { key: 'dokumen', label: 'Laporan Dokumen', icon: FileStack },
@@ -39,15 +44,84 @@ export default function ReportsIndex({
         { key: 'ekspor', label: 'Ekspor Excel', icon: Printer },
     ];
 
-    const apply = (e: FormEvent) => {
-        e.preventDefault();
-        const fd = new FormData(e.currentTarget as HTMLFormElement);
+    const apply = () => {
         router.get('/laporan', {
             tab,
-            vessel_id: fd.get('vessel_id') || undefined,
-            from: fd.get('from') || undefined,
-            to: fd.get('to') || undefined,
+            vessel_id: vesselId || undefined,
+            from: from || undefined,
+            to: to || undefined,
         }, { preserveState: true });
+    };
+
+    const armadaColumns = [
+        { title: 'Kapal', dataIndex: 'vessel_name', key: 'vessel_name', render: (v: string) => <span className="font-medium text-[#1C1B1A]">{v}</span> },
+        { title: 'Jenis', dataIndex: 'vessel_type', key: 'vessel_type', render: (v: string) => <span className="text-[#8A8580] capitalize">{v?.replace('_', ' ')}</span> },
+        { title: 'Navigasi', dataIndex: 'navigation_type', key: 'navigation_type', render: (v: string) => <span className="text-[#8A8580] capitalize">{v?.replace('_', ' ')}</span> },
+        { title: 'Status Ops', dataIndex: 'operational_status', key: 'operational_status', render: (v: string) => <Badge tone={v === 'aktif' ? 'success' : 'warning'}>{v}</Badge> },
+        { title: 'Pangkalan', dataIndex: 'base_location', key: 'base_location', render: (v: string) => <span className="text-[#8A8580]">{v}</span> },
+        { title: 'Kelengkapan', dataIndex: 'kelengkapan', key: 'kelengkapan', render: (v: number) => (
+            <span className={classNames('font-semibold tabular-nums', v >= 90 ? 'text-[#2F8F68]' : v >= 70 ? 'text-[#D99A2B]' : 'text-[#C1121F]')}>
+                {formatNumber(v, 1)}%
+            </span>
+        )},
+        { title: 'Kurang', dataIndex: 'kurang', key: 'kurang', render: (v: number) => <span className="tabular-nums text-[#8A8580]">{v}</span> },
+        { title: 'Perjalanan', dataIndex: 'voyages', key: 'voyages', render: (v: number) => <span className="tabular-nums text-[#8A8580]">{v}</span> },
+    ];
+
+    const dokumenColumns = [
+        { title: 'Dokumen', dataIndex: 'document_name', key: 'document_name', render: (v: string) => <span className="font-medium text-[#1C1B1A]">{v}</span> },
+        { title: 'Grup', dataIndex: 'group_code', key: 'group_code', render: (v: string) => <span className="text-[#8A8580]">{v}</span> },
+        { title: 'Milik', key: 'owner', render: (_: any, r: any) => (
+            <span className="text-[#8A8580]">{r.owner_name} <span className="text-[10px] uppercase">({r.owner_type})</span></span>
+        )},
+        { title: 'Verifikasi', dataIndex: 'verification_status', key: 'verification_status', render: (v: string) => (
+            <Badge tone={VERIF_TONES[v] ?? 'neutral'}>{VERIFICATION_STATUS_LABELS[v] ?? v}</Badge>
+        )},
+        { title: 'Berlaku s/d', key: 'expiry', render: (_: any, r: any) => <span className="text-[#8A8580]">{r.has_expiry ? r.expiry_date : 'Tanpa masa berlaku'}</span> },
+        { title: 'Sisa Hari', dataIndex: 'days_left', key: 'days_left', render: (v: number | null) => (
+            <span className={classNames('font-semibold tabular-nums', v !== null && v < 0 ? 'text-[#C1121F]' : v !== null && v <= 30 ? 'text-[#D99A2B]' : 'text-[#8A8580]')}>
+                {v !== null ? v : '—'}
+            </span>
+        )},
+    ];
+
+    const perjalananColumns = [
+        { title: 'Kode', dataIndex: 'voyage_code', key: 'voyage_code', render: (v: string) => <span className="font-medium text-[#1C1B1A]">{v}</span> },
+        { title: 'Kapal', dataIndex: 'vessel_name', key: 'vessel_name', render: (v: string) => <span className="text-[#8A8580]">{v}</span> },
+        { title: 'Rute', key: 'route', render: (_: any, r: any) => <span className="text-[#8A8580]">{r.origin} → {r.destination}</span> },
+        { title: 'Berangkat', dataIndex: 'planned_departure', key: 'planned_departure', render: (v: string) => <span className="text-[#8A8580]">{formatDate(v)}</span> },
+        { title: 'Status', dataIndex: 'voyage_status', key: 'voyage_status', render: (v: string) => (
+            <Badge tone={v === 'completed' ? 'success' : v === 'delayed' || v === 'cancelled' ? 'danger' : 'info'}>
+                {VOYAGE_STATUS_LABELS[v] ?? v}
+            </Badge>
+        )},
+        { title: 'Tiba', dataIndex: 'actual_arrival', key: 'actual_arrival', render: (v: string) => <span className="text-[#8A8580]">{formatDate(v)}</span> },
+        { title: 'Biaya', dataIndex: 'biaya', key: 'biaya', render: (v: number) => <span className="tabular-nums">{formatRupiah(v)}</span> },
+    ];
+
+    const operasionalColumns = [
+        { title: 'Tanggal', dataIndex: 'trip_date', key: 'trip_date', render: (v: string) => formatDate(v) },
+        { title: 'Kapal', dataIndex: 'vessel_name', key: 'vessel_name', render: (v: string) => <span className="font-medium text-[#1C1B1A]">{v}</span> },
+        { title: 'Rute', dataIndex: 'route', key: 'route', render: (v: string) => <span className="text-[#8A8580]">{v}</span> },
+        { title: 'Durasi', dataIndex: 'duration_hours', key: 'duration_hours', render: (v: number) => <span className="tabular-nums">{v} jam</span> },
+        { title: 'Liter', dataIndex: 'liters', key: 'liters', render: (v: number) => <span className="tabular-nums">{formatNumber(v, 2)} L</span> },
+        { title: 'L/jam', dataIndex: 'lph', key: 'lph', render: (v: number) => <span className="tabular-nums">{formatNumber(v, 1)}</span> },
+        { title: 'Biaya', dataIndex: 'cost', key: 'cost', render: (v: number) => <span className="tabular-nums">{formatRupiah(v)}</span> },
+        { title: 'Analisis', dataIndex: 'analysis_status', key: 'analysis_status', render: (v: string) => (
+            <Badge tone={FUEL_TONES[v] ?? 'neutral'}>
+                {v === 'tidak_normal' ? 'Tidak Normal' : v === 'waspada' ? 'Waspada' : 'Normal'}
+            </Badge>
+        )},
+    ];
+
+    const getColumns = () => {
+        switch (tab) {
+            case 'armada': return armadaColumns;
+            case 'dokumen': return dokumenColumns;
+            case 'perjalanan': return perjalananColumns;
+            case 'operasional': return operasionalColumns;
+            default: return [];
+        }
     };
 
     return (
@@ -58,13 +132,9 @@ export default function ReportsIndex({
                 title="Laporan"
                 description="Laporan armada, dokumen, perjalanan, dan operasional — filter kapal + periode, siap cetak."
                 actions={
-                    <button
-                        type="button"
-                        onClick={() => window.print()}
-                        className="inline-flex items-center gap-2 rounded-lg border border-hairline bg-white px-3.5 py-2 text-sm font-medium text-ink hover:border-primary/40"
-                    >
-                        <Printer size={16} /> Cetak
-                    </button>
+                    <Button onClick={() => window.print()} icon={<Printer size={16} />}>
+                        Cetak
+                    </Button>
                 }
             />
 
@@ -74,35 +144,50 @@ export default function ReportsIndex({
                 onChange={(key) => router.get('/laporan', { tab: key }, { preserveState: true })}
             />
 
-            <form onSubmit={apply} className="mb-5 flex flex-wrap items-end gap-3 rounded-xl border border-hairline bg-white p-4">
-                <div>
-                    <label className="text-xs font-medium text-muted">Kapal</label>
-                    <select name="vessel_id" defaultValue={filters.vessel_id ?? ''} className="mt-1 block rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary">
-                        <option value="">Semua kapal</option>
-                        {vessels.map((v) => <option key={v.id} value={v.id}>{v.vessel_name}</option>)}
-                    </select>
-                </div>
-                <div>
-                    <label className="text-xs font-medium text-muted">Dari</label>
-                    <input type="date" name="from" defaultValue={filters.from} className="mt-1 block rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
-                </div>
-                <div>
-                    <label className="text-xs font-medium text-muted">Sampai</label>
-                    <input type="date" name="to" defaultValue={filters.to} className="mt-1 block rounded-md border-gray-300 text-sm shadow-sm focus:border-primary focus:ring-primary" />
-                </div>
-                <button type="submit" className="rounded-lg bg-ink px-3.5 py-2 text-sm font-medium text-white hover:bg-black">
-                    Terapkan
-                </button>
-            </form>
+            <div className="mb-5 rounded-xl border border-[#E7E1D9] bg-white p-4">
+                <Row gutter={16} align="middle">
+                    <Col>
+                        <label className="text-xs font-medium text-[#8A8580]">Kapal</label>
+                        <Select
+                            value={vesselId}
+                            onChange={setVesselId}
+                            style={{ width: 200 }}
+                            options={[{ value: '', label: 'Semua kapal' }, ...vessels.map((v) => ({ value: v.id, label: v.vessel_name }))]}
+                        />
+                    </Col>
+                    <Col>
+                        <label className="block text-xs font-medium text-[#8A8580]">Dari</label>
+                        <input
+                            type="date"
+                            value={from || ''}
+                            onChange={(e) => setFrom(e.target.value || null)}
+                            className="mt-1 w-full rounded-lg border border-[#E7E1D9] bg-white px-3 py-1.5 text-sm text-[#1C1B1A] focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20"
+                        />
+                    </Col>
+                    <Col>
+                        <label className="block text-xs font-medium text-[#8A8580]">Sampai</label>
+                        <input
+                            type="date"
+                            value={to || ''}
+                            onChange={(e) => setTo(e.target.value || null)}
+                            className="mt-1 w-full rounded-lg border border-[#E7E1D9] bg-white px-3 py-1.5 text-sm text-[#1C1B1A] focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20"
+                        />
+                    </Col>
+                    <Col>
+                        <Button type="primary" onClick={apply} style={{ background: '#1C1B1A', borderColor: '#1C1B1A' }}>
+                            Terapkan
+                        </Button>
+                    </Col>
+                </Row>
+            </div>
 
-            {/* Ringkasan */}
             <div className="mb-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
                 {Object.entries(summary ?? {}).map(([k, v]) => (
-                    <div key={k} className="rounded-xl border border-hairline bg-white p-4">
-                        <p className="text-xs uppercase tracking-wide text-muted">
+                    <div key={k} className="rounded-xl border border-[#E7E1D9] bg-white p-4">
+                        <p className="text-xs uppercase tracking-wide text-[#8A8580]">
                             {k.replace(/_/g, ' ')}
                         </p>
-                        <p className="mt-1 text-xl font-semibold tabular-nums text-ink">
+                        <p className="mt-1 text-xl font-semibold tabular-nums text-[#1C1B1A]">
                             {k === 'liter' ? formatNumber(v as number, 2) + ' L'
                                 : k === 'biaya' || k === 'servis_biaya' || k === 'pendapatan' || k === 'kas_total'
                                     ? formatRupiah(v as number)
@@ -112,158 +197,68 @@ export default function ReportsIndex({
                 ))}
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-hairline bg-white shadow-sm">
-                {tab === 'armada' && (
-                    <table className="min-w-full text-sm">
-                        <thead className="bg-appbg text-left text-xs uppercase text-muted">
-                            <tr>{['Kapal', 'Jenis', 'Navigasi', 'Status Ops', 'Pangkalan', 'Kelengkapan', 'Kurang', 'Perjalanan'].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr>
-                        </thead>
-                        <tbody className="divide-y divide-hairline">
-                            {rows.map((r) => (
-                                <tr key={r.id} className="hover:bg-appbg">
-                                    <td className="px-3 py-2 font-medium text-ink">{r.vessel_name}</td>
-                                    <td className="px-3 py-2 capitalize text-muted">{r.vessel_type?.replace('_', ' ')}</td>
-                                    <td className="px-3 py-2 capitalize text-muted">{r.navigation_type?.replace('_', ' ')}</td>
-                                    <td className="px-3 py-2"><Badge tone={r.operational_status === 'aktif' ? 'success' : 'warning'}>{r.operational_status}</Badge></td>
-                                    <td className="px-3 py-2 text-muted">{r.base_location}</td>
-                                    <td className={classNames('px-3 py-2 font-semibold tabular-nums', r.kelengkapan >= 90 ? 'text-ok' : r.kelengkapan >= 70 ? 'text-warn' : 'text-primary')}>
-                                        {formatNumber(r.kelengkapan, 1)}%
-                                    </td>
-                                    <td className="px-3 py-2 tabular-nums text-muted">{r.kurang}</td>
-                                    <td className="px-3 py-2 tabular-nums text-muted">{r.voyages}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
+            {tab !== 'ekspor' && (
+                <div className="overflow-x-auto rounded-xl border border-[#E7E1D9] bg-white shadow-sm">
+                    <Table
+                        columns={getColumns()}
+                        dataSource={rows}
+                        rowKey="id"
+                        pagination={false}
+                        size="small"
+                    />
+                </div>
+            )}
 
-                {tab === 'dokumen' && (
-                    <table className="min-w-full text-sm">
-                        <thead className="bg-appbg text-left text-xs uppercase text-muted">
-                            <tr>{['Dokumen', 'Grup', 'Milik', 'Verifikasi', 'Berlaku s/d', 'Sisa Hari'].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr>
-                        </thead>
-                        <tbody className="divide-y divide-hairline">
-                            {rows.map((r) => (
-                                <tr key={r.id} className="hover:bg-appbg">
-                                    <td className="px-3 py-2 font-medium text-ink">{r.document_name}</td>
-                                    <td className="px-3 py-2 text-muted">{r.group_code}</td>
-                                    <td className="px-3 py-2 text-muted">{r.owner_name} <span className="text-[10px] uppercase">({r.owner_type})</span></td>
-                                    <td className="px-3 py-2"><Badge tone={VERIF_TONES[r.verification_status] ?? 'neutral'}>{VERIFICATION_STATUS_LABELS[r.verification_status] ?? r.verification_status}</Badge></td>
-                                    <td className="px-3 py-2 text-muted">{r.has_expiry ? r.expiry_date : 'Tanpa masa berlaku'}</td>
-                                    <td className={classNames('px-3 py-2 font-semibold tabular-nums', r.days_left !== null && r.days_left < 0 ? 'text-primary' : r.days_left !== null && r.days_left <= 30 ? 'text-warn' : 'text-muted')}>
-                                        {r.days_left !== null ? r.days_left : '—'}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-
-                {tab === 'perjalanan' && (
-                    <table className="min-w-full text-sm">
-                        <thead className="bg-appbg text-left text-xs uppercase text-muted">
-                            <tr>{['Kode', 'Kapal', 'Rute', 'Berangkat', 'Status', 'Tiba', 'Biaya'].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr>
-                        </thead>
-                        <tbody className="divide-y divide-hairline">
-                            {rows.map((r) => (
-                                <tr key={r.id} className="hover:bg-appbg">
-                                    <td className="px-3 py-2 font-medium text-ink">{r.voyage_code}</td>
-                                    <td className="px-3 py-2 text-muted">{r.vessel_name}</td>
-                                    <td className="px-3 py-2 text-muted">{r.origin} → {r.destination}</td>
-                                    <td className="px-3 py-2 text-muted">{formatDate(r.planned_departure)}</td>
-                                    <td className="px-3 py-2">
-                                        <Badge tone={r.voyage_status === 'completed' ? 'success' : r.voyage_status === 'delayed' || r.voyage_status === 'cancelled' ? 'danger' : 'info'}>
-                                            {VOYAGE_STATUS_LABELS[r.voyage_status] ?? r.voyage_status}
-                                        </Badge>
-                                    </td>
-                                    <td className="px-3 py-2 text-muted">{formatDate(r.actual_arrival)}</td>
-                                    <td className="px-3 py-2 tabular-nums">{formatRupiah(r.biaya)}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-
-                {tab === 'operasional' && (
-                    <table className="min-w-full text-sm">
-                        <thead className="bg-appbg text-left text-xs uppercase text-muted">
-                            <tr>{['Tanggal', 'Kapal', 'Rute', 'Durasi', 'Liter', 'L/jam', 'Biaya', 'Analisis'].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr>
-                        </thead>
-                        <tbody className="divide-y divide-hairline">
-                            {rows.map((r) => (
-                                <tr key={r.id} className="hover:bg-appbg">
-                                    <td className="px-3 py-2">{formatDate(r.trip_date)}</td>
-                                    <td className="px-3 py-2 font-medium text-ink">{r.vessel_name}</td>
-                                    <td className="px-3 py-2 text-muted">{r.route}</td>
-                                    <td className="px-3 py-2 tabular-nums">{r.duration_hours} jam</td>
-                                    <td className="px-3 py-2 tabular-nums">{formatNumber(r.liters, 2)} L</td>
-                                    <td className="px-3 py-2 tabular-nums">{formatNumber(r.lph, 1)}</td>
-                                    <td className="px-3 py-2 tabular-nums">{formatRupiah(r.cost)}</td>
-                                    <td className="px-3 py-2">
-                                        <Badge tone={FUEL_TONES[r.analysis_status] ?? 'neutral'}>
-                                            {r.analysis_status === 'tidak_normal' ? 'Tidak Normal' : r.analysis_status === 'waspada' ? 'Waspada' : 'Normal'}
-                                        </Badge>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-            </div>
-
-            <p className="mt-4 text-xs text-muted">
+            <p className="mt-4 text-xs text-[#8A8580]">
                 Laporan dihasilkan dari data sistem — indikator kesiapan bersifat internal, bukan penilaian otoritas.
             </p>
             {tab === 'ekspor' && (
                 <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                     <Card title="Master Tracker TB & BG" description="Sheet TugBoat + Barge — kolom persis file klien (expired, endorsement, status).">
-                        <a href="/laporan/export/master-tracker" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover">
-                            <Printer size={16} /> Download Master Tracker (.xlsx)
+                        <a href="/laporan/export/master-tracker" target="_blank" rel="noreferrer">
+                            <Button type="primary" icon={<Printer size={16} />}>
+                                Download Master Tracker (.xlsx)
+                            </Button>
                         </a>
                     </Card>
                     <Card title="Monthly Document Expiry & Endorsement Report" description="Laporan bulanan kedaluwarsa + endorsement per kapal.">
-                        <form
-                            onSubmit={(e) => {
-                                e.preventDefault();
-                                const period = (new FormData(e.currentTarget as HTMLFormElement).get('period') as string) || '';
-                                window.open(`/laporan/export/monthly?period=${period}`, '_blank');
-                            }}
-                            className="flex items-end gap-2"
-                        >
+                        <Space align="end">
                             <div>
-                                <label className="text-xs font-medium text-muted">Periode</label>
-                                <input type="month" name="period" defaultValue={new Date().toISOString().slice(0, 7)} className="mt-1 block rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                                <label className="text-xs font-medium text-[#8A8580]">Periode</label>
+                                <input type="month" name="period" defaultValue={new Date().toISOString().slice(0, 7)} className="mt-1 block rounded-md border-[#E7E1D9] text-sm shadow-sm focus:border-[#C1121F] focus:ring-[#C1121F]" />
                             </div>
-                            <button type="submit" className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover">
-                                <Printer size={16} /> Download (.xlsx)
-                            </button>
-                        </form>
+                            <Button type="primary" icon={<Printer size={16} />} onClick={() => {
+                                const period = (document.querySelector('input[name="period"]') as HTMLInputElement)?.value || '';
+                                window.open(`/laporan/export/monthly?period=${period}`, '_blank');
+                            }}>
+                                Download (.xlsx)
+                            </Button>
+                        </Space>
                     </Card>
                     <Card title="Rekap Nota" description="Rekap bill per toko — format Excel REKAP NOTA.">
-                        <form
-                            onSubmit={(e) => {
-                                e.preventDefault();
-                                const fd = new FormData(e.currentTarget as HTMLFormElement);
-                                window.open(`/laporan/export/rekap-nota?from=${fd.get('from')}&to=${fd.get('to')}`, '_blank');
-                            }}
-                            className="flex items-end gap-2"
-                        >
+                        <Space align="end">
                             <div>
-                                <label className="text-xs font-medium text-muted">Dari</label>
-                                <input type="date" name="from" defaultValue={new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10)} className="mt-1 block rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                                <label className="text-xs font-medium text-[#8A8580]">Dari</label>
+                                <input type="date" name="from" defaultValue={new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10)} className="mt-1 block rounded-md border-[#E7E1D9] text-sm focus:border-[#C1121F] focus:ring-[#C1121F]" />
                             </div>
                             <div>
-                                <label className="text-xs font-medium text-muted">Sampai</label>
-                                <input type="date" name="to" defaultValue={new Date().toISOString().slice(0, 10)} className="mt-1 block rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary" />
+                                <label className="text-xs font-medium text-[#8A8580]">Sampai</label>
+                                <input type="date" name="to" defaultValue={new Date().toISOString().slice(0, 10)} className="mt-1 block rounded-md border-[#E7E1D9] text-sm focus:border-[#C1121F] focus:ring-[#C1121F]" />
                             </div>
-                            <button type="submit" className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover">
-                                <Printer size={16} /> Download (.xlsx)
-                            </button>
-                        </form>
+                            <Button type="primary" icon={<Printer size={16} />} onClick={() => {
+                                const fromInput = document.querySelector('input[name="from"]') as HTMLInputElement;
+                                const toInput = document.querySelector('input[name="to"]') as HTMLInputElement;
+                                window.open(`/laporan/export/rekap-nota?from=${fromInput?.value}&to=${toInput?.value}`, '_blank');
+                            }}>
+                                Download (.xlsx)
+                            </Button>
+                        </Space>
                     </Card>
                     <Card title="Outstanding — Rencana Pembayaran" description="Kolom: No, Toko, Nomor Cek/BG, Jumlah, Rencana Pembayaran.">
-                        <a href="/laporan/export/outstanding" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover">
-                            <Printer size={16} /> Download OUTSTANDING (.xlsx)
+                        <a href="/laporan/export/outstanding" target="_blank" rel="noreferrer">
+                            <Button type="primary" icon={<Printer size={16} />}>
+                                Download OUTSTANDING (.xlsx)
+                            </Button>
                         </a>
                     </Card>
                 </div>

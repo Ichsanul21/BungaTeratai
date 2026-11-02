@@ -1,8 +1,7 @@
-import InputError from '@/Components/InputError';
-import PrimaryButton from '@/Components/PrimaryButton';
-import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, useForm } from '@inertiajs/react';
+import { Alert, Button, Form, Input } from 'antd';
+import { Mail } from 'lucide-react';
 import { FormEventHandler } from 'react';
 
 export default function ForgotPassword({ status }: { status?: string }) {
@@ -12,43 +11,48 @@ export default function ForgotPassword({ status }: { status?: string }) {
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-
         post(route('password.email'));
     };
 
     return (
         <GuestLayout>
-            <Head title="Forgot Password" />
+            <Head title="Lupa Kata Sandi" />
 
-            <div className="mb-4 text-sm text-gray-600">
-                Forgot your password? No problem. Just let us know your email
-                address and we will email you a password reset link that will
-                allow you to choose a new one.
+            <div className="mb-6 text-sm text-[#1C1B1A]/70">
+                Lupa kata sandi? Tidak masalah. Masukkan email Anda dan kami akan mengirimkan
+                tautan reset kata sandi.
             </div>
 
             {status && (
-                <div className="mb-4 text-sm font-medium text-green-600">
-                    {status}
-                </div>
+                <Alert type="success" message={status} showIcon className="mb-6" />
+            )}
+
+            {errors.email && (
+                <Alert type="error" message={errors.email} showIcon className="mb-6" />
             )}
 
             <form onSubmit={submit}>
-                <TextInput
-                    id="email"
-                    type="email"
-                    name="email"
-                    value={data.email}
-                    className="mt-1 block w-full"
-                    isFocused={true}
-                    onChange={(e) => setData('email', e.target.value)}
-                />
+                <Form.Item
+                    label={<span className="text-sm font-medium">Email</span>}
+                    validateStatus={errors.email ? 'error' : undefined}
+                >
+                    <Input
+                        prefix={<Mail size={16} className="text-[#8A8580]" />}
+                        type="email"
+                        name="email"
+                        value={data.email}
+                        autoFocus
+                        autoComplete="username"
+                        onChange={(e) => setData('email', e.target.value)}
+                        placeholder="nama@bungateratai.co.id"
+                        size="large"
+                    />
+                </Form.Item>
 
-                <InputError message={errors.email} className="mt-2" />
-
-                <div className="mt-4 flex items-center justify-end">
-                    <PrimaryButton className="ms-4" disabled={processing}>
-                        Email Password Reset Link
-                    </PrimaryButton>
+                <div className="mt-6 flex justify-end">
+                    <Button type="primary" htmlType="submit" size="large" loading={processing}>
+                        Kirim Tautan Reset
+                    </Button>
                 </div>
             </form>
         </GuestLayout>

@@ -1,9 +1,7 @@
-import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
-import PrimaryButton from '@/Components/PrimaryButton';
-import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
+import { Alert, Button, Form, Input } from 'antd';
+import { Lock, Mail, User } from 'lucide-react';
 import { FormEventHandler } from 'react';
 
 export default function Register() {
@@ -16,7 +14,6 @@ export default function Register() {
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-
         post(route('register'), {
             onFinish: () => reset('password', 'password_confirmation'),
         });
@@ -24,96 +21,86 @@ export default function Register() {
 
     return (
         <GuestLayout>
-            <Head title="Register" />
+            <Head title="Daftar" />
 
             <form onSubmit={submit}>
-                <div>
-                    <InputLabel htmlFor="name" value="Name" />
-
-                    <TextInput
-                        id="name"
+                <Form.Item
+                    label={<span className="text-sm font-medium">Nama</span>}
+                    validateStatus={errors.name ? 'error' : undefined}
+                    help={errors.name}
+                >
+                    <Input
+                        prefix={<User size={16} className="text-[#8A8580]" />}
                         name="name"
                         value={data.name}
-                        className="mt-1 block w-full"
                         autoComplete="name"
-                        isFocused={true}
+                        autoFocus
                         onChange={(e) => setData('name', e.target.value)}
-                        required
+                        placeholder="Nama lengkap"
+                        size="large"
                     />
+                </Form.Item>
 
-                    <InputError message={errors.name} className="mt-2" />
-                </div>
-
-                <div className="mt-4">
-                    <InputLabel htmlFor="email" value="Email" />
-
-                    <TextInput
-                        id="email"
+                <Form.Item
+                    label={<span className="text-sm font-medium">Email</span>}
+                    validateStatus={errors.email ? 'error' : undefined}
+                    help={errors.email}
+                >
+                    <Input
+                        prefix={<Mail size={16} className="text-[#8A8580]" />}
                         type="email"
                         name="email"
                         value={data.email}
-                        className="mt-1 block w-full"
                         autoComplete="username"
                         onChange={(e) => setData('email', e.target.value)}
-                        required
+                        placeholder="nama@bungateratai.co.id"
+                        size="large"
                     />
+                </Form.Item>
 
-                    <InputError message={errors.email} className="mt-2" />
-                </div>
-
-                <div className="mt-4">
-                    <InputLabel htmlFor="password" value="Password" />
-
-                    <TextInput
-                        id="password"
-                        type="password"
+                <Form.Item
+                    label={<span className="text-sm font-medium">Kata Sandi</span>}
+                    validateStatus={errors.password ? 'error' : undefined}
+                    help={errors.password}
+                >
+                    <Input.Password
+                        prefix={<Lock size={16} className="text-[#8A8580]" />}
                         name="password"
                         value={data.password}
-                        className="mt-1 block w-full"
                         autoComplete="new-password"
                         onChange={(e) => setData('password', e.target.value)}
-                        required
+                        placeholder="••••••••"
+                        size="large"
                     />
+                </Form.Item>
 
-                    <InputError message={errors.password} className="mt-2" />
-                </div>
-
-                <div className="mt-4">
-                    <InputLabel
-                        htmlFor="password_confirmation"
-                        value="Confirm Password"
-                    />
-
-                    <TextInput
-                        id="password_confirmation"
-                        type="password"
+                <Form.Item
+                    label={<span className="text-sm font-medium">Konfirmasi Kata Sandi</span>}
+                    validateStatus={errors.password_confirmation ? 'error' : undefined}
+                    help={errors.password_confirmation}
+                >
+                    <Input.Password
+                        prefix={<Lock size={16} className="text-[#8A8580]" />}
                         name="password_confirmation"
                         value={data.password_confirmation}
-                        className="mt-1 block w-full"
                         autoComplete="new-password"
-                        onChange={(e) =>
-                            setData('password_confirmation', e.target.value)
-                        }
-                        required
+                        onChange={(e) => setData('password_confirmation', e.target.value)}
+                        placeholder="••••••••"
+                        size="large"
                     />
+                </Form.Item>
 
-                    <InputError
-                        message={errors.password_confirmation}
-                        className="mt-2"
-                    />
-                </div>
-
-                <div className="mt-4 flex items-center justify-end">
+                <div className="mt-6 flex items-center justify-between gap-4">
                     <Link
                         href={route('login')}
-                        className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                        className="text-sm text-[#1C1B1A]/70 underline hover:text-[#C1121F]"
                     >
-                        Already registered?
+                        Sudah punya akun?
                     </Link>
 
-                    <PrimaryButton className="ms-4" disabled={processing}>
-                        Register
-                    </PrimaryButton>
+                    <Button type="primary" htmlType="submit" size="large" loading={processing}>
+                        Daftar
+                    </Button>
                 </div>
             </form>
         </GuestLayout>

@@ -1,7 +1,10 @@
 import '../css/app.css';
 import './bootstrap';
 
+import { ConfigProvider } from 'antd';
+import idID from 'antd/locale/id_ID';
 import { SyncProvider } from '@/lib/sync/SyncProvider';
+import theme from '@/theme';
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
@@ -39,9 +42,11 @@ createInertiaApp({
         const root = createRoot(el);
 
         root.render(
-            <SyncProvider>
-                <App {...props} />
-            </SyncProvider>,
+            <ConfigProvider theme={theme} locale={idID}>
+                <SyncProvider>
+                    <App {...props} />
+                </SyncProvider>
+            </ConfigProvider>,
         );
     },
     progress: {
