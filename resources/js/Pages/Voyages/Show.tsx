@@ -16,8 +16,10 @@ import { Head, Link, router, useForm } from '@inertiajs/react';
 import {
     Anchor,
     ArrowLeft,
+    Calendar,
     CheckCircle2,
     FileStack,
+    FileText,
     GitCommitVertical,
     ListChecks,
     Loader2,
@@ -27,6 +29,7 @@ import {
     Ship,
     Users,
     Wallet,
+    Waves,
 } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import {
@@ -324,13 +327,13 @@ export default function VoyagesShow({
                                     {/* Steps */}
                                     <div className="space-y-4">
                                         {[
-                                            { status: 'planned', label: 'Direncanakan', icon: '📋' },
-                                            { status: 'document_preparation', label: 'Persiapan Dokumen', icon: '📄' },
-                                            { status: 'ready_for_departure', label: 'Siap Berangkat', icon: '✅' },
-                                            { status: 'departed', label: 'Berangkat', icon: '🚢' },
-                                            { status: 'in_transit', label: 'Dalam Pelayaran', icon: '🌊' },
-                                            { status: 'arrived', label: 'Tiba', icon: '⚓' },
-                                            { status: 'completed', label: 'Selesai', icon: '✓' },
+                                            { status: 'planned', label: 'Direncanakan', icon: Calendar },
+                                            { status: 'document_preparation', label: 'Persiapan Dokumen', icon: FileText },
+                                            { status: 'ready_for_departure', label: 'Siap Berangkat', icon: CheckCircle2 },
+                                            { status: 'departed', label: 'Berangkat', icon: Ship },
+                                            { status: 'in_transit', label: 'Dalam Pelayaran', icon: Waves },
+                                            { status: 'arrived', label: 'Tiba', icon: Anchor },
+                                            { status: 'completed', label: 'Selesai', icon: CheckCircle2 },
                                         ].map((step) => {
                                             const stepOrder = WORKFLOW_ORDER[step.status] ?? 0;
                                             const currentOrder = WORKFLOW_ORDER[voyage.voyage_status] ?? 0;
@@ -339,7 +342,7 @@ export default function VoyagesShow({
                                             
                                             return (
                                                 <div key={step.status} className="relative flex items-start gap-4">
-                                                    {/* Dot */}
+                                                    {/* Icon Container */}
                                                     <div
                                                         className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 ${
                                                             isCurrent
@@ -349,7 +352,7 @@ export default function VoyagesShow({
                                                                 : 'border-[#E7E1D9] bg-white text-[#8A8580]'
                                                         }`}
                                                     >
-                                                        <span className="text-sm">{step.icon}</span>
+                                                        <step.icon className="h-4 w-4" />
                                                     </div>
                                                     
                                                     {/* Content */}

@@ -131,7 +131,7 @@ export default function Sidebar({
             transition: all 300ms ${EASE} !important;
         }
 
-        .bt-sidebar-menu .ant-menu-item:hover {
+        .bt-sidebar-menu .ant-menu-item:hover:not(.bt-nav-active) {
             background: #FAF7F2 !important;
         }
 
@@ -155,6 +155,14 @@ export default function Sidebar({
             background: #D4A96A;
             box-shadow: 0 0 8px rgba(212,169,106,0.4);
             z-index: 1;
+        }
+        .bt-sidebar-menu .ant-menu-item.bt-nav-active:hover {
+            background: rgb(193, 18, 30) !important;
+        }
+        .bt-sidebar-menu .ant-menu-item.bt-nav-active:hover .bt-nav-link,
+        .bt-sidebar-menu .ant-menu-item.bt-nav-active:hover .ant-menu-item-icon,
+        .bt-sidebar-menu .ant-menu-item.bt-nav-active:hover .anticon {
+            color: rgba(255,255,255,0.85) !important;
         }
 
         .bt-nav-link {
