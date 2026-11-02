@@ -190,24 +190,48 @@ export default function VesselForm({ vessel, isEdit = false }: { vessel?: Record
 
                         <Form.Item label="Jenis Kapal" name="vessel_type" required>
                             <Row gutter={[12, 12]}>
-                                {VESSEL_TYPES.map((t) => (
-                                    <Col xs={24} sm={12} key={t.value}>
-                                        <Button
-                                            type={data.vessel_type === t.value ? 'primary' : 'default'}
-                                            onClick={() => {
-                                                setData('vessel_type', t.value);
-                                                if (t.value !== 'lainnya') setData('vessel_type_custom', '');
-                                            }}
-                                            className="w-full h-auto p-3 text-left"
-                                            icon={<t.icon size={16} />}
-                                        >
-                                            <div>
-                                                <div className="text-sm font-semibold" style={{ color: '#1C1B1A' }}>{t.label}</div>
-                                                <div className="mt-0.5 text-[11px]" style={{ color: '#8A8580' }}>{t.desc}</div>
-                                            </div>
-                                        </Button>
-                                    </Col>
-                                ))}
+                                {VESSEL_TYPES.map((t) => {
+                                    const isSelected = data.vessel_type === t.value;
+                                    const Icon = t.icon;
+                                    
+                                    return (
+                                        <Col xs={24} sm={12} key={t.value}>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setData('vessel_type', t.value);
+                                                    if (t.value !== 'lainnya') setData('vessel_type_custom', '');
+                                                }}
+                                                className={`w-full rounded-xl border-2 p-4 text-left transition-all ${
+                                                    isSelected
+                                                        ? 'border-[#C1121F] bg-[#C1121F]/5 shadow-sm'
+                                                        : 'border-[#E7E1D9] bg-white hover:border-[#C1121F]/40 hover:shadow-sm'
+                                                }`}
+                                            >
+                                                <div className="flex items-start gap-3">
+                                                    <div
+                                                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+                                                            isSelected ? 'bg-[#C1121F] text-white' : 'bg-[#FAF7F2] text-[#8A8580]'
+                                                        }`}
+                                                    >
+                                                        <Icon size={20} />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className={`text-sm font-semibold ${isSelected ? 'text-[#C1121F]' : 'text-[#1C1B1A]'}`}>
+                                                            {t.label}
+                                                        </div>
+                                                        <div className="mt-0.5 text-xs text-[#8A8580] leading-relaxed">
+                                                            {t.desc}
+                                                        </div>
+                                                    </div>
+                                                    {isSelected && (
+                                                        <CheckCircle2 size={18} className="shrink-0 text-[#C1121F]" />
+                                                    )}
+                                                </div>
+                                            </button>
+                                        </Col>
+                                    );
+                                })}
                             </Row>
                         </Form.Item>
 
@@ -224,20 +248,42 @@ export default function VesselForm({ vessel, isEdit = false }: { vessel?: Record
 
                         <Form.Item label="Tipe Navigasi" name="navigation_type" required>
                             <Row gutter={[12, 12]}>
-                                {NAVIGATION_TYPES.map((n) => (
-                                    <Col xs={24} sm={8} key={n.value}>
-                                        <Button
-                                            type={data.navigation_type === n.value ? 'primary' : 'default'}
-                                            onClick={() => setData('navigation_type', n.value)}
-                                            className="w-full h-auto p-3 text-left"
-                                            icon={<n.icon size={16} />}
-                                        >
-                                            <span className="text-sm font-semibold">{n.label}</span>
-                                        </Button>
-                                    </Col>
-                                ))}
+                                {NAVIGATION_TYPES.map((n) => {
+                                    const isSelected = data.navigation_type === n.value;
+                                    const Icon = n.icon;
+                                    
+                                    return (
+                                        <Col xs={24} sm={8} key={n.value}>
+                                            <button
+                                                type="button"
+                                                onClick={() => setData('navigation_type', n.value)}
+                                                className={`w-full rounded-xl border-2 p-3 text-left transition-all ${
+                                                    isSelected
+                                                        ? 'border-[#C1121F] bg-[#C1121F]/5 shadow-sm'
+                                                        : 'border-[#E7E1D9] bg-white hover:border-[#C1121F]/40 hover:shadow-sm'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div
+                                                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                                                            isSelected ? 'bg-[#C1121F] text-white' : 'bg-[#FAF7F2] text-[#8A8580]'
+                                                        }`}
+                                                    >
+                                                        <Icon size={18} />
+                                                    </div>
+                                                    <span className={`text-sm font-semibold ${isSelected ? 'text-[#C1121F]' : 'text-[#1C1B1A]'}`}>
+                                                        {n.label}
+                                                    </span>
+                                                    {isSelected && (
+                                                        <CheckCircle2 size={16} className="ms-auto shrink-0 text-[#C1121F]" />
+                                                    )}
+                                                </div>
+                                            </button>
+                                        </Col>
+                                    );
+                                })}
                             </Row>
-                            <div className="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed" style={{ color: '#8A8580' }}>
+                            <div className="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-[#8A8580]">
                                 <Info size={12} aria-hidden="true" className="mt-0.5 shrink-0" />
                                 Menentukan otoritas wilayah dan template dokumen wajib kapal.
                             </div>

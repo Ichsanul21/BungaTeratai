@@ -273,20 +273,116 @@ export default function VoyagesShow({
                 {tab === 'overview' && (
                     <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
                         <Card title="Status Perjalanan" className="xl:col-span-2">
-                            <Steps
-                                current={currentStepIdx >= 0 ? currentStepIdx : 0}
-                                size="small"
-                                items={STATUS_STEPS.map((s) => ({
-                                    title: VOYAGE_STATUS_LABELS[s],
-                                    status: STATUS_STEPS.indexOf(s) < currentStepIdx ? 'finish' : STATUS_STEPS.indexOf(s) === currentStepIdx ? 'process' : 'wait',
-                                }))}
-                                style={{ '--ant-primary-color': '#C1121F' } as React.CSSProperties}
-                            />
+                            {/* Current Status Badge - Large & Prominent */}
+                            <div className="mb-6 rounded-xl border-2 border-[#C1121F]/20 bg-gradient-to-br from-[#C1121F]/5 to-transparent p-5">
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="flex-1">
+                                        <Text type="secondary" className="text-xs uppercase tracking-wide">
+                                            Status Saat Ini
+                                        </Text>
+                                        <div className="mt-2 flex items-center gap-3">
+                                            <Badge tone={STATUS_TONES[voyage.voyage_status] ?? 'neutral'}>
+                                                <span className="text-base font-semibold">
+                                                    {VOYAGE_STATUS_LABELS[voyage.voyage_status] ?? voyage.voyage_status}
+                                                </span>
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                    {actions.can_update && voyage.allowed_transitions.length > 0 && (
+                                        <Select
+                                            value={voyage.voyage_status}
+                                            onChange={(target) => {
+                                                if (target && target !== voyage.voyage_status) {
+                                                    setNextStatus(target);
+                                                    statusForm.setData({ to: target, note: '' });
+                                                    setModal('status');
+                                                }
+                                            }}
+                                            style={{ width: 200 }}
+                                            size="small"
+                                            options={[
+                                                { value: voyage.voyage_status, label: `${VOYAGE_STATUS_LABELS[voyage.voyage_status]} (Saat Ini)` },
+                                                ...(voyage.allowed_transitions ?? []).map((s: string) => ({
+                                                    value: s,
+                                                    label: `${isBackwardTransition(voyage.voyage_status, s) ? '← Mundur: ' : '→ '}${VOYAGE_STATUS_LABELS[s] ?? s}`,
+                                                })),
+                                            ]}
+                                        />
+                                    )}
+                                </div>
+                            </div>
 
+                            {/* Simplified Steps - Only Show Key Milestones */}
+                            <div className="mb-6">
+                                <Text type="secondary" className="mb-3 block text-xs font-semibold uppercase tracking-wide">
+                                    Progress Perjalanan
+                                </Text>
+                                <div className="relative">
+                                    {/* Progress Line */}
+                                    <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-[#E7E1D9]" />
+                                    
+                                    {/* Steps */}
+                                    <div className="space-y-4">
+                                        {[
+                                            { status: 'planned', label: 'Direncanakan', icon: '📋' },
+                                            { status: 'document_preparation', label: 'Persiapan Dokumen', icon: '📄' },
+                                            { status: 'ready_for_departure', label: 'Siap Berangkat', icon: '✅' },
+                                            { status: 'departed', label: 'Berangkat', icon: '🚢' },
+                                            { status: 'in_transit', label: 'Dalam Pelayaran', icon: '🌊' },
+                                            { status: 'arrived', label: 'Tiba', icon: '⚓' },
+                                            { status: 'completed', label: 'Selesai', icon: '✓' },
+                                        ].map((step) => {
+                                            const stepOrder = WORKFLOW_ORDER[step.status] ?? 0;
+                                            const currentOrder = WORKFLOW_ORDER[voyage.voyage_status] ?? 0;
+                                            const isCompleted = stepOrder <= currentOrder && currentOrder < 90;
+                                            const isCurrent = step.status === voyage.voyage_status;
+                                            
+                                            return (
+                                                <div key={step.status} className="relative flex items-start gap-4">
+                                                    {/* Dot */}
+                                                    <div
+                                                        className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 ${
+                                                            isCurrent
+                                                                ? 'border-[#C1121F] bg-[#C1121F] text-white'
+                                                                : isCompleted
+                                                                ? 'border-[#2F8F68] bg-[#2F8F68] text-white'
+                                                                : 'border-[#E7E1D9] bg-white text-[#8A8580]'
+                                                        }`}
+                                                    >
+                                                        <span className="text-sm">{step.icon}</span>
+                                                    </div>
+                                                    
+                                                    {/* Content */}
+                                                    <div className="flex-1 pt-1">
+                                                        <div
+                                                            className={`text-sm font-semibold ${
+                                                                isCurrent
+                                                                    ? 'text-[#C1121F]'
+                                                                    : isCompleted
+                                                                    ? 'text-[#1C1B1A]'
+                                                                    : 'text-[#8A8580]'
+                                                            }`}
+                                                        >
+                                                            {step.label}
+                                                        </div>
+                                                        {isCurrent && (
+                                                            <div className="mt-1 text-xs text-[#8A8580]">
+                                                                ← Status saat ini
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Schedule Info */}
                             <Descriptions
                                 column={{ xs: 1, sm: 2, md: 4 }}
                                 size="small"
-                                className="mt-5"
+                                className="mb-5"
                                 items={[
                                     { key: 'planned_dep', label: 'Jadwal Berangkat', children: formatDateTime(voyage.planned_departure) },
                                     { key: 'actual_dep', label: 'Berangkat Aktual', children: formatDateTime(voyage.actual_departure) },
@@ -295,7 +391,8 @@ export default function VoyagesShow({
                                 ]}
                             />
 
-                            <div className="mt-4">
+                            {/* Checklist Progress */}
+                            <div className="mb-4">
                                 <Text type="secondary" className="text-xs uppercase tracking-wide">Progres Checklist Wajib</Text>
                                 <div className="mt-1.5 flex items-center gap-3">
                                     <Progress
@@ -310,40 +407,8 @@ export default function VoyagesShow({
                                 </div>
                             </div>
 
-                            <div className="mt-4 rounded-lg border border-[#E7E1D9] bg-[#FAF7F2]/40 p-3">
-                                <div className="flex flex-wrap items-center justify-between gap-3">
-                                    <div>
-                                        <Text strong className="text-xs uppercase tracking-wide text-[#8A8580]">Tracking Status Vessel (Operasional)</Text>
-                                        <Paragraph type="secondary" className="mt-0.5 text-xs mb-0">
-                                            Status operasional kapal saat ini selaras dengan Status Perjalanan: <strong>{VOYAGE_STATUS_LABELS[voyage.voyage_status] ?? voyage.voyage_status}</strong>.
-                                        </Paragraph>
-                                    </div>
-                                    <Select
-                                        value={voyage.voyage_status}
-                                        onChange={(target) => {
-                                            if (target && target !== voyage.voyage_status) {
-                                                setNextStatus(target);
-                                                statusForm.setData({ to: target, note: '' });
-                                                setModal('status');
-                                            }
-                                        }}
-                                        disabled={!actions.can_update || !voyage.allowed_transitions || voyage.allowed_transitions.length === 0}
-                                        style={{ width: 240 }}
-                                        size="small"
-                                        options={[
-                                            { value: voyage.voyage_status, label: `${VOYAGE_STATUS_LABELS[voyage.voyage_status] ?? voyage.voyage_status} (Status Saat Ini)` },
-                                            ...(voyage.allowed_transitions ?? []).map((s: string) => ({
-                                                value: s,
-                                                label: `${isBackwardTransition(voyage.voyage_status, s) ? '<< Mundur ke: ' : 'Ubah ke: '}${VOYAGE_STATUS_LABELS[s] ?? s}`,
-                                            })),
-                                        ]}
-                                    />
-                                </div>
-                            </div>
-                            {voyage.notes && (
-                                <Paragraph type="secondary" className="mt-4 rounded-lg bg-[#FAF7F2] p-3 text-sm mb-0">{voyage.notes}</Paragraph>
-                            )}
-                            <div className="mt-4 rounded-lg bg-[#1E4668]/5 p-2.5">
+                            {/* Disclaimer */}
+                            <div className="rounded-lg bg-[#1E4668]/5 p-2.5">
                                 <Text type="secondary" className="text-[11px]">
                                     Status kesiapan adalah <strong>indikator internal sistem</strong> - bukan
                                     pengganti penilaian nakhoda atau persetujuan otoritas pelayaran.
