@@ -72,7 +72,7 @@ export default function DataTable<T extends Record<string, any>>({
             loading={loading}
             pagination={pagination ?? false}
             scroll={scroll ?? { x: true }}
-            className={classNames('rounded-xl border border-[#E7E1D9] bg-white shadow-sm', className)}
+            className={classNames('rounded-xl border border-[#E3E8F0] bg-white shadow-sm', className)}
             onRow={(record) => ({
                 onClick: onRowClick ? () => onRowClick(record) : undefined,
                 style: onRowClick ? { cursor: 'pointer' } : undefined,

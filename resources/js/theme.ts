@@ -4,98 +4,118 @@ import 'dayjs/locale/id';
 
 dayjs.locale('id');
 
+// Palet resmi: putih, navy #00205B, merah #BA0C2F, ink #111827, kanvas #F5F7FA.
+export const BT_WHITE = '#FFFFFF';
+export const BT_NAVY = '#00205B';
+export const BT_PRIMARY = '#BA0C2F';
+export const BT_PRIMARY_HOVER = '#8E0924';
+export const BT_INK = '#111827';
+export const BT_MUTED = '#5B6474';
+export const BT_APPBG = '#F5F7FA';
+export const BT_HAIRLINE = '#E3E8F0';
+export const BT_SOFT_PRIMARY = 'rgba(186,12,47,0.10)';
+export const BT_NAVY_TINT = '#E8EDF7';
+export const BT_OK = '#15803D';
+export const BT_WARN = '#B45309';
+export const BT_DANGER = '#BA0C2F';
+export const BT_INFO = '#00205B';
+
 const theme: ThemeConfig = {
     token: {
-        colorPrimary: '#C1121F',
-        colorSuccess: '#2F8F68',
-        colorWarning: '#D99A2B',
-        colorError: '#C94C4C',
-        colorInfo: '#1E4668',
-        colorBgLayout: '#FAF7F2',
-        colorBorder: '#E7E1D9',
-        colorBorderSecondary: '#E7E1D9',
-        colorText: '#1C1B1A',
-        colorTextSecondary: '#8A8580',
-        colorTextTertiary: '#8A8580',
-        colorTextQuaternary: '#8A858080',
-        borderRadius: 8,
-        borderRadiusLG: 12,
-        borderRadiusSM: 6,
+        colorPrimary: BT_PRIMARY,
+        colorSuccess: BT_OK,
+        colorWarning: BT_WARN,
+        colorError: BT_DANGER,
+        colorInfo: BT_INFO,
+        colorBgLayout: BT_APPBG,
+        colorBgContainer: BT_WHITE,
+        colorBorder: BT_HAIRLINE,
+        colorBorderSecondary: BT_HAIRLINE,
+        colorText: BT_INK,
+        colorTextSecondary: BT_MUTED,
+        colorTextTertiary: BT_MUTED,
+        colorTextQuaternary: '#5B647480',
+        borderRadius: 10,
+        borderRadiusLG: 16,
+        borderRadiusSM: 8,
         fontFamily: "'Archivo', ui-sans-serif, system-ui, sans-serif",
         fontFamilyCode: "'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
-        colorLink: '#C1121F',
-        colorLinkHover: '#780000',
-        colorLinkActive: '#780000',
+        colorLink: BT_PRIMARY,
+        colorLinkHover: BT_PRIMARY_HOVER,
+        colorLinkActive: BT_PRIMARY_HOVER,
         controlHeight: 40,
         controlHeightLG: 44,
         controlHeightSM: 32,
-        boxShadow: '0 1px 3px rgba(28,27,26,0.06), 0 8px 24px -8px rgba(28,27,26,0.12)',
-        boxShadowSecondary: '0 1px 2px rgba(28,27,26,0.04), 0 4px 12px -4px rgba(28,27,26,0.08)',
+        boxShadow: '0 1px 2px rgba(17,24,39,0.04), 0 10px 30px -18px rgba(17,24,39,0.18)',
+        boxShadowSecondary: '0 1px 2px rgba(17,24,39,0.03), 0 6px 16px -10px rgba(17,24,39,0.12)',
     },
     components: {
         Button: {
             controlHeight: 40,
             controlHeightLG: 44,
             controlHeightSM: 32,
-            borderRadius: 8,
-            primaryShadow: '0 4px 14px -4px rgba(193,18,31,0.35)',
+            borderRadius: 10,
+            primaryShadow: '0 6px 18px -8px rgba(186,12,47,0.45)',
         },
         Card: {
-            borderRadiusLG: 12,
+            borderRadiusLG: 20,
             headerFontSize: 14,
             paddingLG: 20,
         },
         Table: {
-            borderRadius: 12,
-            headerBg: '#FAF7F2',
-            headerColor: '#8A8580',
+            borderRadius: 16,
+            headerBg: '#F5F7FA',
+            headerColor: BT_MUTED,
             headerSplitColor: 'transparent',
-            rowHoverBg: '#FAF7F2',
-            borderColor: '#E7E1D9',
+            rowHoverBg: '#F5F7FA',
+            borderColor: BT_HAIRLINE,
             cellPaddingBlock: 12,
             cellPaddingInline: 16,
         },
         Input: {
             controlHeight: 40,
             controlHeightLG: 44,
-            borderRadius: 8,
-            activeBorderColor: '#C1121F',
-            hoverBorderColor: '#1C1B1A66',
-            activeShadow: '0 0 0 3px rgba(193,18,31,0.1)',
+            borderRadius: 10,
+            activeBorderColor: BT_PRIMARY,
+            hoverBorderColor: '#11182766',
+            activeShadow: '0 0 0 3px rgba(186,12,47,0.10)',
         },
         Select: {
             controlHeight: 40,
             controlHeightLG: 44,
-            borderRadius: 8,
-            optionSelectedBg: '#FDECEA',
-            optionSelectedColor: '#C1121F',
+            borderRadius: 10,
+            optionSelectedBg: '#FBEAEE',
+            optionSelectedColor: BT_PRIMARY,
         },
         Menu: {
             itemBg: 'transparent',
             subMenuItemBg: 'transparent',
-            itemColor: 'rgba(239,227,211,0.6)',
-            itemHoverColor: '#EFE3D3',
-            itemSelectedBg: 'rgba(212,169,106,0.12)',
-            itemSelectedColor: '#EFE3D3',
-            itemActiveBg: 'rgba(212,169,106,0.16)',
+            itemColor: 'rgba(17,24,39,0.65)',
+            itemHoverColor: BT_INK,
+            itemHoverBg: '#F5F7FA',
+            itemSelectedBg: BT_SOFT_PRIMARY,
+            itemSelectedColor: BT_PRIMARY,
+            itemActiveBg: BT_SOFT_PRIMARY,
             iconSize: 18,
             collapsedIconSize: 18,
-            itemBorderRadius: 8,
+            itemBorderRadius: 10,
             itemMarginInline: 8,
             itemPaddingInline: 12,
         },
         Tabs: {
-            itemSelectedColor: '#C1121F',
-            itemHoverColor: '#780000',
-            itemActiveColor: '#C1121F',
-            inkBarColor: '#C1121F',
+            itemSelectedColor: BT_PRIMARY,
+            itemHoverColor: BT_PRIMARY_HOVER,
+            itemActiveColor: BT_PRIMARY,
+            inkBarColor: BT_PRIMARY,
             titleFontSize: 14,
+            cardBg: '#F5F7FA',
+            cardGutter: 6,
         },
         Tag: {
             borderRadiusSM: 9999,
         },
         Modal: {
-            borderRadiusLG: 16,
+            borderRadiusLG: 20,
             titleFontSize: 18,
         },
         Drawer: {
@@ -109,58 +129,44 @@ const theme: ThemeConfig = {
             dotSize: 8,
         },
         Form: {
-            labelColor: '#1C1B1A',
+            labelColor: BT_INK,
             labelFontSize: 14,
             itemMarginBottom: 16,
         },
         Tooltip: {
-            borderRadius: 8,
-            colorBgSpotlight: '#1C1B1A',
+            borderRadius: 10,
+            colorBgSpotlight: BT_INK,
         },
         Pagination: {
-            itemActiveBg: '#C1121F',
+            itemActiveBg: BT_PRIMARY,
             colorPrimary: '#FFFFFF',
             colorPrimaryHover: '#FFFFFF',
         },
     },
 };
 
+// Tema rail sidebar (putih bersih, aksen merah lembut).
 export const sidebarTheme: ThemeConfig = {
     ...theme,
     token: {
         ...theme.token!,
-        colorBgContainer: '#451016',
-        colorBgElevated: '#451016',
-        colorBorder: 'rgba(239,227,211,0.08)',
-        colorBorderSecondary: 'rgba(239,227,211,0.06)',
+        colorBgContainer: BT_WHITE,
+        colorBgElevated: BT_WHITE,
+        colorBorder: BT_HAIRLINE,
+        colorBorderSecondary: BT_HAIRLINE,
     },
     components: {
         ...theme.components!,
         Menu: {
             ...theme.components!.Menu!,
-            darkItemBg: '#451016',
-            darkSubMenuItemBg: '#451016',
-            darkItemColor: 'rgba(239,227,211,0.6)',
-            darkItemHoverColor: '#EFE3D3',
-            darkItemHoverBg: 'rgba(255,255,255,0.05)',
-            darkItemSelectedBg: 'linear-gradient(90deg, rgba(212,169,106,0.16), rgba(212,169,106,0.03), transparent)',
-            darkItemSelectedColor: '#EFE3D3',
+            itemColor: 'rgba(17,24,39,0.65)',
+            itemHoverColor: BT_INK,
+            itemHoverBg: '#F5F7FA',
+            itemSelectedBg: BT_SOFT_PRIMARY,
+            itemSelectedColor: BT_PRIMARY,
+            itemActiveBg: BT_SOFT_PRIMARY,
         },
     },
 };
-
-export const BT_PRIMARY = '#C1121F';
-export const BT_PRIMARY_HOVER = '#780000';
-export const BT_GOLD = '#D4A96A';
-export const BT_CREAM = '#EFE3D3';
-export const BT_SIDEBAR = '#FFFFFF';
-export const BT_APPBG = '#FAF7F2';
-export const BT_HAIRLINE = '#E7E1D9';
-export const BT_INK = '#1C1B1A';
-export const BT_MUTED = '#8A8580';
-export const BT_OK = '#2F8F68';
-export const BT_WARN = '#D99A2B';
-export const BT_DANGER = '#C94C4C';
-export const BT_MARITIME = '#1E4668';
 
 export default theme;

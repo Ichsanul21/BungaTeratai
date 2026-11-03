@@ -16,7 +16,7 @@ export default function VerifyEmail({ status }: { status?: string }) {
         <GuestLayout>
             <Head title="Verifikasi Email" />
 
-            <div className="mb-6 text-sm text-[#1C1B1A]/70">
+            <div className="mb-6 text-sm text-[#111827]/70">
                 Terima kasih telah mendaftar! Sebelum memulai, harap verifikasi alamat email Anda
                 dengan mengklik tautan yang baru saja kami kirim. Jika tidak menerima email, kami
                 akan dengan senang hati mengirimkan ulang.
@@ -47,7 +47,7 @@ export default function VerifyEmail({ status }: { status?: string }) {
                         href={route('logout')}
                         method="post"
                         as="button"
-                        className="text-sm text-[#1C1B1A]/70 underline hover:text-[#C1121F]"
+                        className="text-sm text-[#111827]/70 underline hover:text-[#BA0C2F]"
                     >
                         Keluar
                     </Link>

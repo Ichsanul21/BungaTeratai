@@ -20,7 +20,9 @@ import {
     Archive,
     CheckCircle2,
     Download,
+    Eye,
     FileText,
+    Maximize2,
     MessageSquare,
     Pencil,
     Route,
@@ -31,26 +33,26 @@ import {
 import { FormEvent, useState } from 'react';
 
 const DOT_VALIDITY_COLOR: Record<string, string> = {
-    normal: '#2F8F68',
-    expiring_soon: '#D99A2B',
-    expired: '#C1121F',
-    no_expiry: 'rgba(239,227,211,0.5)',
+    normal: '#15803D',
+    expiring_soon: '#B45309',
+    expired: '#BA0C2F',
+    no_expiry: 'rgba(255,255,255,0.5)',
 };
 const DOT_VERIF_COLOR: Record<string, string> = {
-    verified: '#2F8F68',
-    under_review: '#1E4668',
-    revision_required: '#D99A2B',
-    rejected: '#C1121F',
-    uploaded: '#1E4668',
-    draft: '#8A8580',
-    missing: '#C1121F',
-    archived: '#8A8580',
+    verified: '#15803D',
+    under_review: '#00205B',
+    revision_required: '#B45309',
+    rejected: '#BA0C2F',
+    uploaded: '#00205B',
+    draft: '#5B6474',
+    missing: '#BA0C2F',
+    archived: '#5B6474',
 };
 
 const FILL_VALIDITY_COLOR: Record<string, string> = {
-    normal: '#2F8F68',
-    expiring_soon: '#D99A2B',
-    expired: '#C1121F',
+    normal: '#15803D',
+    expiring_soon: '#B45309',
+    expired: '#BA0C2F',
 };
 
 const tglPendek = (iso?: string | null) => {
@@ -64,6 +66,16 @@ const tglPendek = (iso?: string | null) => {
     });
 };
 
+// Tentukan MIME dari ekstensi path bila metadata versi tidak tersedia.
+const mimeDariPath = (path?: string | null): string | null => {
+    if (!path) return null;
+    const ext = path.split('.').pop()?.toLowerCase();
+    if (ext === 'pdf') return 'application/pdf';
+    if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
+    if (ext === 'png') return 'image/png';
+    return null;
+};
+
 function ModalKepala({
     eyebrow,
     judul,
@@ -75,24 +87,24 @@ function ModalKepala({
 }) {
     return (
         <header
-            className="relative overflow-hidden border-b border-[#E7E1D9] bg-[#FAF7F2] px-5 py-4"
+            className="relative overflow-hidden border-b border-[#E3E8F0] bg-[#F5F7FA] px-5 py-4"
         >
             <div
                 aria-hidden="true"
                 className="absolute inset-x-6 top-0 h-px"
-                style={{ background: 'linear-gradient(to right, transparent, rgba(212,169,106,0.3), transparent)' }}
+                style={{ background: 'linear-gradient(to right, transparent, rgba(0,32,91,0.3), transparent)' }}
             />
             <div className="pe-12">
-                <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#8A8580]">
+                <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#5B6474]">
                     {eyebrow}
                 </p>
-                <h2 className="mt-1 text-base font-semibold text-[#1C1B1A]">{judul}</h2>
+                <h2 className="mt-1 text-base font-semibold text-[#111827]">{judul}</h2>
             </div>
             <button
                 type="button"
                 onClick={onClose}
                 aria-label="Tutup"
-                className="absolute end-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#E7E1D9] bg-white text-[#8A8580] transition-colors hover:bg-[#FAF7F2] hover:text-[#1C1B1A]"
+                className="absolute end-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#E3E8F0] bg-white text-[#5B6474] transition-colors hover:bg-[#F5F7FA] hover:text-[#111827]"
             >
                 <X size={15} />
             </button>
@@ -129,6 +141,7 @@ export default function DocumentsShow({
     >(null);
     const [busy, setBusy] = useState(false);
     const [voidReason, setVoidReason] = useState('');
+    const [zoomPreview, setZoomPreview] = useState(false);
 
     const { data, setData, post, processing, errors, reset } = useForm({
         comments: '',
@@ -187,6 +200,19 @@ export default function DocumentsShow({
 
     const dLeft = document.days_left;
 
+    // Pratinjau berkas: pakai versi terkini bila ada, fallback ke berkas dokumen.
+    const currentVersion = (versions ?? []).find((v: any) => v.is_current) ?? (versions ?? [])[0];
+    const previewMime = currentVersion?.file_mime ?? mimeDariPath(document.file_path);
+    const previewVersionId = currentVersion?.id;
+    const previewUrl = `/dokumen/${document.id}/preview${previewVersionId ? `/${previewVersionId}` : ''}`;
+    const previewKind: 'pdf' | 'image' | 'none' =
+        previewMime === 'application/pdf'
+            ? 'pdf'
+            : previewMime === 'image/jpeg' || previewMime === 'image/png'
+              ? 'image'
+              : 'none';
+    const hasFile = Boolean(document.file_path) || document.source_type === 'terbitan';
+
     const pemilik =
         document.owner_type === 'company'
             ? 'PT Bunga Teratai'
@@ -218,20 +244,20 @@ export default function DocumentsShow({
 
     const statUtama = (() => {
         if (document.validity === 'no_expiry')
-            return { nilai: 'Tanpa batas', unit: '', tone: 'rgba(239,227,211,0.8)', kecil: true };
+            return { nilai: 'Tanpa batas', unit: '', tone: 'rgba(255,255,255,0.8)', kecil: true };
         if (dLeft == null)
-            return { nilai: 'Tidak tersedia', unit: '', tone: 'rgba(239,227,211,0.7)', kecil: true };
+            return { nilai: 'Tidak tersedia', unit: '', tone: 'rgba(255,255,255,0.7)', kecil: true };
         if (document.validity === 'expired')
             return {
                 nilai: formatNumber(Math.abs(dLeft)),
                 unit: 'hari lewat',
-                tone: '#C1121F',
+                tone: '#BA0C2F',
                 kecil: false,
             };
         return {
             nilai: formatNumber(dLeft),
             unit: 'hari lagi',
-            tone: document.validity === 'expiring_soon' ? '#D99A2B' : '#D4A96A',
+            tone: document.validity === 'expiring_soon' ? '#B45309' : '#00205B',
             kecil: false,
         };
     })();
@@ -281,54 +307,54 @@ export default function DocumentsShow({
 
             <section
                 id={`record-doc-${document.id}`}
-                className="mb-6 overflow-hidden rounded-2xl border border-[#E7E1D9] bg-white shadow-[0_1px_3px_rgba(28,27,26,0.04),0_8px_24px_-8px_rgba(28,27,26,0.06)]"
+                className="mb-6 overflow-hidden rounded-2xl border border-[#E3E8F0] bg-white shadow-[0_1px_3px_rgba(17,24,39,0.04),0_8px_24px_-8px_rgba(17,24,39,0.06)]"
             >
                 <div className="relative flex flex-col gap-6 p-6 lg:p-7 xl:flex-row xl:items-end xl:justify-between">
                     <div className="min-w-0 max-w-2xl">
                         <Link
                             href="/dokumen"
-                            className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium uppercase tracking-[0.2em] text-[#8A8580] transition-colors hover:text-[#C1121F]"
+                            className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium uppercase tracking-[0.2em] text-[#5B6474] transition-colors hover:text-[#BA0C2F]"
                         >
                             <Route size={13} />
                             Register Dokumen
                         </Link>
-                        <h1 className="mt-4 text-2xl font-semibold tracking-tight text-[#1C1B1A] sm:text-3xl">
+                        <h1 className="mt-4 text-2xl font-semibold tracking-tight text-[#111827] sm:text-3xl">
                             {document.document_name}
                         </h1>
-                        <p className="mt-2 text-sm text-[#8A8580]">
+                        <p className="mt-2 text-sm text-[#5B6474]">
                             {kategori} · {pemilik}
                         </p>
                         <div className="mt-4 flex flex-wrap items-center gap-2">
                             <span
-                                className="inline-flex items-center gap-1.5 rounded-full border border-[#E7E1D9] bg-[#FAF7F2] px-3 py-1 text-xs font-medium text-[#8A8580]"
+                                className="inline-flex items-center gap-1.5 rounded-full border border-[#E3E8F0] bg-[#F5F7FA] px-3 py-1 text-xs font-medium text-[#5B6474]"
                             >
                                 <span
                                     className="h-1.5 w-1.5 shrink-0 rounded-full"
-                                    style={{ background: DOT_VALIDITY_COLOR[document.validity] ?? '#8A8580' }}
+                                    style={{ background: DOT_VALIDITY_COLOR[document.validity] ?? '#5B6474' }}
                                 />
                                 {VALIDITY_LABELS[document.validity] ?? document.validity}
                                 {sisaHari && ` · ${formatNumber(dLeft)} hari lagi`}
                             </span>
                             <span
-                                className="inline-flex items-center gap-1.5 rounded-full border border-[#E7E1D9] bg-[#FAF7F2] px-3 py-1 text-xs font-medium text-[#8A8580]"
+                                className="inline-flex items-center gap-1.5 rounded-full border border-[#E3E8F0] bg-[#F5F7FA] px-3 py-1 text-xs font-medium text-[#5B6474]"
                             >
                                 <span
                                     className="h-1.5 w-1.5 shrink-0 rounded-full"
-                                    style={{ background: DOT_VERIF_COLOR[document.verification_status] ?? '#8A8580' }}
+                                    style={{ background: DOT_VERIF_COLOR[document.verification_status] ?? '#5B6474' }}
                                 />
                                 {VERIFICATION_STATUS_LABELS[document.verification_status] ??
                                     document.verification_status}
                             </span>
                             {document.voided_at && (
                                 <span
-                                    className="inline-flex items-center gap-1.5 rounded-full border border-[#C1121F]/30 bg-[#C1121F]/5 px-3 py-1 text-xs font-medium text-[#C1121F]"
+                                    className="inline-flex items-center gap-1.5 rounded-full border border-[#BA0C2F]/30 bg-[#BA0C2F]/5 px-3 py-1 text-xs font-medium text-[#BA0C2F]"
                                 >
-                                    <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: '#C1121F' }} />
+                                    <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: '#BA0C2F' }} />
                                     VOID · Dibatalkan
                                 </span>
                             )}
                             {document.document_number && (
-                                <span className="font-mono text-[11px] tracking-wide text-[#8A8580]">
+                                <span className="font-mono text-[11px] tracking-wide text-[#5B6474]">
                                     No. {document.document_number}
                                 </span>
                             )}
@@ -336,6 +362,11 @@ export default function DocumentsShow({
                     </div>
 
                     <div className="flex flex-col gap-2 sm:flex-row xl:shrink-0">
+                        <a href="#doc-preview">
+                            <Button icon={<Eye size={15} />}>
+                                Pratinjau
+                            </Button>
+                        </a>
                         <a href={`/dokumen/${document.id}/download`}>
                             <Button
                                 type="primary"
@@ -364,9 +395,9 @@ export default function DocumentsShow({
                 </div>
 
                 <div
-                    className="relative border-t border-[#E7E1D9] p-6 pt-5 lg:p-7 lg:pt-6"
+                    className="relative border-t border-[#E3E8F0] p-6 pt-5 lg:p-7 lg:pt-6"
                 >
-                    <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#8A8580]">
+                    <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#5B6474]">
                         Masa Berlaku
                     </p>
                     {punyaLinimasa ? (
@@ -374,36 +405,36 @@ export default function DocumentsShow({
                             <div className="relative h-4">
                                 {pctLinimasa >= 8 && pctLinimasa <= 92 && (
                                     <span
-                                        className="absolute bottom-0 -translate-x-1/2 whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.14em] text-[#8A8580]"
+                                        className="absolute bottom-0 -translate-x-1/2 whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.14em] text-[#5B6474]"
                                         style={{ left: `${pctLinimasa}%` }}
                                     >
                                         Hari ini
                                     </span>
                                 )}
                             </div>
-                            <div className="relative h-1.5 rounded-full bg-[#E7E1D9]">
+                            <div className="relative h-1.5 rounded-full bg-[#E3E8F0]">
                                 <div
                                     className="absolute inset-y-0 left-0 rounded-full"
                                     style={{
                                         width: `${pctLinimasa}%`,
-                                        background: FILL_VALIDITY_COLOR[document.validity] ?? '#2F8F68',
+                                        background: FILL_VALIDITY_COLOR[document.validity] ?? '#15803D',
                                     }}
                                 />
                                 <span
                                     aria-hidden="true"
-                                    className="absolute -top-[7px] h-[18px] w-[2px] -translate-x-1/2 rounded-full bg-[#1C1B1A]"
+                                    className="absolute -top-[7px] h-[18px] w-[2px] -translate-x-1/2 rounded-full bg-[#111827]"
                                     style={{ left: `${pctLinimasa}%` }}
                                 />
                             </div>
-                            <div className="mt-2.5 flex items-center justify-between font-mono text-[10px] tabular-nums text-[#8A8580]">
+                            <div className="mt-2.5 flex items-center justify-between font-mono text-[10px] tabular-nums text-[#5B6474]">
                                 <span>{tglPendek(document.issue_date)}</span>
                                 <span>{tglPendek(document.expiry_date)}</span>
                             </div>
                         </div>
                     ) : document.has_expiry ? (
-                        <p className="mt-3 text-sm text-[#8A8580]">
+                        <p className="mt-3 text-sm text-[#5B6474]">
                             Berlaku s/d{' '}
-                            <span className="font-semibold tabular-nums text-[#1C1B1A]">
+                            <span className="font-semibold tabular-nums text-[#111827]">
                                 {tglPendek(document.expiry_date)}
                             </span>
                         </p>
@@ -411,18 +442,18 @@ export default function DocumentsShow({
                         <div className="mt-4">
                             <div
                                 aria-hidden="true"
-                                className="h-1.5 rounded-full border border-dashed border-[#E7E1D9]"
+                                className="h-1.5 rounded-full border border-dashed border-[#E3E8F0]"
                             />
-                            <p className="mt-2.5 text-xs text-[#8A8580]">
+                            <p className="mt-2.5 text-xs text-[#5B6474]">
                                 Berlaku tanpa batas waktu; tidak ada tanggal kedaluwarsa pada dokumen ini.
                             </p>
                         </div>
                     )}
                     <dl
-                        className="mt-6 flex flex-wrap items-center gap-x-10 gap-y-5 border-t border-[#E7E1D9] pt-5"
+                        className="mt-6 flex flex-wrap items-center gap-x-10 gap-y-5 border-t border-[#E3E8F0] pt-5"
                     >
                         <div className="min-w-0">
-                            <dt className="font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-[#8A8580]">
+                            <dt className="font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-[#5B6474]">
                                 {document.validity === 'no_expiry'
                                     ? 'Masa Berlaku'
                                     : document.validity === 'expired'
@@ -436,32 +467,32 @@ export default function DocumentsShow({
                                     </span>
                                 ) : (
                                     <span
-                                        className="text-2xl font-semibold tabular-nums tracking-tight text-[#1C1B1A]"
+                                        className="text-2xl font-semibold tabular-nums tracking-tight text-[#111827]"
                                         style={{ color: statUtama.tone as string }}
                                     >
                                         {statUtama.nilai}
                                     </span>
                                 )}
                                 {statUtama.unit && (
-                                    <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#8A8580]">
+                                    <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#5B6474]">
                                         {statUtama.unit}
                                     </span>
                                 )}
                             </dd>
                         </div>
                         <div className="min-w-0">
-                            <dt className="font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-[#8A8580]">
+                            <dt className="font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-[#5B6474]">
                                 Tanggal Terbit
                             </dt>
-                            <dd className="mt-1 text-sm font-semibold tabular-nums text-[#1C1B1A]">
+                            <dd className="mt-1 text-sm font-semibold tabular-nums text-[#111827]">
                                 {document.issue_date ? tglPendek(document.issue_date) : 'Tidak tersedia'}
                             </dd>
                         </div>
                         <div className="min-w-0">
-                            <dt className="font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-[#8A8580]">
+                            <dt className="font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-[#5B6474]">
                                 Berlaku s/d
                             </dt>
-                            <dd className="mt-1 text-sm font-semibold tabular-nums text-[#1C1B1A]">
+                            <dd className="mt-1 text-sm font-semibold tabular-nums text-[#111827]">
                                 {document.has_expiry
                                     ? document.expiry_date
                                         ? tglPendek(document.expiry_date)
@@ -476,22 +507,22 @@ export default function DocumentsShow({
                     <div
                         className="relative flex items-start gap-3 border-t p-4 lg:px-7"
                         style={{
-                            borderColor: document.validity === 'expired' ? 'rgba(193,18,31,0.25)' : 'rgba(217,154,43,0.25)',
-                            background: document.validity === 'expired' ? 'rgba(193,18,31,0.1)' : 'rgba(217,154,43,0.1)',
+                            borderColor: document.validity === 'expired' ? 'rgba(186,12,47,0.25)' : 'rgba(180,83,9,0.25)',
+                            background: document.validity === 'expired' ? 'rgba(186,12,47,0.1)' : 'rgba(180,83,9,0.1)',
                         }}
                     >
                         <AlertTriangle
                             size={18}
                             className="mt-0.5 shrink-0"
-                            style={{ color: document.validity === 'expired' ? '#C1121F' : '#D99A2B' }}
+                            style={{ color: document.validity === 'expired' ? '#BA0C2F' : '#B45309' }}
                         />
                         <div className="text-sm">
-                            <p className="font-semibold text-[#1C1B1A]">
+                            <p className="font-semibold text-[#111827]">
                                 {document.validity === 'expired'
                                     ? 'Dokumen sudah kedaluwarsa'
                                     : 'Mendekati kedaluwarsa'}
                             </p>
-                            <p className="text-[#8A8580]">
+                            <p className="text-[#5B6474]">
                                 {document.validity === 'expired'
                                     ? `Berlaku s/d ${tglPendek(document.expiry_date)}${
                                           dLeft != null
@@ -507,19 +538,111 @@ export default function DocumentsShow({
                 )}
             </section>
 
+            {/* Pratinjau langsung berkas dokumen (PDF/gambar). */}
+            <Card
+                className="mb-6"
+                title="Pratinjau Dokumen"
+                description="Berkas dibuka langsung dari arsip privat; tidak perlu mengunduh untuk melihat isinya."
+                actions={
+                    <div className="flex items-center gap-2">
+                        {previewKind === 'image' && hasFile && (
+                            <Button size="small" icon={<Maximize2 size={13} />} onClick={() => setZoomPreview(true)}>
+                                Perbesar
+                            </Button>
+                        )}
+                        {hasFile && (
+                            <Button size="small" icon={<Download size={13} />} href={`/dokumen/${document.id}/download`}>
+                                Unduh
+                            </Button>
+                        )}
+                    </div>
+                }
+            >
+                <div id="doc-preview" className="scroll-mt-24">
+                    {!hasFile ? (
+                        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#E3E8F0] bg-[#F5F7FA]/50 px-6 py-14 text-center">
+                            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-[#5B6474] shadow-sm">
+                                <FileText size={20} aria-hidden="true" />
+                            </span>
+                            <p className="mt-3 text-sm font-semibold text-[#111827]">Belum ada berkas</p>
+                            <p className="mt-1 max-w-sm text-xs leading-relaxed text-[#5B6474]">
+                                Dokumen ini belum memiliki berkas yang dapat dipratinjau.
+                                {actions.can_upload_version ? ' Unggah versi baru untuk melampirkan berkas.' : ''}
+                            </p>
+                        </div>
+                    ) : previewKind === 'pdf' ? (
+                        <iframe
+                            src={previewUrl}
+                            title={`Pratinjau ${document.document_name}`}
+                            className="h-[560px] w-full rounded-lg border border-[#E3E8F0] bg-[#F5F7FA]"
+                        />
+                    ) : previewKind === 'image' ? (
+                        <button
+                            type="button"
+                            onClick={() => setZoomPreview(true)}
+                            className="group relative block w-full cursor-zoom-in overflow-hidden rounded-lg border border-[#E3E8F0] bg-[#F5F7FA]"
+                        >
+                            <img
+                                src={previewUrl}
+                                alt={`Pratinjau ${document.document_name}`}
+                                className="mx-auto max-h-[560px] w-auto object-contain"
+                            />
+                            <span className="pointer-events-none absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full bg-[#111827]/80 px-3 py-1 text-[11px] font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
+                                <Maximize2 size={12} aria-hidden="true" />
+                                Klik untuk perbesar
+                            </span>
+                        </button>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#E3E8F0] bg-[#F5F7FA]/50 px-6 py-14 text-center">
+                            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-[#5B6474] shadow-sm">
+                                <AlertTriangle size={20} aria-hidden="true" />
+                            </span>
+                            <p className="mt-3 text-sm font-semibold text-[#111827]">Format tidak dapat dipratinjau</p>
+                            <p className="mt-1 max-w-sm text-xs leading-relaxed text-[#5B6474]">
+                                Hanya berkas PDF, JPG, dan PNG yang dapat ditampilkan langsung. Unduh berkas untuk melihatnya.
+                            </p>
+                            <a href={`/dokumen/${document.id}/download`} className="mt-4">
+                                <Button type="primary" icon={<Download size={14} />}>Unduh Berkas</Button>
+                            </a>
+                        </div>
+                    )}
+                </div>
+            </Card>
+
+            <Modal show={zoomPreview} onClose={() => setZoomPreview(false)} maxWidth="xl">
+                <div className="p-4">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                        <p className="text-sm font-semibold text-[#111827]">{document.document_name}</p>
+                        <button
+                            type="button"
+                            onClick={() => setZoomPreview(false)}
+                            aria-label="Tutup pratinjau"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[#5B6474] transition-colors hover:bg-[#F5F7FA] hover:text-[#111827]"
+                        >
+                            <X size={16} />
+                        </button>
+                    </div>
+                    <img
+                        src={previewUrl}
+                        alt={`Pratinjau ${document.document_name}`}
+                        className="max-h-[75vh] w-full rounded-lg bg-[#F5F7FA] object-contain"
+                    />
+                </div>
+            </Modal>
+
             {(actions.can_submit || actions.can_verify || actions.can_edit || document.can_void) && (
                 <Card className="mb-6">
-                    <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#8A8580]">
+                    <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#5B6474]">
                         Alur Dokumen
                     </p>
-                    <h2 className="mt-1 text-sm font-semibold text-[#1C1B1A]">Verifikasi & Tindakan</h2>
+                    <h2 className="mt-1 text-sm font-semibold text-[#111827]">Verifikasi & Tindakan</h2>
 
                     {actions.can_submit && (
                         <div className="mt-5">
-                            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#8A8580]">
+                            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#5B6474]">
                                 Pengajuan
                             </p>
-                            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#8A8580]">
+                            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#5B6474]">
                                 Dokumen belum diajukan. Ajukan agar supervisor dapat memeriksa
                                 kelengkapan dan menetapkan keputusan.
                             </p>
@@ -532,11 +655,11 @@ export default function DocumentsShow({
                     )}
 
                     {actions.can_verify && (
-                        <div className={`mt-5 ${actions.can_submit ? 'border-t border-[#E7E1D9] pt-5' : ''}`}>
-                            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#8A8580]">
+                        <div className={`mt-5 ${actions.can_submit ? 'border-t border-[#E3E8F0] pt-5' : ''}`}>
+                            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#5B6474]">
                                 Keputusan Supervisor
                             </p>
-                            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#8A8580]">
+                            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#5B6474]">
                                 Tetapkan keputusan atas dokumen ini. Keputusan beserta komentarnya
                                 tercatat permanen pada Histori Persetujuan.
                             </p>
@@ -547,7 +670,7 @@ export default function DocumentsShow({
                                         htmlType="submit"
                                         disabled={processing}
                                         icon={<CheckCircle2 size={16} />}
-                                        style={{ background: '#2F8F68', borderColor: '#2F8F68' }}
+                                        style={{ background: '#15803D', borderColor: '#15803D' }}
                                     >
                                         Setujui (Verifikasi)
                                     </Button>
@@ -556,9 +679,9 @@ export default function DocumentsShow({
                                     onClick={() => setModal('revision')}
                                     icon={<MessageSquare size={16} />}
                                     style={{
-                                        borderColor: 'rgba(217,154,43,0.4)',
-                                        background: 'rgba(217,154,43,0.1)',
-                                        color: '#D99A2B',
+                                        borderColor: 'rgba(180,83,9,0.4)',
+                                        background: 'rgba(180,83,9,0.1)',
+                                        color: '#B45309',
                                     }}
                                 >
                                     Minta Revisi
@@ -567,9 +690,9 @@ export default function DocumentsShow({
                                     onClick={() => setModal('reject')}
                                     icon={<ShieldX size={16} />}
                                     style={{
-                                        borderColor: 'rgba(193,18,31,0.4)',
-                                        background: 'rgba(193,18,31,0.1)',
-                                        color: '#C1121F',
+                                        borderColor: 'rgba(186,12,47,0.4)',
+                                        background: 'rgba(186,12,47,0.1)',
+                                        color: '#BA0C2F',
                                     }}
                                 >
                                     Tolak
@@ -582,14 +705,14 @@ export default function DocumentsShow({
                         <div
                             className={`mt-5 ${
                                 actions.can_submit || actions.can_verify
-                                    ? 'border-t border-[#E7E1D9] pt-5'
+                                    ? 'border-t border-[#E3E8F0] pt-5'
                                     : ''
                             }`}
                         >
-                            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#8A8580]">
+                            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#5B6474]">
                                 Tindakan Lanjutan
                             </p>
-                            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#8A8580]">
+                            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#5B6474]">
                                 Pengarsipan menyembunyikan dokumen dari register, sedangkan void
                                 menandai terbitan batal. Keduanya tidak menghapus berkas dari penyimpanan.
                             </p>
@@ -618,15 +741,15 @@ export default function DocumentsShow({
             )}
 
             <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-                <section className="min-w-0 rounded-2xl border border-[#E7E1D9] bg-white shadow-sm xl:col-span-2">
-                    <header className="flex items-center justify-between gap-3 border-b border-[#E7E1D9] px-5 py-4 lg:px-6">
-                        <h2 className="text-sm font-semibold text-[#1C1B1A]">Register Dokumen</h2>
-                        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#8A8580]">
+                <section className="min-w-0 rounded-2xl border border-[#E3E8F0] bg-white shadow-sm xl:col-span-2">
+                    <header className="flex items-center justify-between gap-3 border-b border-[#E3E8F0] px-5 py-4 lg:px-6">
+                        <h2 className="text-sm font-semibold text-[#111827]">Register Dokumen</h2>
+                        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#5B6474]">
                             {formatNumber(versions.length)} versi · {formatNumber((relations ?? []).length)} relasi
                         </span>
                     </header>
                     <div className="p-5 lg:p-6">
-                        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#8A8580]">
+                        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#5B6474]">
                             Identitas
                         </p>
                         <Descriptions
@@ -639,19 +762,19 @@ export default function DocumentsShow({
                                 fontWeight: 500,
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.14em',
-                                color: '#8A8580',
+                                color: '#5B6474',
                                 paddingBottom: 4,
                             }}
                             contentStyle={{
                                 fontSize: 14,
                                 fontWeight: 500,
-                                color: '#1C1B1A',
+                                color: '#111827',
                                 paddingBottom: 16,
                             }}
                         />
 
-                        <div className="mt-6 border-t border-[#E7E1D9] pt-5">
-                            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#8A8580]">
+                        <div className="mt-6 border-t border-[#E3E8F0] pt-5">
+                            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#5B6474]">
                                 Arsip & Sumber
                             </p>
                             <Descriptions
@@ -664,20 +787,20 @@ export default function DocumentsShow({
                                     fontWeight: 500,
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.14em',
-                                    color: '#8A8580',
+                                    color: '#5B6474',
                                     paddingBottom: 4,
                                 }}
                                 contentStyle={{
                                     fontSize: 14,
                                     fontWeight: 500,
-                                    color: '#1C1B1A',
+                                    color: '#111827',
                                     paddingBottom: 16,
                                 }}
                             />
                         </div>
 
-                        <div className="mt-6 border-t border-[#E7E1D9] pt-5">
-                            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#8A8580]">
+                        <div className="mt-6 border-t border-[#E3E8F0] pt-5">
+                            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#5B6474]">
                                 Endorsement
                             </p>
                             {document.has_endorsement ? (
@@ -699,23 +822,23 @@ export default function DocumentsShow({
                                             fontWeight: 500,
                                             textTransform: 'uppercase',
                                             letterSpacing: '0.14em',
-                                            color: '#8A8580',
+                                            color: '#5B6474',
                                             paddingBottom: 4,
                                         }}
                                         contentStyle={{
                                             fontSize: 14,
                                             fontWeight: 500,
-                                            color: '#1C1B1A',
+                                            color: '#111827',
                                             paddingBottom: 16,
                                         }}
                                     />
-                                    <p className="mt-3 text-xs leading-relaxed text-[#8A8580]">
+                                    <p className="mt-3 text-xs leading-relaxed text-[#5B6474]">
                                         Siklus endorsement berlaku untuk dokumen seperti Surat Laut
                                         dan Sertifikat Klasifikasi.
                                     </p>
                                 </>
                             ) : (
-                                <p className="mt-3 text-sm leading-relaxed text-[#8A8580]">
+                                <p className="mt-3 text-sm leading-relaxed text-[#5B6474]">
                                     Dokumen ini tidak mengikuti siklus endorsement.
                                 </p>
                             )}
@@ -725,16 +848,16 @@ export default function DocumentsShow({
                             <div
                                 className="mt-6 flex items-start gap-3 rounded-xl border p-4"
                                 style={{
-                                    borderColor: 'rgba(193,18,31,0.3)',
-                                    background: 'rgba(193,18,31,0.06)',
+                                    borderColor: 'rgba(186,12,47,0.3)',
+                                    background: 'rgba(186,12,47,0.06)',
                                 }}
                             >
-                                <ShieldX size={18} className="mt-0.5 shrink-0" style={{ color: '#C1121F' }} />
+                                <ShieldX size={18} className="mt-0.5 shrink-0" style={{ color: '#BA0C2F' }} />
                                 <div className="text-sm">
-                                    <p className="font-semibold" style={{ color: '#C1121F' }}>
+                                    <p className="font-semibold" style={{ color: '#BA0C2F' }}>
                                         Terbitan dibatalkan (VOID)
                                     </p>
-                                    <p className="mt-0.5 text-[#1C1B1A]">
+                                    <p className="mt-0.5 text-[#111827]">
                                         Dibatalkan {formatDateTime(document.voided_at)}
                                         {document.void_reason ? ` · Alasan: ${document.void_reason}` : ''}
                                     </p>
@@ -745,21 +868,21 @@ export default function DocumentsShow({
                         {document.notes && (
                             <div
                                 className="mt-6 rounded-xl border p-4"
-                                style={{ borderColor: '#E7E1D9', background: '#FAF7F2' }}
+                                style={{ borderColor: '#E3E8F0', background: '#F5F7FA' }}
                             >
-                                <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#8A8580]">
+                                <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#5B6474]">
                                     Catatan
                                 </p>
-                                <p className="mt-2 text-sm leading-relaxed text-[#1C1B1A]">{document.notes}</p>
+                                <p className="mt-2 text-sm leading-relaxed text-[#111827]">{document.notes}</p>
                             </div>
                         )}
 
-                        <div className="mt-6 border-t border-[#E7E1D9] pt-5">
-                            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#8A8580]">
+                        <div className="mt-6 border-t border-[#E3E8F0] pt-5">
+                            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#5B6474]">
                                 Tertaut ke Perjalanan · {formatNumber(voyages.length)}
                             </p>
                             {voyages.length === 0 ? (
-                                <p className="mt-3 text-sm leading-relaxed text-[#8A8580]">
+                                <p className="mt-3 text-sm leading-relaxed text-[#5B6474]">
                                     Belum ditautkan ke perjalanan mana pun. Dokumen dapat dipakai
                                     ulang pada perjalanan berikutnya tanpa perlu unggah ulang.
                                 </p>
@@ -768,8 +891,8 @@ export default function DocumentsShow({
                                     {voyages.map((v) => (
                                         <Link key={v.id} href={`/perjalanan/${v.id}`}>
                                             <span
-                                                className="inline-flex items-center rounded-lg border px-2.5 py-1.5 font-mono text-[11px] font-medium text-[#1C1B1A] transition-colors hover:text-[#C1121F]"
-                                                style={{ borderColor: '#E7E1D9' }}
+                                                className="inline-flex items-center rounded-lg border px-2.5 py-1.5 font-mono text-[11px] font-medium text-[#111827] transition-colors hover:text-[#BA0C2F]"
+                                                style={{ borderColor: '#E3E8F0' }}
                                             >
                                                 {v.voyage_code}
                                             </span>
@@ -779,12 +902,12 @@ export default function DocumentsShow({
                             )}
                         </div>
 
-                        <div className="mt-6 border-t border-[#E7E1D9] pt-5">
-                            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#8A8580]">
+                        <div className="mt-6 border-t border-[#E3E8F0] pt-5">
+                            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#5B6474]">
                                 Dokumen Terkait · {formatNumber((relations ?? []).length)}
                             </p>
                             {(relations ?? []).length === 0 ? (
-                                <p className="mt-3 text-sm leading-relaxed text-[#8A8580]">
+                                <p className="mt-3 text-sm leading-relaxed text-[#5B6474]">
                                     Belum ada relasi dengan dokumen lain. Relasi dibuat otomatis
                                     oleh sistem, misalnya saat invoice terbit dari SPAL, FP
                                     melampiri invoice, atau bukti bayar terkait bill.
@@ -794,25 +917,25 @@ export default function DocumentsShow({
                                     {(relations ?? []).map((r: any) => (
                                         <li
                                             key={r.id}
-                                            className="flex items-center justify-between gap-3 rounded-lg border border-[#E7E1D9] px-3 py-2.5 transition-colors hover:border-[rgba(193,18,31,0.4)]"
+                                            className="flex items-center justify-between gap-3 rounded-lg border border-[#E3E8F0] px-3 py-2.5 transition-colors hover:border-[rgba(186,12,47,0.4)]"
                                         >
                                             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                                                 <Badge tone="neutral">{r.relation_type}</Badge>
-                                                <span className="text-[11px] uppercase tracking-wide text-[#8A8580]">
+                                                <span className="text-[11px] uppercase tracking-wide text-[#5B6474]">
                                                     {r.direction}
                                                 </span>
                                                 {r.related?.id ? (
                                                     <Link
                                                         href={`/dokumen/${r.related.id}`}
-                                                        className="truncate text-sm font-medium text-[#C1121F] hover:underline"
+                                                        className="truncate text-sm font-medium text-[#BA0C2F] hover:underline"
                                                     >
                                                         {r.related.document_name}
                                                     </Link>
                                                 ) : (
-                                                    <span className="text-sm text-[#8A8580]">(terhapus)</span>
+                                                    <span className="text-sm text-[#5B6474]">(terhapus)</span>
                                                 )}
                                             </div>
-                                            <span className="shrink-0 font-mono text-[11px] tabular-nums text-[#8A8580]">
+                                            <span className="shrink-0 font-mono text-[11px] tabular-nums text-[#5B6474]">
                                                 {r.related?.document_number ?? ''}
                                             </span>
                                         </li>
@@ -827,7 +950,7 @@ export default function DocumentsShow({
                     <Card
                         title="Riwayat Versi"
                         actions={
-                            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#8A8580]">
+                            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#5B6474]">
                                 {formatNumber(versions.length)} tersimpan
                             </span>
                         }
@@ -836,7 +959,7 @@ export default function DocumentsShow({
                             <span
                                 aria-hidden="true"
                                 className="absolute bottom-3 left-[5px] top-3 w-px"
-                                style={{ background: '#E7E1D9' }}
+                                style={{ background: '#E3E8F0' }}
                             />
                             {versions.map((v) => (
                                 <li key={v.id} className="relative pb-5 ps-6 last:pb-0">
@@ -844,34 +967,34 @@ export default function DocumentsShow({
                                         aria-hidden="true"
                                         className="absolute left-0 top-4 h-2.5 w-2.5 rounded-full"
                                         style={{
-                                            background: v.is_current ? '#D4A96A' : 'transparent',
-                                            border: v.is_current ? 'none' : '2px solid #E7E1D9',
+                                            background: v.is_current ? '#00205B' : 'transparent',
+                                            border: v.is_current ? 'none' : '2px solid #E3E8F0',
                                         }}
                                     />
                                     <div
                                         className="rounded-xl border p-3.5"
                                         style={{
-                                            borderColor: v.is_current ? 'rgba(212,169,106,0.5)' : '#E7E1D9',
-                                            background: v.is_current ? 'rgba(212,169,106,0.06)' : 'transparent',
+                                            borderColor: v.is_current ? 'rgba(0,32,91,0.5)' : '#E3E8F0',
+                                            background: v.is_current ? 'rgba(0,32,91,0.06)' : 'transparent',
                                         }}
                                     >
                                         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                                            <p className="flex items-center gap-2 text-sm font-semibold text-[#1C1B1A]">
+                                            <p className="flex items-center gap-2 text-sm font-semibold text-[#111827]">
                                                 v{v.version_number}
                                                 {v.is_current && (
                                                     <span
-                                                        className="rounded px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[#1C1B1A]"
-                                                        style={{ background: '#D4A96A' }}
+                                                        className="rounded px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[#111827]"
+                                                        style={{ background: '#00205B' }}
                                                     >
                                                         Aktif
                                                     </span>
                                                 )}
                                             </p>
-                                            <p className="font-mono text-[10px] tabular-nums text-[#8A8580]">
+                                            <p className="font-mono text-[10px] tabular-nums text-[#5B6474]">
                                                 {formatDateTime(v.uploaded_at)}
                                             </p>
                                         </div>
-                                        <p className="mt-1.5 text-xs leading-relaxed text-[#8A8580]">
+                                        <p className="mt-1.5 text-xs leading-relaxed text-[#5B6474]">
                                             {v.revision_notes || 'Tanpa catatan revisi'} ·{' '}
                                             {v.uploaded_by ?? 'Tidak diketahui'}
                                             {v.file_size ? ` · ${(v.file_size / 1024).toFixed(1)} KB` : ''}
@@ -885,13 +1008,13 @@ export default function DocumentsShow({
                     <Card
                         title="Histori Persetujuan"
                         actions={
-                            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#8A8580]">
+                            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#5B6474]">
                                 Keputusan supervisor
                             </span>
                         }
                     >
                         {approvals.length === 0 ? (
-                            <p className="text-sm leading-relaxed text-[#8A8580]">
+                            <p className="text-sm leading-relaxed text-[#5B6474]">
                                 Belum ada keputusan supervisor.
                             </p>
                         ) : (
@@ -899,7 +1022,7 @@ export default function DocumentsShow({
                                 <span
                                     aria-hidden="true"
                                     className="absolute bottom-3 left-[5px] top-3 w-px"
-                                    style={{ background: '#E7E1D9' }}
+                                    style={{ background: '#E3E8F0' }}
                                 />
                                 {approvals.map((a) => {
                                     const disetujui = a.approval_status === 'approved';
@@ -911,13 +1034,13 @@ export default function DocumentsShow({
                                                 className="absolute left-0 top-4 h-2.5 w-2.5 rounded-full"
                                                 style={{
                                                     background: disetujui
-                                                        ? '#2F8F68'
+                                                        ? '#15803D'
                                                         : ditolak
-                                                          ? '#C1121F'
-                                                          : '#D99A2B',
+                                                          ? '#BA0C2F'
+                                                          : '#B45309',
                                                 }}
                                             />
-                                            <div className="rounded-xl border border-[#E7E1D9] p-3.5">
+                                            <div className="rounded-xl border border-[#E3E8F0] p-3.5">
                                                 <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                                                     <Badge
                                                         tone={
@@ -934,17 +1057,17 @@ export default function DocumentsShow({
                                                               ? 'Ditolak'
                                                               : 'Perlu Revisi'}
                                                     </Badge>
-                                                    <p className="font-mono text-[10px] tabular-nums text-[#8A8580]">
+                                                    <p className="font-mono text-[10px] tabular-nums text-[#5B6474]">
                                                         {formatDateTime(a.decision_timestamp)}
                                                     </p>
                                                 </div>
-                                                <p className="mt-1.5 text-xs text-[#8A8580]">
+                                                <p className="mt-1.5 text-xs text-[#5B6474]">
                                                     {a.approver_name} · persetujuan internal
                                                 </p>
                                                 {a.comments && (
                                                     <p
-                                                        className="mt-2 border-s-2 ps-3 text-sm italic leading-relaxed text-[#1C1B1A]"
-                                                        style={{ borderColor: '#E7E1D9' }}
+                                                        className="mt-2 border-s-2 ps-3 text-sm italic leading-relaxed text-[#111827]"
+                                                        style={{ borderColor: '#E3E8F0' }}
                                                     >
                                                         "{a.comments}"
                                                     </p>
@@ -956,11 +1079,11 @@ export default function DocumentsShow({
                             </ol>
                         )}
                         <div
-                            className="mt-4 rounded-lg p-3 text-[11px] leading-relaxed text-[#8A8580]"
-                            style={{ background: '#FAF7F2' }}
+                            className="mt-4 rounded-lg p-3 text-[11px] leading-relaxed text-[#5B6474]"
+                            style={{ background: '#F5F7FA' }}
                         >
                             Persetujuan di sistem ini adalah{' '}
-                            <strong className="font-semibold text-[#1C1B1A]">verifikasi internal</strong>,
+                            <strong className="font-semibold text-[#111827]">verifikasi internal</strong>,
                             bukan persetujuan resmi dari otoritas pelayaran.
                         </div>
                     </Card>
@@ -975,11 +1098,11 @@ export default function DocumentsShow({
                         onClose={() => setModal(null)}
                     />
                     <div className="p-5">
-                        <p className="text-sm leading-relaxed text-[#8A8580]">
+                        <p className="text-sm leading-relaxed text-[#5B6474]">
                             Alasan {modal === 'reject' ? 'penolakan' : 'revisi'} wajib diisi dan
                             akan tersimpan pada histori persetujuan.
                         </p>
-                        <label className="mt-4 block text-xs font-medium text-[#8A8580]">
+                        <label className="mt-4 block text-xs font-medium text-[#5B6474]">
                             Alasan / Komentar *
                         </label>
                         <Input.TextArea
@@ -994,7 +1117,7 @@ export default function DocumentsShow({
                             className="mt-1"
                         />
                         {errors.comments && (
-                            <p className="mt-1 text-xs text-[#C1121F]">{errors.comments}</p>
+                            <p className="mt-1 text-xs text-[#BA0C2F]">{errors.comments}</p>
                         )}
                         <div className="mt-5 flex justify-end gap-3">
                             <Button onClick={() => setModal(null)}>Batal</Button>
@@ -1005,7 +1128,7 @@ export default function DocumentsShow({
                                 style={
                                     modal === 'reject'
                                         ? undefined
-                                        : { background: '#D99A2B', borderColor: '#D99A2B' }
+                                        : { background: '#B45309', borderColor: '#B45309' }
                                 }
                                 danger={modal === 'reject'}
                             >
@@ -1024,11 +1147,11 @@ export default function DocumentsShow({
                         onClose={() => setModal(null)}
                     />
                     <div className="p-5">
-                        <p className="text-sm leading-relaxed text-[#8A8580]">
+                        <p className="text-sm leading-relaxed text-[#5B6474]">
                             Versi lama tetap tersimpan sebagai jejak audit. Setelah versi baru
                             diunggah, status dokumen kembali ke Terunggah.
                         </p>
-                        <label className="mt-4 block text-xs font-medium text-[#8A8580]">Berkas *</label>
+                        <label className="mt-4 block text-xs font-medium text-[#5B6474]">Berkas *</label>
                         <Input
                             type="file"
                             accept=".pdf,.jpg,.jpeg,.png"
@@ -1036,9 +1159,9 @@ export default function DocumentsShow({
                             className="mt-1"
                         />
                         {errors.file && (
-                            <p className="mt-1 text-xs text-[#C1121F]">{errors.file}</p>
+                            <p className="mt-1 text-xs text-[#BA0C2F]">{errors.file}</p>
                         )}
-                        <label className="mt-4 block text-xs font-medium text-[#8A8580]">Catatan Revisi</label>
+                        <label className="mt-4 block text-xs font-medium text-[#5B6474]">Catatan Revisi</label>
                         <Input
                             value={data.revision_notes}
                             onChange={(e) => setData('revision_notes', e.target.value)}
@@ -1063,24 +1186,24 @@ export default function DocumentsShow({
                         onClose={() => setModal(null)}
                     />
                     <div className="p-5">
-                        <p className="text-xs leading-relaxed text-[#8A8580]">
+                        <p className="text-xs leading-relaxed text-[#5B6474]">
                             Perubahan tercatat pada audit trail dan berkas tidak ikut berubah.
                             Gunakan Unggah Versi Baru bila berkasnya perlu diganti.
                         </p>
                         <Row gutter={16} className="mt-4">
                             <Col span={24}>
-                                <label className="block text-xs font-medium text-[#8A8580]">Nama Dokumen *</label>
+                                <label className="block text-xs font-medium text-[#5B6474]">Nama Dokumen *</label>
                                 <Input
                                     value={editForm.data.document_name}
                                     onChange={(e) => editForm.setData('document_name', e.target.value)}
                                     className="mt-1"
                                 />
                                 {editForm.errors.document_name && (
-                                    <p className="mt-1 text-xs text-[#C1121F]">{editForm.errors.document_name}</p>
+                                    <p className="mt-1 text-xs text-[#BA0C2F]">{editForm.errors.document_name}</p>
                                 )}
                             </Col>
                             <Col span={12}>
-                                <label className="mt-4 block text-xs font-medium text-[#8A8580]">Kategori *</label>
+                                <label className="mt-4 block text-xs font-medium text-[#5B6474]">Kategori *</label>
                                 <Select
                                     value={editForm.data.category_id ? String(editForm.data.category_id) : ''}
                                     onChange={(v) => editForm.setData('category_id', Number(v))}
@@ -1091,11 +1214,11 @@ export default function DocumentsShow({
                                     }))}
                                 />
                                 {editForm.errors.category_id && (
-                                    <p className="mt-1 text-xs text-[#C1121F]">{editForm.errors.category_id}</p>
+                                    <p className="mt-1 text-xs text-[#BA0C2F]">{editForm.errors.category_id}</p>
                                 )}
                             </Col>
                             <Col span={12}>
-                                <label className="mt-4 block text-xs font-medium text-[#8A8580]">
+                                <label className="mt-4 block text-xs font-medium text-[#5B6474]">
                                     Requirement (kelengkapan)
                                 </label>
                                 <Select
@@ -1113,7 +1236,7 @@ export default function DocumentsShow({
                                 />
                             </Col>
                             <Col span={12}>
-                                <label className="mt-4 block text-xs font-medium text-[#8A8580]">Nomor Dokumen</label>
+                                <label className="mt-4 block text-xs font-medium text-[#5B6474]">Nomor Dokumen</label>
                                 <Input
                                     value={editForm.data.document_number}
                                     onChange={(e) => editForm.setData('document_number', e.target.value)}
@@ -1121,7 +1244,7 @@ export default function DocumentsShow({
                                 />
                             </Col>
                             <Col span={12}>
-                                <label className="mt-4 block text-xs font-medium text-[#8A8580]">Tanggal Terbit</label>
+                                <label className="mt-4 block text-xs font-medium text-[#5B6474]">Tanggal Terbit</label>
                                 <Input
                                     type="date"
                                     value={editForm.data.issue_date}
@@ -1132,17 +1255,17 @@ export default function DocumentsShow({
                             <Col span={24}>
                                 <div
                                     className="mt-4 rounded-xl border p-4"
-                                    style={{ borderColor: '#E7E1D9', background: '#FAF7F2' }}
+                                    style={{ borderColor: '#E3E8F0', background: '#F5F7FA' }}
                                 >
                                     <Checkbox
                                         checked={editForm.data.has_expiry}
                                         onChange={(e) => editForm.setData('has_expiry', e.target.checked)}
                                     >
-                                        <span className="text-sm text-[#1C1B1A]">Punya masa berlaku</span>
+                                        <span className="text-sm text-[#111827]">Punya masa berlaku</span>
                                     </Checkbox>
                                     {editForm.data.has_expiry && (
                                         <div className="mt-3 max-w-xs">
-                                            <label className="block text-xs font-medium text-[#8A8580]">Berlaku s/d *</label>
+                                            <label className="block text-xs font-medium text-[#5B6474]">Berlaku s/d *</label>
                                             <Input
                                                 type="date"
                                                 value={editForm.data.expiry_date}
@@ -1150,7 +1273,7 @@ export default function DocumentsShow({
                                                 className="mt-1"
                                             />
                                             {editForm.errors.expiry_date && (
-                                                <p className="mt-1 text-xs text-[#C1121F]">{editForm.errors.expiry_date}</p>
+                                                <p className="mt-1 text-xs text-[#BA0C2F]">{editForm.errors.expiry_date}</p>
                                             )}
                                         </div>
                                     )}
@@ -1159,13 +1282,13 @@ export default function DocumentsShow({
                             <Col span={24}>
                                 <div
                                     className="mt-4 rounded-xl border p-4"
-                                    style={{ borderColor: 'rgba(217,154,43,0.3)', background: 'rgba(217,154,43,0.05)' }}
+                                    style={{ borderColor: 'rgba(180,83,9,0.3)', background: 'rgba(180,83,9,0.05)' }}
                                 >
                                     <Checkbox
                                         checked={editForm.data.has_endorsement}
                                         onChange={(e) => editForm.setData('has_endorsement', e.target.checked)}
                                     >
-                                        <span className="text-sm text-[#1C1B1A]">
+                                        <span className="text-sm text-[#111827]">
                                             Punya siklus <strong>endorsement</strong> (Surat Laut &
                                             Sertifikat Klasifikasi)
                                         </span>
@@ -1173,7 +1296,7 @@ export default function DocumentsShow({
                                     {editForm.data.has_endorsement && (
                                         <Row gutter={12} className="mt-3 max-w-md">
                                             <Col span={12}>
-                                                <label className="block text-xs font-medium text-[#8A8580]">
+                                                <label className="block text-xs font-medium text-[#5B6474]">
                                                     Endorsement Terakhir
                                                 </label>
                                                 <Input
@@ -1186,7 +1309,7 @@ export default function DocumentsShow({
                                                 />
                                             </Col>
                                             <Col span={12}>
-                                                <label className="block text-xs font-medium text-[#8A8580]">
+                                                <label className="block text-xs font-medium text-[#5B6474]">
                                                     Endorsement Berikutnya *
                                                 </label>
                                                 <Input
@@ -1203,7 +1326,7 @@ export default function DocumentsShow({
                                 </div>
                             </Col>
                             <Col span={12}>
-                                <label className="mt-4 block text-xs font-medium text-[#8A8580]">Penanggung Jawab</label>
+                                <label className="mt-4 block text-xs font-medium text-[#5B6474]">Penanggung Jawab</label>
                                 <Input
                                     value={editForm.data.responsible_person}
                                     onChange={(e) => editForm.setData('responsible_person', e.target.value)}
@@ -1211,7 +1334,7 @@ export default function DocumentsShow({
                                 />
                             </Col>
                             <Col span={12}>
-                                <label className="mt-4 block text-xs font-medium text-[#8A8580]">Lokasi Arsip</label>
+                                <label className="mt-4 block text-xs font-medium text-[#5B6474]">Lokasi Arsip</label>
                                 <Input
                                     value={editForm.data.archive_location}
                                     onChange={(e) => editForm.setData('archive_location', e.target.value)}
@@ -1219,7 +1342,7 @@ export default function DocumentsShow({
                                 />
                             </Col>
                             <Col span={24}>
-                                <label className="mt-4 block text-xs font-medium text-[#8A8580]">Catatan</label>
+                                <label className="mt-4 block text-xs font-medium text-[#5B6474]">Catatan</label>
                                 <Input.TextArea
                                     rows={3}
                                     value={editForm.data.notes}
@@ -1249,11 +1372,11 @@ export default function DocumentsShow({
                         <div className="flex items-start gap-3">
                             <span
                                 className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-                                style={{ background: 'rgba(217,154,43,0.1)', color: '#D99A2B' }}
+                                style={{ background: 'rgba(180,83,9,0.1)', color: '#B45309' }}
                             >
                                 <AlertTriangle size={18} />
                             </span>
-                            <p className="text-sm leading-relaxed text-[#1C1B1A]">
+                            <p className="text-sm leading-relaxed text-[#111827]">
                                 Dokumen{' '}
                                 <strong className="font-semibold">{document.document_name}</strong>{' '}
                                 akan disembunyikan dari register (soft delete). Berkas tetap
@@ -1276,7 +1399,7 @@ export default function DocumentsShow({
                                     });
                                 }}
                                 loading={busy}
-                                style={{ background: '#D99A2B', borderColor: '#D99A2B' }}
+                                style={{ background: '#B45309', borderColor: '#B45309' }}
                             >
                                 {busy ? 'Memproses…' : 'Arsipkan'}
                             </Button>
@@ -1310,14 +1433,14 @@ export default function DocumentsShow({
                         onClose={() => setModal(null)}
                     />
                     <div className="p-5">
-                        <p className="text-sm leading-relaxed text-[#8A8580]">
-                            <strong className="font-semibold text-[#1C1B1A]">
+                        <p className="text-sm leading-relaxed text-[#5B6474]">
+                            <strong className="font-semibold text-[#111827]">
                                 {document.document_number || document.document_name}
                             </strong>{' '}
                             akan ditandai sebagai dibatalkan. Nomor tidak dipakai ulang dan berkas
                             tetap tersimpan sebagai arsip.
                         </p>
-                        <label className="mt-4 block text-xs font-medium text-[#8A8580]">Alasan void *</label>
+                        <label className="mt-4 block text-xs font-medium text-[#5B6474]">Alasan void *</label>
                         <Input.TextArea
                             rows={3}
                             value={voidReason}

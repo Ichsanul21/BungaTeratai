@@ -30,7 +30,7 @@ export default function Register() {
                     help={errors.name}
                 >
                     <Input
-                        prefix={<User size={16} className="text-[#8A8580]" />}
+                        prefix={<User size={16} className="text-[#5B6474]" />}
                         name="name"
                         value={data.name}
                         autoComplete="name"
@@ -47,7 +47,7 @@ export default function Register() {
                     help={errors.email}
                 >
                     <Input
-                        prefix={<Mail size={16} className="text-[#8A8580]" />}
+                        prefix={<Mail size={16} className="text-[#5B6474]" />}
                         type="email"
                         name="email"
                         value={data.email}
@@ -64,7 +64,7 @@ export default function Register() {
                     help={errors.password}
                 >
                     <Input.Password
-                        prefix={<Lock size={16} className="text-[#8A8580]" />}
+                        prefix={<Lock size={16} className="text-[#5B6474]" />}
                         name="password"
                         value={data.password}
                         autoComplete="new-password"
@@ -80,7 +80,7 @@ export default function Register() {
                     help={errors.password_confirmation}
                 >
                     <Input.Password
-                        prefix={<Lock size={16} className="text-[#8A8580]" />}
+                        prefix={<Lock size={16} className="text-[#5B6474]" />}
                         name="password_confirmation"
                         value={data.password_confirmation}
                         autoComplete="new-password"
@@ -93,7 +93,7 @@ export default function Register() {
                 <div className="mt-6 flex items-center justify-between gap-4">
                     <Link
                         href={route('login')}
-                        className="text-sm text-[#1C1B1A]/70 underline hover:text-[#C1121F]"
+                        className="text-sm text-[#111827]/70 underline hover:text-[#BA0C2F]"
                     >
                         Sudah punya akun?
                     </Link>

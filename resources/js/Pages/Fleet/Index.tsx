@@ -1,16 +1,19 @@
 import Badge, { type BadgeTone } from '@/Components/ui/Badge';
+import PageHeader from '@/Components/ui/PageHeader';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { formatNumber } from '@/lib/format';
 import { type PageProps } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import {
     Anchor,
+    Container,
     Plus,
     Power,
     RotateCcw,
     SearchX,
     Ship,
     ShipWheel,
+    Users,
     Wrench,
 } from 'lucide-react';
 import { Button, Col, Input, Progress, Row, Select, Space, Tag, Typography } from 'antd';
@@ -50,6 +53,16 @@ const NAV_LABELS: Record<string, string> = {
     sungai_danau: 'Sungai/Danau',
     penyeberangan: 'Penyeberangan',
 };
+
+// Ikon tabel armada mengikuti jenis kapal (data-driven).
+function TypeIcon({ type, active }: { type: string; active: boolean }) {
+    const color = active ? '#BA0C2F' : '#5B6474';
+    const props = { size: 17, 'aria-hidden': true as const, style: { color } };
+    if (type === 'tugboat') return <Anchor {...props} />;
+    if (type === 'tongkang') return <Container {...props} />;
+    if (type === 'kapal_penumpang') return <Users {...props} />;
+    return <ShipWheel {...props} />;
+}
 
 const STATUS_LABELS: Record<string, string> = {
     aktif: 'Aktif',
@@ -104,32 +117,7 @@ function positionInfo(value?: string): { label: string; fresh: boolean } | null 
     return { label, fresh: Date.now() - time < 86400000 };
 }
 
-function HeroMetric({
-    label,
-    value,
-    sub,
-    gold = false,
-}: {
-    label: string;
-    value: string;
-    sub: string;
-    gold?: boolean;
-}) {
-    return (
-        <div className="min-w-0 rounded-xl border border-[#E7E1D9] bg-[#FAF7F2] p-4">
-            <p className="truncate font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#8A8580]">
-                {label}
-            </p>
-            <p
-                className="mt-2 text-2xl font-semibold tabular-nums tracking-tight"
-                style={{ color: gold ? '#D4A96A' : '#1C1B1A' }}
-            >
-                {value}
-            </p>
-            <p className="mt-2 truncate text-[11px] text-[#8A8580]">{sub}</p>
-        </div>
-    );
-}
+// Metrik armada memakai PageHeader.metrics agar seragam dengan Dashboard.
 
 export default function FleetIndex({
     vessels,
@@ -178,21 +166,13 @@ export default function FleetIndex({
     };
 
     const headline =
-        stats.total === 0 ? (
-            'Registry armada masih kosong.'
-        ) : stats.perlu_tinjau > 0 ? (
-            <>
-                <span style={{ color: '#D4A96A' }}>{formatNumber(stats.perlu_tinjau)}</span> kapal
-                menunggu tindak lanjut dokumen.
-            </>
-        ) : stats.aktif < stats.total ? (
-            <>
-                <span style={{ color: '#D4A96A' }}>{formatNumber(stats.aktif)}</span> dari{' '}
-                {formatNumber(stats.total)} kapal siap beroperasi.
-            </>
-        ) : (
-            'Seluruh armada siap beroperasi.'
-        );
+        stats.total === 0
+            ? 'Registry armada masih kosong.'
+            : stats.perlu_tinjau > 0
+              ? `${formatNumber(stats.perlu_tinjau)} kapal menunggu tindak lanjut dokumen.`
+              : stats.aktif < stats.total
+                ? `${formatNumber(stats.aktif)} dari ${formatNumber(stats.total)} kapal siap beroperasi.`
+                : 'Seluruh armada siap beroperasi.';
 
     const columns = [
         {
@@ -203,11 +183,11 @@ export default function FleetIndex({
                     <Link
                         href={`/armada/${row.id}`}
                         className="text-sm font-semibold hover:underline"
-                        style={{ color: '#1C1B1A' }}
+                        style={{ color: '#111827' }}
                     >
                         {row.vessel_name}
                     </Link>
-                    <p className="mt-0.5 text-xs" style={{ color: '#8A8580' }}>
+                    <p className="mt-0.5 text-xs" style={{ color: '#5B6474' }}>
                         {row.vessel_type === 'lainnya' && row.vessel_type_custom
                             ? row.vessel_type_custom
                             : TYPE_LABELS[row.vessel_type] ?? row.vessel_type}
@@ -231,12 +211,12 @@ export default function FleetIndex({
                     ? `${formatNumber(row.capacity_value, 2)}${row.capacity_unit ? ` ${row.capacity_unit}` : ''}`
                     : null;
                 if (!utama && !kapasitas) {
-                    return <span className="text-xs" style={{ color: '#8A8580' }}>Belum dilengkapi</span>;
+                    return <span className="text-xs" style={{ color: '#5B6474' }}>Belum dilengkapi</span>;
                 }
                 return (
                     <div>
-                        {utama && <p className="font-mono text-[13px]" style={{ color: '#1C1B1A' }}>{utama}</p>}
-                        {kapasitas && <p className="mt-0.5 text-xs" style={{ color: '#8A8580' }}>Kapasitas {kapasitas}</p>}
+                        {utama && <p className="font-mono text-[13px]" style={{ color: '#111827' }}>{utama}</p>}
+                        {kapasitas && <p className="mt-0.5 text-xs" style={{ color: '#5B6474' }}>Kapasitas {kapasitas}</p>}
                     </div>
                 );
             },
@@ -249,16 +229,16 @@ export default function FleetIndex({
                 return (
                     <div>
                         {row.base_location ? (
-                            <p className="text-sm" style={{ color: '#1C1B1A' }}>{row.base_location}</p>
+                            <p className="text-sm" style={{ color: '#111827' }}>{row.base_location}</p>
                         ) : (
-                            <p className="text-xs" style={{ color: '#8A8580' }}>Belum diatur</p>
+                            <p className="text-xs" style={{ color: '#5B6474' }}>Belum diatur</p>
                         )}
                         {pos && (
-                            <p className="mt-0.5 flex items-center gap-1.5 font-mono text-[11px]" style={{ color: '#8A8580' }}>
+                            <p className="mt-0.5 flex items-center gap-1.5 font-mono text-[11px]" style={{ color: '#5B6474' }}>
                                 <span
                                     aria-hidden="true"
                                     className="h-1.5 w-1.5 rounded-full"
-                                    style={{ background: pos.fresh ? '#2F8F68' : '#8A8580' }}
+                                    style={{ background: pos.fresh ? '#15803D' : '#5B6474' }}
                                 />
                                 Posisi terakhir {pos.label}
                             </p>
@@ -282,7 +262,7 @@ export default function FleetIndex({
             render: (_: any, row: VesselRow) => {
                 const pct = row.doc_completeness;
                 const missing = row.missing_count;
-                const strokeColor = pct >= 90 ? '#2F8F68' : pct >= 70 ? '#D99A2B' : '#C1121F';
+                const strokeColor = pct >= 90 ? '#15803D' : pct >= 70 ? '#B45309' : '#BA0C2F';
                 return (
                     <div className="w-40 max-w-full">
                         <div className="flex items-center gap-2.5">
@@ -290,7 +270,7 @@ export default function FleetIndex({
                                 percent={Math.min(100, Math.max(0, pct))}
                                 showInfo={false}
                                 strokeColor={strokeColor}
-                                trailColor="#FAF7F2"
+                                trailColor="#F5F7FA"
                                 size="small"
                                 className="flex-1"
                             />
@@ -301,7 +281,7 @@ export default function FleetIndex({
                                 {formatNumber(pct, 1)}%
                             </span>
                         </div>
-                        <p className="mt-1 text-xs" style={{ color: missing > 0 ? '#8A8580' : '#2F8F68' }}>
+                        <p className="mt-1 text-xs" style={{ color: missing > 0 ? '#5B6474' : '#15803D' }}>
                             {missing > 0 ? `${missing} dokumen kurang` : 'Lengkap'}
                         </p>
                     </div>
@@ -313,7 +293,7 @@ export default function FleetIndex({
             key: 'voyage_count',
             align: 'center' as const,
             render: (_: any, row: VesselRow) => (
-                <span className="text-sm font-semibold tabular-nums" style={{ color: '#1C1B1A' }}>
+                <span className="text-sm font-semibold tabular-nums" style={{ color: '#111827' }}>
                     {formatNumber(row.voyage_count)}
                 </span>
             ),
@@ -326,7 +306,7 @@ export default function FleetIndex({
                 <Link
                     href={`/armada/${row.id}`}
                     className="text-sm font-semibold hover:underline"
-                    style={{ color: '#C1121F' }}
+                    style={{ color: '#BA0C2F' }}
                 >
                     Detail
                 </Link>
@@ -360,60 +340,32 @@ export default function FleetIndex({
                 }
             `}</style>
 
-            <section
-                className="bt-anim relative mb-6 overflow-hidden rounded-2xl border border-[#E7E1D9] bg-white shadow-[0_1px_3px_rgba(28,27,26,0.04),0_8px_24px_-8px_rgba(28,27,26,0.06)]"
-                style={{
-                    animation: `bt-rise 0.55s ${EASE} both`,
-                }}
-            >
-                <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-                    <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: GRAIN }} />
-                </div>
-
-                <div className="relative flex flex-col gap-6 p-6 lg:p-7 xl:flex-row xl:items-end xl:justify-between">
-                    <div className="min-w-0 max-w-2xl">
-                        <p className="flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-[#8A8580]">
-                            <span
-                                aria-hidden="true"
-                                className="bt-anim h-2 w-2 rounded-full"
-                                style={{ background: '#D4A96A', animation: 'bt-pulse-dot 2.4s ease-in-out infinite' }}
-                            />
-                            Registry Armada
-                        </p>
-                        <h1 className="mt-3 text-2xl font-semibold tracking-tight text-[#1C1B1A] sm:text-3xl">
-                            {headline}
-                        </h1>
-                        <p className="mt-2 max-w-xl text-sm leading-relaxed text-[#8A8580]">
-                            Data induk seluruh kapal perusahaan: status operasional,
-                            spesifikasi teknis, dan kelengkapan dokumen dalam satu
-                            register terpadu.
-                        </p>
-                    </div>
-
-                    {canCreate && (
-                        <div className="flex flex-col gap-2 sm:flex-row xl:shrink-0">
-                            <Link
-                                href="/armada/create"
-                                className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#C1121F] px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-[#A00F19]"
-                            >
-                                <Plus size={16} aria-hidden="true" />
-                                Tambah Kapal
-                            </Link>
-                        </div>
-                    )}
-                </div>
-
-                <div className="relative grid grid-cols-2 gap-3 border-t border-[#E7E1D9] p-6 pt-5 sm:gap-4 lg:grid-cols-4 lg:p-7 lg:pt-6">
-                    <HeroMetric label="Total Armada" value={formatNumber(stats.total)} sub="kapal terdaftar di registry" />
-                    <HeroMetric label="Siap Beroperasi" value={formatNumber(stats.aktif)} sub={`${activePct}% dari total armada`} />
-                    <HeroMetric label="Perlu Tindak Lanjut" value={formatNumber(stats.perlu_tinjau)} sub="kelengkapan dokumen di bawah 90%" gold={stats.perlu_tinjau > 0} />
-                    <HeroMetric label="Tidak Operasional" value={formatNumber(nonOperational)} sub="perbaikan · dock · mangkrak" />
-                </div>
-            </section>
+            <PageHeader
+                eyebrow="Registry Armada"
+                title={headline}
+                description="Data induk seluruh kapal perusahaan: status operasional, spesifikasi teknis, dan kelengkapan dokumen dalam satu register terpadu."
+                metrics={[
+                    { label: 'Total Armada', value: formatNumber(stats.total), sub: 'kapal terdaftar' },
+                    { label: 'Siap Beroperasi', value: formatNumber(stats.aktif), sub: `${activePct}% dari total`, tone: 'success' },
+                    { label: 'Perlu Tindak Lanjut', value: formatNumber(stats.perlu_tinjau), sub: 'kelengkapan < 90%', tone: 'warning' },
+                    { label: 'Tidak Operasional', value: formatNumber(nonOperational), sub: 'perbaikan · dock', tone: 'danger' },
+                ]}
+                actions={
+                    canCreate && (
+                        <Link
+                            href="/armada/create"
+                            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#BA0C2F] px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-[#8E0924]"
+                        >
+                            <Plus size={16} aria-hidden="true" />
+                            Tambah Kapal
+                        </Link>
+                    )
+                }
+            />
 
             <div
-                className="bt-anim mb-5 rounded-2xl border p-4 shadow-[0_18px_40px_-30px_rgba(28,27,26,0.35)]"
-                style={{ animation: `bt-rise 0.45s ${EASE} 110ms both`, borderColor: '#E7E1D9', background: '#fff' }}
+                className="bt-anim mb-5 rounded-2xl border p-4 shadow-[0_18px_40px_-30px_rgba(17,24,39,0.35)]"
+                style={{ animation: `bt-rise 0.45s ${EASE} 110ms both`, borderColor: '#E3E8F0', background: '#fff' }}
             >
                 <Row gutter={[12, 12]} align="middle">
                     <Col xs={24} sm={12} md={8}>
@@ -463,7 +415,7 @@ export default function FleetIndex({
             <section className="bt-anim" style={{ animation: `bt-rise 0.45s ${EASE} 150ms both` }}>
                 {vessels.length > 0 && (
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                        <p className="font-mono text-[11px] font-medium uppercase tracking-[0.14em]" style={{ color: '#8A8580' }}>
+                        <p className="font-mono text-[11px] font-medium uppercase tracking-[0.14em]" style={{ color: '#5B6474' }}>
                             {formatNumber(vessels.length)} kapal ditemukan
                         </p>
                     </div>
@@ -471,25 +423,25 @@ export default function FleetIndex({
 
                 {vessels.length === 0 ? (
                     isFilteredEmpty ? (
-                        <div className="rounded-2xl border border-dashed px-6 py-16 text-center" style={{ borderColor: '#E7E1D9', background: 'rgba(250,247,242,0.4)' }}>
+                        <div className="rounded-2xl border border-dashed px-6 py-16 text-center" style={{ borderColor: '#E3E8F0', background: 'rgba(245,247,250,0.4)' }}>
                             <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm">
-                                <SearchX size={20} aria-hidden="true" style={{ color: '#8A8580' }} />
+                                <SearchX size={20} aria-hidden="true" style={{ color: '#5B6474' }} />
                             </span>
-                            <p className="mt-4 text-sm font-semibold" style={{ color: '#1C1B1A' }}>Tidak ada kapal cocok</p>
-                            <p className="mt-1 text-xs" style={{ color: '#8A8580' }}>Ubah kata kunci, jenis, atau status yang dipakai.</p>
+                            <p className="mt-4 text-sm font-semibold" style={{ color: '#111827' }}>Tidak ada kapal cocok</p>
+                            <p className="mt-1 text-xs" style={{ color: '#5B6474' }}>Ubah kata kunci, jenis, atau status yang dipakai.</p>
                             <Button onClick={resetFilters} className="mt-5" icon={<RotateCcw size={15} />}>
                                 Hapus Filter
                             </Button>
                         </div>
                     ) : (
-                        <div className="rounded-2xl border border-dashed px-6 py-16 text-center" style={{ borderColor: '#E7E1D9', background: 'rgba(250,247,242,0.4)' }}>
+                        <div className="rounded-2xl border border-dashed px-6 py-16 text-center" style={{ borderColor: '#E3E8F0', background: 'rgba(245,247,250,0.4)' }}>
                             <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm">
-                                <Ship size={20} aria-hidden="true" style={{ color: '#8A8580' }} />
+                                <Ship size={20} aria-hidden="true" style={{ color: '#5B6474' }} />
                             </span>
-                            <p className="mt-4 text-sm font-semibold" style={{ color: '#1C1B1A' }}>Belum ada kapal terdaftar</p>
-                            <p className="mt-1 text-xs" style={{ color: '#8A8580' }}>Tambahkan kapal pertama untuk memulai pendataan armada.</p>
+                            <p className="mt-4 text-sm font-semibold" style={{ color: '#111827' }}>Belum ada kapal terdaftar</p>
+                            <p className="mt-1 text-xs" style={{ color: '#5B6474' }}>Tambahkan kapal pertama untuk memulai pendataan armada.</p>
                             {canCreate && (
-                                <Link href="/armada/create" className="mt-5 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90" style={{ background: '#C1121F' }}>
+                                <Link href="/armada/create" className="mt-5 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90" style={{ background: '#BA0C2F' }}>
                                     <Plus size={15} aria-hidden="true" />
                                     Tambah Kapal Pertama
                                 </Link>
@@ -497,65 +449,72 @@ export default function FleetIndex({
                         </div>
                     )
                 ) : (
-                    <div className="overflow-hidden rounded-2xl border bg-white shadow-[0_20px_44px_-32px_rgba(28,27,26,0.4)]" style={{ borderColor: '#E7E1D9' }}>
+                    <div className="overflow-x-auto rounded-2xl border bg-white shadow-[0_20px_44px_-32px_rgba(17,24,39,0.4)]" style={{ borderColor: '#E3E8F0' }}>
                         <table className="w-full" style={{ minWidth: '52rem' }}>
                             <thead>
-                                <tr className="border-b" style={{ borderColor: '#E7E1D9', background: 'rgba(250,247,242,0.7)' }}>
-                                    <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Kapal</th>
-                                    <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Spesifikasi</th>
-                                    <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Pangkalan</th>
-                                    <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Status</th>
-                                    <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Kelengkapan Dokumen</th>
-                                    <th className="px-4 py-3 text-center font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Perjalanan</th>
-                                    <th className="px-4 py-3 text-right font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}></th>
+                                <tr className="border-b" style={{ borderColor: '#E3E8F0', background: 'rgba(245,247,250,0.7)' }}>
+                                    <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Kapal</th>
+                                    <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Spesifikasi</th>
+                                    <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Pangkalan</th>
+                                    <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Status</th>
+                                    <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Kelengkapan Dokumen</th>
+                                    <th className="px-4 py-3 text-center font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Perjalanan</th>
+                                    <th className="px-4 py-3 text-right font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {vessels.map((row) => {
                                     const pos = positionInfo(row.last_position_at);
                                     const status = row.operational_status;
-                                    const railColor = status === 'dalam_perbaikan' ? '#D99A2B' : (status === 'dock' || status === 'mangkrak') ? '#C1121F' : null;
+                                    const railColor = status === 'dalam_perbaikan' ? '#B45309' : (status === 'dock' || status === 'mangkrak') ? '#BA0C2F' : null;
                                     return (
-                                        <tr key={row.id} id={`record-vessel-${row.id}`} className="border-b transition-colors duration-150 hover:bg-[#FAF7F2]/50" style={{ borderColor: '#E7E1D9' }}>
+                                        <tr key={row.id} id={`record-vessel-${row.id}`} className="border-b transition-colors duration-150 hover:bg-[#F5F7FA]/50" style={{ borderColor: '#E3E8F0' }}>
                                             <td className="relative px-4 py-3.5 align-middle">
                                                 {railColor && (
                                                     <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full" style={{ background: railColor }} />
                                                 )}
-                                                <Link href={`/armada/${row.id}`} className="text-sm font-semibold transition-colors duration-150 hover:underline" style={{ color: '#1C1B1A' }}>
-                                                    {row.vessel_name}
-                                                </Link>
-                                                <p className="mt-0.5 text-xs" style={{ color: '#8A8580' }}>
-                                                    {row.vessel_type === 'lainnya' && row.vessel_type_custom
-                                                        ? row.vessel_type_custom
-                                                        : TYPE_LABELS[row.vessel_type] ?? row.vessel_type}
-                                                    {' · '}
-                                                    {NAV_LABELS[row.navigation_type] ?? row.navigation_type}
-                                                    {row.year_built ? ` · ${row.year_built}` : ''}
-                                                    {row.registration_number ? ` · Reg. ${row.registration_number}` : ''}
-                                                </p>
+                                                <div className="flex items-center gap-3">
+                                                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border" style={{ borderColor: '#E3E8F0', background: '#F5F7FA' }}>
+                                                        <TypeIcon type={row.vessel_type} active={status === 'aktif'} />
+                                                    </span>
+                                                    <div className="min-w-0">
+                                                        <Link href={`/armada/${row.id}`} className="text-sm font-semibold transition-colors duration-150 hover:underline" style={{ color: '#111827' }}>
+                                                            {row.vessel_name}
+                                                        </Link>
+                                                        <p className="mt-0.5 text-xs" style={{ color: '#5B6474' }}>
+                                                            {row.vessel_type === 'lainnya' && row.vessel_type_custom
+                                                                ? row.vessel_type_custom
+                                                                : TYPE_LABELS[row.vessel_type] ?? row.vessel_type}
+                                                            {' · '}
+                                                            {NAV_LABELS[row.navigation_type] ?? row.navigation_type}
+                                                            {row.year_built ? ` · ${row.year_built}` : ''}
+                                                            {row.registration_number ? ` · Reg. ${row.registration_number}` : ''}
+                                                        </p>
+                                                    </div>
+                                                </div>
                                             </td>
                                             <td className="px-4 py-3.5 align-middle">
                                                 {(() => {
                                                     const utama = [row.gt != null ? `GT ${formatNumber(row.gt)}` : null, row.dwt != null ? `DWT ${formatNumber(row.dwt, 2)}` : null].filter(Boolean).join(' · ');
                                                     const kapasitas = row.capacity_value != null ? `${formatNumber(row.capacity_value, 2)}${row.capacity_unit ? ` ${row.capacity_unit}` : ''}` : null;
-                                                    if (!utama && !kapasitas) return <span className="text-xs" style={{ color: '#8A8580' }}>Belum dilengkapi</span>;
+                                                    if (!utama && !kapasitas) return <span className="text-xs" style={{ color: '#5B6474' }}>Belum dilengkapi</span>;
                                                     return (
                                                         <div>
-                                                            {utama && <p className="font-mono text-[13px]" style={{ color: '#1C1B1A' }}>{utama}</p>}
-                                                            {kapasitas && <p className="mt-0.5 text-xs" style={{ color: '#8A8580' }}>Kapasitas {kapasitas}</p>}
+                                                            {utama && <p className="font-mono text-[13px]" style={{ color: '#111827' }}>{utama}</p>}
+                                                            {kapasitas && <p className="mt-0.5 text-xs" style={{ color: '#5B6474' }}>Kapasitas {kapasitas}</p>}
                                                         </div>
                                                     );
                                                 })()}
                                             </td>
                                             <td className="px-4 py-3.5 align-middle">
                                                 {row.base_location ? (
-                                                    <p className="text-sm" style={{ color: '#1C1B1A' }}>{row.base_location}</p>
+                                                    <p className="text-sm" style={{ color: '#111827' }}>{row.base_location}</p>
                                                 ) : (
-                                                    <p className="text-xs" style={{ color: '#8A8580' }}>Belum diatur</p>
+                                                    <p className="text-xs" style={{ color: '#5B6474' }}>Belum diatur</p>
                                                 )}
                                                 {pos && (
-                                                    <p className="mt-0.5 flex items-center gap-1.5 font-mono text-[11px]" style={{ color: '#8A8580' }}>
-                                                        <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: pos.fresh ? '#2F8F68' : '#8A8580' }} />
+                                                    <p className="mt-0.5 flex items-center gap-1.5 font-mono text-[11px]" style={{ color: '#5B6474' }}>
+                                                        <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: pos.fresh ? '#15803D' : '#5B6474' }} />
                                                         Posisi terakhir {pos.label}
                                                     </p>
                                                 )}
@@ -571,27 +530,27 @@ export default function FleetIndex({
                                                         <Progress
                                                             percent={Math.min(100, Math.max(0, row.doc_completeness))}
                                                             showInfo={false}
-                                                            strokeColor={row.doc_completeness >= 90 ? '#2F8F68' : row.doc_completeness >= 70 ? '#D99A2B' : '#C1121F'}
-                                                            trailColor="#FAF7F2"
+                                                            strokeColor={row.doc_completeness >= 90 ? '#15803D' : row.doc_completeness >= 70 ? '#B45309' : '#BA0C2F'}
+                                                            trailColor="#F5F7FA"
                                                             size="small"
                                                             className="flex-1"
                                                         />
-                                                        <span className="shrink-0 font-mono text-[13px] font-semibold tabular-nums" style={{ color: row.doc_completeness >= 90 ? '#2F8F68' : row.doc_completeness >= 70 ? '#D99A2B' : '#C1121F' }}>
+                                                        <span className="shrink-0 font-mono text-[13px] font-semibold tabular-nums" style={{ color: row.doc_completeness >= 90 ? '#15803D' : row.doc_completeness >= 70 ? '#B45309' : '#BA0C2F' }}>
                                                             {formatNumber(row.doc_completeness, 1)}%
                                                         </span>
                                                     </div>
-                                                    <p className="mt-1 text-xs" style={{ color: row.missing_count > 0 ? '#8A8580' : '#2F8F68' }}>
+                                                    <p className="mt-1 text-xs" style={{ color: row.missing_count > 0 ? '#5B6474' : '#15803D' }}>
                                                         {row.missing_count > 0 ? `${row.missing_count} dokumen kurang` : 'Lengkap'}
                                                     </p>
                                                 </div>
                                             </td>
                                             <td className="px-4 py-3.5 align-middle text-center">
-                                                <span className="text-sm font-semibold tabular-nums" style={{ color: '#1C1B1A' }}>
+                                                <span className="text-sm font-semibold tabular-nums" style={{ color: '#111827' }}>
                                                     {formatNumber(row.voyage_count)}
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3.5 align-middle text-right">
-                                                <Link href={`/armada/${row.id}`} className="text-sm font-semibold hover:underline" style={{ color: '#C1121F' }}>
+                                                <Link href={`/armada/${row.id}`} className="text-sm font-semibold hover:underline" style={{ color: '#BA0C2F' }}>
                                                     Detail
                                                 </Link>
                                             </td>

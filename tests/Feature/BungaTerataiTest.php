@@ -924,7 +924,9 @@ class BungaTerataiTest extends TestCase
         $svc = app(\App\Services\NumberingService::class);
 
         $spal = $svc->next('SPAL', ['{kode_penyewa}' => 'SLM', '{kode_kapal}' => '23']);
-        $this->assertSame('105/SLM/FC/23/'.'X/2026', $spal['number']);
+        // Bulan Romawi & tahun mengikuti tanggal sistem saat penerbitan.
+        $bulanRomawi = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'][(int) now()->format('n') - 1];
+        $this->assertSame("105/SLM/FC/23/{$bulanRomawi}/".now()->year, $spal['number']);
         $this->assertSame(105, $spal['template']->seq_last);
 
         $arsip = $svc->next('SURAT_UMUM', [], 'arsip');

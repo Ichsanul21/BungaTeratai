@@ -32,7 +32,7 @@ export default function FleetCreate() {
             `}</style>
 
             <section
-                className="bt-anim relative mb-6 overflow-hidden rounded-2xl border border-[#E7E1D9] bg-white shadow-[0_1px_3px_rgba(28,27,26,0.04),0_8px_24px_-8px_rgba(28,27,26,0.06)]"
+                className="bt-anim relative mb-6 overflow-hidden rounded-2xl border border-[#E3E8F0] bg-white shadow-[0_1px_3px_rgba(17,24,39,0.04),0_8px_24px_-8px_rgba(17,24,39,0.06)]"
                 style={{
                     animation: `bt-rise 0.55s ${EASE} both`,
                 }}
@@ -45,30 +45,30 @@ export default function FleetCreate() {
                     <div className="max-w-2xl">
                         <Link
                             href="/armada"
-                            className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium uppercase tracking-[0.2em] text-[#8A8580] transition-colors hover:text-[#C1121F]"
+                            className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium uppercase tracking-[0.2em] text-[#5B6474] transition-colors hover:text-[#BA0C2F]"
                         >
                             <ArrowLeft size={13} aria-hidden="true" />
                             Registry Armada
                         </Link>
-                        <h1 className="mt-4 text-2xl font-semibold tracking-tight text-[#1C1B1A] sm:text-3xl">
+                        <h1 className="mt-4 text-2xl font-semibold tracking-tight text-[#111827] sm:text-3xl">
                             Tambah Kapal.
                         </h1>
-                        <p className="mt-2 text-sm leading-relaxed text-[#8A8580]">
+                        <p className="mt-2 text-sm leading-relaxed text-[#5B6474]">
                             Daftarkan kapal baru ke dalam registry armada. Mulai dari
                             identitas pokok; rincian spesifikasi dan data mesin bisa
                             disempurnakan kapan saja setelah kapal tersimpan.
                         </p>
                         <div className="mt-4 flex flex-wrap gap-2">
-                            <Tag className="inline-flex items-center gap-1.5 rounded-full border border-[#E7E1D9] bg-[#FAF7F2] px-3 py-1 text-[11px] font-medium text-[#8A8580]">
-                                <Ship size={12} aria-hidden="true" style={{ color: '#D4A96A' }} />
+                            <Tag className="inline-flex items-center gap-1.5 rounded-full border border-[#E3E8F0] bg-[#F5F7FA] px-3 py-1 text-[11px] font-medium text-[#5B6474]">
+                                <Ship size={12} aria-hidden="true" style={{ color: '#00205B' }} />
                                 3 seksi isian
                             </Tag>
-                            <Tag className="inline-flex items-center gap-1.5 rounded-full border border-[#E7E1D9] bg-[#FAF7F2] px-3 py-1 text-[11px] font-medium text-[#8A8580]">
-                                <ClipboardCheck size={12} aria-hidden="true" style={{ color: '#D4A96A' }} />
+                            <Tag className="inline-flex items-center gap-1.5 rounded-full border border-[#E3E8F0] bg-[#F5F7FA] px-3 py-1 text-[11px] font-medium text-[#5B6474]">
+                                <ClipboardCheck size={12} aria-hidden="true" style={{ color: '#00205B' }} />
                                 Navigasi kelengkapan data
                             </Tag>
-                            <Tag className="inline-flex items-center gap-1.5 rounded-full border border-[#E7E1D9] bg-[#FAF7F2] px-3 py-1 text-[11px] font-medium text-[#8A8580]">
-                                <Pencil size={12} aria-hidden="true" style={{ color: '#D4A96A' }} />
+                            <Tag className="inline-flex items-center gap-1.5 rounded-full border border-[#E3E8F0] bg-[#F5F7FA] px-3 py-1 text-[11px] font-medium text-[#5B6474]">
+                                <Pencil size={12} aria-hidden="true" style={{ color: '#00205B' }} />
                                 Spesifikasi bisa menyusul
                             </Tag>
                         </div>

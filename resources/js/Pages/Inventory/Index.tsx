@@ -99,20 +99,20 @@ export default function InventoryIndex({
     };
 
     const itemColumns = [
-        { title: 'SKU', dataIndex: 'sku', key: 'sku', render: (sku: string) => <span className="font-mono text-xs text-[#1C1B1A]">{sku}</span> },
-        { title: 'Nama', dataIndex: 'name', key: 'name', render: (name: string) => <span className="font-medium text-[#1C1B1A]">{name}</span> },
-        { title: 'Kategori', dataIndex: 'category', key: 'category', render: (cat: string) => <span className="text-[#8A8580]">{CAT_LABELS[cat] ?? cat}</span> },
+        { title: 'SKU', dataIndex: 'sku', key: 'sku', render: (sku: string) => <span className="font-mono text-xs text-[#111827]">{sku}</span> },
+        { title: 'Nama', dataIndex: 'name', key: 'name', render: (name: string) => <span className="font-medium text-[#111827]">{name}</span> },
+        { title: 'Kategori', dataIndex: 'category', key: 'category', render: (cat: string) => <span className="text-[#5B6474]">{CAT_LABELS[cat] ?? cat}</span> },
         { title: 'Harga', dataIndex: 'unit_price', key: 'unit_price', render: (v: any) => <span className="tabular-nums">{formatRupiah(v)}</span> },
         {
             title: 'Qty', key: 'qty',
             render: (_: any, r: Record<string, any>) => (
-                <span className={classNames('font-semibold tabular-nums', r.qty < r.min_stock ? 'text-[#D99A2B]' : 'text-[#1C1B1A]')}>
+                <span className={classNames('font-semibold tabular-nums', r.qty < r.min_stock ? 'text-[#B45309]' : 'text-[#111827]')}>
                     {formatNumber(r.qty, 2)} {r.unit}
                 </span>
             ),
         },
-        { title: 'Nilai', dataIndex: 'nilai', key: 'nilai', render: (v: any) => <span className="tabular-nums text-[#8A8580]">{formatRupiah(v)}</span> },
-        { title: 'Min', dataIndex: 'min_stock', key: 'min_stock', render: (v: any) => <span className="tabular-nums text-[#8A8580]">{formatNumber(v, 2)}</span> },
+        { title: 'Nilai', dataIndex: 'nilai', key: 'nilai', render: (v: any) => <span className="tabular-nums text-[#5B6474]">{formatRupiah(v)}</span> },
+        { title: 'Min', dataIndex: 'min_stock', key: 'min_stock', render: (v: any) => <span className="tabular-nums text-[#5B6474]">{formatNumber(v, 2)}</span> },
         {
             title: 'Flag', key: 'flag',
             render: (_: any, r: Record<string, any>) => (
@@ -139,14 +139,14 @@ export default function InventoryIndex({
                             });
                             setModal('editItem');
                         }}
-                        className="text-[#C1121F] hover:underline"
+                        className="text-[#BA0C2F] hover:underline"
                     >
                         Edit
                     </button>
                     <button
                         type="button"
                         onClick={() => setConfirmDel({ url: `/inventory/items/${r.id}`, label: `item ${r.sku}` })}
-                        className="text-[#C1121F] hover:underline"
+                        className="text-[#BA0C2F] hover:underline"
                     >
                         Hapus
                     </button>
@@ -162,9 +162,15 @@ export default function InventoryIndex({
             <PageHeader
                 title="Inventory"
                 description="Stok gudang kantor & kapal — barang habis pakai, batch kedaluwarsa, transfer, dan alert stok minimum."
+                metrics={[
+                    { label: 'SKU Ditampilkan', value: items.length, sub: tab === 'kantor' ? 'gudang kantor' : 'stok kapal' },
+                    { label: 'Nilai Stok', value: formatRupiah(items.reduce((sum, i) => sum + Number(i.nilai ?? 0), 0)), tone: 'navy', sub: 'tab aktif' },
+                    { label: 'Stok Minimum', value: lowStock.length, tone: lowStock.length > 0 ? 'warning' : 'success', sub: 'perlu pengadaan' },
+                    { label: 'Batch Bermasalah', value: expiringBatches.length, tone: expiringBatches.length > 0 ? 'danger' : 'success', sub: 'kedaluwarsa / mendekati' },
+                ]}
                 actions={
                     canManage && (
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                             <SecondaryButton onClick={() => setModal('batch')} icon={<Plus size={16} />}>Tambah Batch</SecondaryButton>
                             <SecondaryButton onClick={() => setModal('movement')} icon={<Truck size={16} />}>Mutasi Stok</SecondaryButton>
                             <PrimaryButton onClick={() => setModal('item')} icon={<Plus size={15} />}>Item Baru</PrimaryButton>
@@ -182,8 +188,8 @@ export default function InventoryIndex({
             />
 
             {tab === 'kapal' && (
-                <div className="mb-4 flex items-center gap-2">
-                    <span className="text-sm text-[#8A8580]">Tampilkan kapal:</span>
+                <div className="mt-3 mb-3 flex items-center gap-2">
+                    <span className="text-sm text-[#5B6474]">Tampilkan kapal:</span>
                     <AntSelect
                         defaultValue={vesselId}
                         onChange={(value) => router.get('/inventory', { tab: 'kapal', vessel_id: value }, { preserveState: true })}
@@ -197,13 +203,13 @@ export default function InventoryIndex({
                 <Col xs={24} lg={12}>
                     <Card title="Stok Minimum" description="Perlu pengadaan / restock.">
                         {lowStock.length === 0 ? (
-                            <p className="text-sm text-[#8A8580]">Semua stok di atas minimum.</p>
+                            <p className="text-sm text-[#5B6474]">Semua stok di atas minimum.</p>
                         ) : (
                             <div className="space-y-1.5">
                                 {lowStock.map((i) => (
-                                    <div key={i.id} className="flex justify-between rounded-lg px-3 py-2 text-sm" style={{ background: '#D99A2B0D' }}>
-                                        <span className="text-[#1C1B1A]">{i.sku} · {i.name}</span>
-                                        <span className="font-semibold text-[#D99A2B]">
+                                    <div key={i.id} className="flex justify-between rounded-lg px-3 py-2 text-sm" style={{ background: '#B453090D' }}>
+                                        <span className="text-[#111827]">{i.sku} · {i.name}</span>
+                                        <span className="font-semibold text-[#B45309]">
                                             {formatNumber(i.qty, 2)} / min {formatNumber(i.min_stock, 2)} {i.unit}
                                         </span>
                                     </div>
@@ -215,14 +221,14 @@ export default function InventoryIndex({
                 <Col xs={24} lg={12}>
                     <Card title="Batch Kedaluwarsa / Mendekati" description="Item perishable.">
                         {expiringBatches.length === 0 ? (
-                            <p className="text-sm text-[#8A8580]">Tidak ada batch bermasalah.</p>
+                            <p className="text-sm text-[#5B6474]">Tidak ada batch bermasalah.</p>
                         ) : (
                             <div className="space-y-1.5">
                                 {expiringBatches.map((b) => (
-                                    <div key={b.id} className="flex items-center justify-between rounded-lg border border-[#E7E1D9] px-3 py-2 text-sm">
+                                    <div key={b.id} className="flex items-center justify-between rounded-lg border border-[#E3E8F0] px-3 py-2 text-sm">
                                         <div>
-                                            <p className="text-[#1C1B1A]">{b.item_name} · batch {b.batch_no}</p>
-                                            <p className="text-xs text-[#8A8580]">{b.location} · {formatDate(b.expires_at)}</p>
+                                            <p className="text-[#111827]">{b.item_name} · batch {b.batch_no}</p>
+                                            <p className="text-xs text-[#5B6474]">{b.location} · {formatDate(b.expires_at)}</p>
                                         </div>
                                         <Badge tone={b.is_expired ? 'danger' : 'warning'}>
                                             {b.is_expired ? `Kedaluwarsa ${Math.abs(daysUntil(b.expires_at) ?? 0)} hr lalu` : `${daysUntil(b.expires_at)} hr lagi`}
@@ -240,14 +246,14 @@ export default function InventoryIndex({
                                                         });
                                                         setModal('editBatch');
                                                     }}
-                                                    className="text-[#C1121F] hover:underline"
+                                                    className="text-[#BA0C2F] hover:underline"
                                                 >
                                                     Edit
                                                 </button>
                                                 <button
                                                     type="button"
                                                     onClick={() => setConfirmDel({ url: `/inventory/batches/${b.id}`, label: `batch ${b.batch_no}` })}
-                                                    className="text-[#C1121F] hover:underline"
+                                                    className="text-[#BA0C2F] hover:underline"
                                                 >
                                                     Hapus
                                                 </button>
@@ -269,27 +275,27 @@ export default function InventoryIndex({
                     pagination={false}
                     size="small"
                     scroll={{ x: 800 }}
-                    rowClassName={() => 'hover:bg-[#FAF7F2]'}
+                    rowClassName={() => 'hover:bg-[#F5F7FA]'}
                 />
             </Card>
 
             <Card title="Mutasi Terakhir" className="mt-5">
-                <div className="divide-y divide-[#E7E1D9] text-sm">
+                <div className="divide-y divide-[#E3E8F0] text-sm">
                     {movements.map((m) => (
                         <div key={m.id} className="flex items-center justify-between py-2">
                             <div>
-                                <p className="text-[#1C1B1A]">{m.item_name} — <span className="capitalize font-medium">{m.type}</span> {formatNumber(m.qty, 2)}</p>
-                                <p className="text-xs text-[#8A8580]">
+                                <p className="text-[#111827]">{m.item_name} — <span className="capitalize font-medium">{m.type}</span> {formatNumber(m.qty, 2)}</p>
+                                <p className="text-xs text-[#5B6474]">
                                     {m.from_location ?? '—'} → {m.to_location ?? '—'} · {formatDate(m.movement_date)} · {m.user_name ?? '—'}
                                     {m.ref_type === 'service' ? ' · servis' : ''}
                                 </p>
                             </div>
-                            {m.notes && <p className="max-w-64 text-xs italic text-[#8A8580]">{m.notes}</p>}
+                            {m.notes && <p className="max-w-64 text-xs italic text-[#5B6474]">{m.notes}</p>}
                             {canManage && m.ref_type === 'manual' && (
                                 <button
                                     type="button"
                                     onClick={() => setConfirmDel({ url: `/inventory/movements/${m.id}`, label: `mutasi ${m.item_name} (${m.type})`, note: 'Saldo stok otomatis dibalikkan.' })}
-                                    className="text-xs font-medium text-[#C1121F] hover:underline"
+                                    className="text-xs font-medium text-[#BA0C2F] hover:underline"
                                 >
                                     Hapus
                                 </button>
@@ -301,20 +307,20 @@ export default function InventoryIndex({
 
             <Modal show={modal === 'item'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitItem} className="p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Item Inventory Baru</h2>
+                    <h2 className="text-lg font-semibold text-[#111827]">Item Inventory Baru</h2>
                     <Row gutter={12} className="mt-4">
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">SKU *</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">SKU *</span>}>
                                 <Input value={itemForm.data.sku} onChange={(e) => itemForm.setData('sku', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Nama *</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Nama *</span>}>
                                 <Input value={itemForm.data.name} onChange={(e) => itemForm.setData('name', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kategori</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Kategori</span>}>
                                 <AntSelect
                                     value={itemForm.data.category}
                                     onChange={(value) => itemForm.setData('category', value)}
@@ -324,22 +330,22 @@ export default function InventoryIndex({
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Satuan</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Satuan</span>}>
                                 <Input value={itemForm.data.unit} onChange={(e) => itemForm.setData('unit', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Harga Satuan</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Harga Satuan</span>}>
                                 <PriceInput value={itemForm.data.unit_price} onChange={(e) => itemForm.setData('unit_price', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Stok Minimum</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Stok Minimum</span>}>
                                 <NumericInput value={itemForm.data.min_stock} onChange={(e) => itemForm.setData('min_stock', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Stok Awal (kantor)</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Stok Awal (kantor)</span>}>
                                 <NumericInput value={itemForm.data.stok_awal} onChange={(e) => itemForm.setData('stok_awal', e.target.value)} />
                             </Form.Item>
                         </Col>
@@ -363,9 +369,9 @@ export default function InventoryIndex({
 
             <Modal show={modal === 'movement'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitMovement} className="p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Mutasi Stok</h2>
+                    <h2 className="text-lg font-semibold text-[#111827]">Mutasi Stok</h2>
                     <div className="mt-4 space-y-3">
-                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Item *</span>}>
+                        <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Item *</span>}>
                             <AntSelect
                                 value={movementForm.data.item_id || undefined}
                                 onChange={(value) => movementForm.setData('item_id', value)}
@@ -381,7 +387,7 @@ export default function InventoryIndex({
                         </Form.Item>
                         <Row gutter={12}>
                             <Col span={12}>
-                                <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Jenis *</span>}>
+                                <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Jenis *</span>}>
                                     <AntSelect
                                         value={movementForm.data.type}
                                         onChange={(value) => movementForm.setData('type', value)}
@@ -396,7 +402,7 @@ export default function InventoryIndex({
                                 </Form.Item>
                             </Col>
                             <Col span={12}>
-                                <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Qty *</span>}>
+                                <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Qty *</span>}>
                                     <NumericInput decimalPlaces={2} value={movementForm.data.qty} onChange={(e) => movementForm.setData('qty', e.target.value)} />
                                 </Form.Item>
                             </Col>
@@ -404,7 +410,7 @@ export default function InventoryIndex({
                         {['keluar', 'transfer', 'penyesuaian'].includes(movementForm.data.type) && (
                             <Row gutter={12}>
                                 <Col span={12}>
-                                    <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Dari</span>}>
+                                    <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Dari</span>}>
                                         <AntSelect
                                             value={movementForm.data.from_location}
                                             onChange={(value) => movementForm.setData('from_location', value)}
@@ -418,7 +424,7 @@ export default function InventoryIndex({
                                 </Col>
                                 {movementForm.data.from_location === 'kapal' && (
                                     <Col span={12}>
-                                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kapal Asal</span>}>
+                                        <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Kapal Asal</span>}>
                                             <AntSelect
                                                 value={movementForm.data.from_vessel_id || undefined}
                                                 onChange={(value) => movementForm.setData('from_vessel_id', value)}
@@ -436,7 +442,7 @@ export default function InventoryIndex({
                         {['masuk', 'transfer'].includes(movementForm.data.type) && (
                             <Row gutter={12}>
                                 <Col span={12}>
-                                    <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Ke</span>}>
+                                    <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Ke</span>}>
                                         <AntSelect
                                             value={movementForm.data.to_location}
                                             onChange={(value) => movementForm.setData('to_location', value)}
@@ -450,7 +456,7 @@ export default function InventoryIndex({
                                 </Col>
                                 {movementForm.data.to_location === 'kapal' && (
                                     <Col span={12}>
-                                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kapal Tujuan</span>}>
+                                        <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Kapal Tujuan</span>}>
                                             <AntSelect
                                                 value={movementForm.data.to_vessel_id || undefined}
                                                 onChange={(value) => movementForm.setData('to_vessel_id', value)}
@@ -475,20 +481,20 @@ export default function InventoryIndex({
 
             <Modal show={modal === 'editItem'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitEditItem} className="p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit Item Inventory</h2>
+                    <h2 className="text-lg font-semibold text-[#111827]">Edit Item Inventory</h2>
                     <Row gutter={12} className="mt-4">
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">SKU *</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">SKU *</span>}>
                                 <Input value={editItemForm.data.sku} onChange={(e) => editItemForm.setData('sku', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Nama *</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Nama *</span>}>
                                 <Input value={editItemForm.data.name} onChange={(e) => editItemForm.setData('name', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kategori</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Kategori</span>}>
                                 <AntSelect
                                     value={editItemForm.data.category}
                                     onChange={(value) => editItemForm.setData('category', value)}
@@ -498,17 +504,17 @@ export default function InventoryIndex({
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Satuan</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Satuan</span>}>
                                 <Input value={editItemForm.data.unit} onChange={(e) => editItemForm.setData('unit', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Harga Satuan</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Harga Satuan</span>}>
                                 <PriceInput value={editItemForm.data.unit_price} onChange={(e) => editItemForm.setData('unit_price', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Stok Minimum</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Stok Minimum</span>}>
                                 <NumericInput value={editItemForm.data.min_stock} onChange={(e) => editItemForm.setData('min_stock', e.target.value)} />
                             </Form.Item>
                         </Col>
@@ -532,9 +538,9 @@ export default function InventoryIndex({
 
             <Modal show={modal === 'batch'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitBatch} className="p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Tambah Batch (Barang Berkadaluarsa)</h2>
+                    <h2 className="text-lg font-semibold text-[#111827]">Tambah Batch (Barang Berkadaluarsa)</h2>
                     <div className="mt-4 space-y-3">
-                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Item *</span>}>
+                        <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Item *</span>}>
                             <AntSelect
                                 value={batchForm.data.item_id || undefined}
                                 onChange={(value) => batchForm.setData('item_id', value)}
@@ -550,7 +556,7 @@ export default function InventoryIndex({
                         </Form.Item>
                         <Row gutter={12}>
                             <Col span={12}>
-                                <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Lokasi</span>}>
+                                <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Lokasi</span>}>
                                     <AntSelect
                                         value={batchForm.data.location_type}
                                         onChange={(value) => batchForm.setData('location_type', value)}
@@ -564,7 +570,7 @@ export default function InventoryIndex({
                             </Col>
                             {batchForm.data.location_type === 'kapal' && (
                                 <Col span={12}>
-                                    <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kapal *</span>}>
+                                    <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Kapal *</span>}>
                                         <AntSelect
                                             value={batchForm.data.vessel_id || undefined}
                                             onChange={(value) => batchForm.setData('vessel_id', value)}
@@ -578,17 +584,17 @@ export default function InventoryIndex({
                                 </Col>
                             )}
                             <Col span={12}>
-                                <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">No. Batch *</span>}>
+                                <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">No. Batch *</span>}>
                                     <Input value={batchForm.data.batch_no} onChange={(e) => batchForm.setData('batch_no', e.target.value)} />
                                 </Form.Item>
                             </Col>
                             <Col span={12}>
-                                <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Qty *</span>}>
+                                <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Qty *</span>}>
                                     <NumericInput decimalPlaces={2} value={batchForm.data.qty} onChange={(e) => batchForm.setData('qty', e.target.value)} />
                                 </Form.Item>
                             </Col>
                             <Col span={12}>
-                                <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kadaluarsa</span>}>
+                                <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Kadaluarsa</span>}>
                                     <Input type="date" value={batchForm.data.expires_at} onChange={(e) => batchForm.setData('expires_at', e.target.value)} />
                                 </Form.Item>
                             </Col>
@@ -603,15 +609,15 @@ export default function InventoryIndex({
 
             <Modal show={modal === 'editBatch'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitEditBatch} className="p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit Batch {editBatch?.batch_no}</h2>
+                    <h2 className="text-lg font-semibold text-[#111827]">Edit Batch {editBatch?.batch_no}</h2>
                     <div className="mt-4 space-y-3">
-                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">No. Batch *</span>}>
+                        <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">No. Batch *</span>}>
                             <Input value={editBatchForm.data.batch_no} onChange={(e) => editBatchForm.setData('batch_no', e.target.value)} />
                         </Form.Item>
-                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Qty *</span>}>
+                        <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Qty *</span>}>
                             <NumericInput decimalPlaces={2} value={editBatchForm.data.qty} onChange={(e) => editBatchForm.setData('qty', e.target.value)} />
                         </Form.Item>
-                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kadaluarsa</span>}>
+                        <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Kadaluarsa</span>}>
                             <Input type="date" value={editBatchForm.data.expires_at} onChange={(e) => editBatchForm.setData('expires_at', e.target.value)} />
                         </Form.Item>
                     </div>

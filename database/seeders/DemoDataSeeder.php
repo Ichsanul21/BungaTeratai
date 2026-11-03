@@ -19,6 +19,18 @@ use Illuminate\Database\Seeder;
  */
 class DemoDataSeeder extends Seeder
 {
+    /**
+     * Kapal yang memang dirancang memiliki dokumen kurang/kedaluwarsa
+     * (target demo §7: 5 kapal tindak lanjut).
+     */
+    private const FOLLOW_UP_VESSELS = [
+        'TB Syukur 11',
+        'TB Syukur 51',
+        'BG Syukur 29',
+        'BG Syukur 49',
+        'BG Syukur 80',
+    ];
+
     public function run(): void
     {
         $this->seedRolesAndUsers();
@@ -322,7 +334,19 @@ class DemoDataSeeder extends Seeder
             ['KM Tata Armada 01', 'tugboat', 'laut', null, '525201041', 'PKSQ2', 2015, 24.00, 7.30, 260, 115, null, null, '2 × CAT C18', 'Diesel', 100, 'PT Tata Armada Bersama', 'Pelabuhan Samarinda', 'aktif', 'Kapal milik PT Tata Armada Bersama (SIUPAL pada materi Dokumen_Kapal), dioperasikan PT Bunga Teratai.'],
         ];
 
+        $total = max(count($vessels), 1);
+        $vesselIndex = 0;
+
         foreach ($vessels as $v) {
+            // Sebar merata sepanjang alur Mahakam; jitter hanya di sekitar badan air.
+            $t = ($vesselIndex + 0.5) / $total;
+            [$lat, $lng] = \App\Support\MahakamRiver::positionAt(
+                $t,
+                mt_rand(-90, 90),
+                mt_rand(-55, 55),
+            );
+            $vesselIndex++;
+
             \App\Models\Vessel::create([
                 'vessel_name' => $v[0],
                 'vessel_type' => $v[1],
@@ -346,8 +370,8 @@ class DemoDataSeeder extends Seeder
                 'operational_status' => $v[18],
                 'notes' => $v[19],
                 'registration_number' => strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $v[0]), 0, 3)).'-'.str_pad((string) (100 + \App\Models\Vessel::count()), 4, '0', STR_PAD_LEFT),
-                'last_lat' => -0.5020 + (mt_rand(-40, 40) / 10000),
-                'last_lng' => 117.1500 + (mt_rand(-40, 40) / 10000),
+                'last_lat' => $lat,
+                'last_lng' => $lng,
                 'last_position_at' => now()->subMinutes(mt_rand(5, 180)),
             ]);
         }
@@ -1286,14 +1310,18 @@ class DemoDataSeeder extends Seeder
             return;
         }
 
-        foreach (\App\Models\Vessel::where('operational_status', 'aktif')->get() as $vessel) {
-            $lat = $vessel->last_lat ?? -0.502;
-            $lng = $vessel->last_lng ?? 117.15;
+        $vessels = \App\Models\Vessel::where('operational_status', 'aktif')->orderBy('id')->get();
+        $total = max($vessels->count(), 1);
+
+        foreach ($vessels as $idx => $vessel) {
+            $t = ($idx + 0.5) / $total;
             foreach (range(1, 8) as $k) {
+                // Riwayat: bergerak mundur sepanjang alur, tetap di badan air.
+                [$lat, $lng] = \App\Support\MahakamRiver::positionAt($t, -($k * 700), mt_rand(-45, 45));
                 \App\Models\VesselPosition::create([
                     'vessel_id' => $vessel->id,
-                    'lat' => $lat + ($k * 0.004) + mt_rand(-10, 10) / 1000,
-                    'lng' => $lng + ($k * 0.006) + mt_rand(-10, 10) / 1000,
+                    'lat' => $lat,
+                    'lng' => $lng,
                     'speed_knots' => mt_rand(20, 120) / 10,
                     'recorded_at' => now()->subHours($k * 3),
                     'source' => 'AIS-sim',
@@ -2085,8 +2113,18 @@ class DemoDataSeeder extends Seeder
                         : null;
                     // Jangan timpa dokumen expiring ≤30 hari / sudah expired (target sintetis)
                     if ($currentDays === null || $currentDays > 30) {
+                        $expiry = \Carbon\Carbon::parse($expiryDate);
+                        // Tanggal tracker adalah tanggal absolut materi klien. Supaya target
+                        // demo (34 siap / 5 tindak lanjut) tetap stabil seiring waktu, dokumen
+                        // yang sudah lewat digulir ke tahun berikutnya — kecuali kapal yang
+                        // memang dirancang memiliki dokumen kedaluwarsa/kurang.
+                        if (! in_array($vessel->vessel_name, self::FOLLOW_UP_VESSELS, true)) {
+                            while ($expiry->lt(now()->startOfDay())) {
+                                $expiry->addYear();
+                            }
+                        }
                         $updates['has_expiry'] = true;
-                        $updates['expiry_date'] = $expiryDate;
+                        $updates['expiry_date'] = $expiry->toDateString();
                     }
                 }
                 // serial expiry korup (mis. BG115/B2 = 6708527) -> null -> expiry tetap dari seedDocuments

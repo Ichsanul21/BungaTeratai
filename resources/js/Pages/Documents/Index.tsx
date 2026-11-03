@@ -93,10 +93,10 @@ const VALIDITY_TEXT: Record<string, string> = {
 };
 
 const VALIDITY_TILES: Array<{ key: string; label: string; color: string }> = [
-    { key: 'normal', label: 'Normal', color: '#2F8F68' },
-    { key: 'expiring_soon', label: 'Segera Berakhir', color: '#D99A2B' },
-    { key: 'expired', label: 'Kedaluwarsa', color: '#C1121F' },
-    { key: 'no_expiry', label: 'Tanpa Masa Berlaku', color: '#8A8580' },
+    { key: 'normal', label: 'Normal', color: '#15803D' },
+    { key: 'expiring_soon', label: 'Segera Berakhir', color: '#B45309' },
+    { key: 'expired', label: 'Kedaluwarsa', color: '#BA0C2F' },
+    { key: 'no_expiry', label: 'Tanpa Masa Berlaku', color: '#5B6474' },
 ];
 
 export default function DocumentsIndex({
@@ -188,9 +188,9 @@ export default function DocumentsIndex({
             render: (_, row) => {
                 const railColor =
                     row.validity === 'expired'
-                        ? '#C1121F'
+                        ? '#BA0C2F'
                         : row.validity === 'expiring_soon'
-                          ? '#D99A2B'
+                          ? '#B45309'
                           : 'transparent';
                 return (
                     <div className="flex items-start gap-3">
@@ -208,11 +208,11 @@ export default function DocumentsIndex({
                         <div className="min-w-0">
                             <Link
                                 href={`/dokumen/${row.id}`}
-                                className="text-sm font-semibold text-[#1C1B1A] hover:text-[#C1121F]"
+                                className="text-sm font-semibold text-[#111827] hover:text-[#BA0C2F]"
                             >
                                 {row.document_name}
                             </Link>
-                            <p className="mt-0.5 text-xs text-[#8A8580]">
+                            <p className="mt-0.5 text-xs text-[#5B6474]">
                                 {row.category_name ?? 'Tanpa kategori'}
                                 {row.document_number ? ` · No. ${row.document_number}` : ''}
                                 {row.archive_number ? ` · ${row.archive_number}` : ''}
@@ -235,12 +235,12 @@ export default function DocumentsIndex({
             width: '15%',
             render: (_, row) => (
                 <div>
-                    <p className="text-sm text-[#1C1B1A]">{row.owner_name}</p>
+                    <p className="text-sm text-[#111827]">{row.owner_name}</p>
                     <Tag
                         style={{
-                            background: '#FAF7F2',
-                            borderColor: '#E7E1D9',
-                            color: '#8A8580',
+                            background: '#F5F7FA',
+                            borderColor: '#E3E8F0',
+                            color: '#5B6474',
                             fontSize: 10,
                             fontFamily: 'monospace',
                             textTransform: 'uppercase',
@@ -263,22 +263,22 @@ export default function DocumentsIndex({
             render: (_, row) => {
                 const d = row.days_left ?? null;
                 if (!row.has_expiry || !row.expiry_date) {
-                    return <span className="text-xs text-[#8A8580]">Tanpa masa berlaku</span>;
+                    return <span className="text-xs text-[#5B6474]">Tanpa masa berlaku</span>;
                 }
                 if (d === null) {
                     return (
                         <div>
-                            <p className="font-mono text-[13px] text-[#1C1B1A]">
+                            <p className="font-mono text-[13px] text-[#111827]">
                                 {row.expiry_date}
                             </p>
-                            <p className="mt-0.5 text-xs text-[#8A8580]">sisa hari tidak tersedia</p>
+                            <p className="mt-0.5 text-xs text-[#5B6474]">sisa hari tidak tersedia</p>
                         </div>
                     );
                 }
-                const textColor = d < 0 ? '#C1121F' : d <= 30 ? '#D99A2B' : '#8A8580';
+                const textColor = d < 0 ? '#BA0C2F' : d <= 30 ? '#B45309' : '#5B6474';
                 return (
                     <div>
-                        <p className="font-mono text-[13px] text-[#1C1B1A]">{row.expiry_date}</p>
+                        <p className="font-mono text-[13px] text-[#111827]">{row.expiry_date}</p>
                         <p className="mt-0.5 text-xs font-medium" style={{ color: textColor }}>
                             {d < 0 ? `lewat ${Math.abs(d)} hari` : `${d} hari lagi`}
                         </p>
@@ -326,74 +326,37 @@ export default function DocumentsIndex({
         <AuthenticatedLayout>
             <Head title="Document Center" />
 
-            <div
-                className="mb-6 overflow-hidden rounded-2xl border border-[#E7E1D9] bg-white shadow-[0_1px_3px_rgba(28,27,26,0.04),0_8px_24px_-8px_rgba(28,27,26,0.06)]"
-            >
-                <div className="p-6 lg:p-7">
-                    <p
-                        className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-[#8A8580]"
-                    >
-                        <span
-                            className="me-2 inline-block h-2 w-2 rounded-full"
-                            style={{ background: '#D4A96A' }}
-                        />
-                        Register Dokumen
-                    </p>
-                    <h1 className="mt-3 text-2xl font-semibold tracking-tight text-[#1C1B1A] sm:text-3xl">
-                        Document Center.
-                    </h1>
-                    <p className="mt-2 max-w-xl text-sm leading-relaxed text-[#8A8580]">
-                        Seluruh dokumen perusahaan, kapal, awak, dan perjalanan dalam satu register
-                        terpadu. Status verifikasi dan masa berlaku disajikan terpisah agar keduanya
-                        tidak tertukar.
-                    </p>
-
-                    {canCreate && (
-                        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                            <Button
-                                onClick={() => setLetterOpen(true)}
-                                icon={<FileText size={15} />}
-                            >
+            <PageHeader
+                eyebrow="Register Dokumen"
+                title="Document Center"
+                description="Seluruh dokumen perusahaan, kapal, awak, dan perjalanan dalam satu register terpadu. Status verifikasi dan masa berlaku disajikan terpisah agar keduanya tidak tertukar."
+                actions={
+                    canCreate && (
+                        <>
+                            <Button onClick={() => setLetterOpen(true)} icon={<FileText size={15} />}>
                                 Terbitkan Surat Umum
                             </Button>
                             <Link href="/dokumen/create">
-                                <Button
-                                    type="primary"
-                                    icon={<Plus size={16} />}
-                                >
+                                <Button type="primary" icon={<Plus size={16} />}>
                                     Unggah Dokumen
                                 </Button>
                             </Link>
-                        </div>
-                    )}
-                </div>
+                        </>
+                    )
+                }
+            />
 
-                <div
-                    className="grid grid-cols-2 gap-3 border-t border-[#E7E1D9] p-6 pt-5 sm:gap-4 lg:grid-cols-5 lg:p-7 lg:pt-6"
-                >
-                    <div
-                        className="col-span-2 flex min-w-0 flex-col rounded-xl border border-[#D4A96A]/30 bg-[#FFF8F0] p-4 lg:col-span-1"
-                    >
-                        <p
-                            className="flex items-center gap-1.5 truncate font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#8A8580]"
-                        >
-                            <span
-                                className="h-1.5 w-1.5 shrink-0 rounded-full"
-                                style={{ background: '#D4A96A' }}
-                            />
+            <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
+                    <div className="col-span-2 flex min-w-0 flex-col rounded-2xl bg-[#BA0C2F] p-4 text-white shadow-[0_10px_30px_-16px_rgba(186,12,47,0.6)] lg:col-span-1">
+                        <p className="flex items-center gap-1.5 truncate font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-white/80">
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-white/80" />
                             Total Dokumen
                         </p>
-                        <div className="mt-2 flex flex-1 flex-col items-center justify-center">
-                            <p
-                                className="text-4xl font-semibold leading-tight tabular-nums tracking-tight text-[#C1121F]"
-                            >
+                        <div className="mt-2 flex flex-1 flex-col justify-center">
+                            <p className="text-[28px] font-semibold leading-tight tabular-nums tracking-tight">
                                 {formatNumber(totalAll)}
                             </p>
-                            <p
-                                className="mt-1 font-mono text-sm uppercase tracking-[0.14em] text-[#8A8580]"
-                            >
-                                Total
-                            </p>
+                            <p className="mt-0.5 text-[11px] text-white/75">di seluruh register</p>
                         </div>
                     </div>
                     {VALIDITY_TILES.map((t) => {
@@ -405,15 +368,13 @@ export default function DocumentsIndex({
                                 key={t.key}
                                 type="button"
                                 onClick={() => toggleValidity(t.key)}
-                                className="flex min-w-0 flex-col rounded-xl border p-4 text-left transition-colors"
+                                className="flex min-w-0 flex-col rounded-2xl border bg-white p-4 text-left transition-colors hover:border-[#111827]/20"
                                 style={{
-                                    background: isActive ? '#FFF8F0' : '#FAF7F2',
-                                    borderColor: isActive ? '#C1121F' : '#E7E1D9',
+                                    background: isActive ? '#FBEAEE' : '#FFFFFF',
+                                    borderColor: isActive ? '#BA0C2F' : '#E3E8F0',
                                 }}
                             >
-                                <p
-                                    className="flex items-center gap-1.5 truncate font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#8A8580]"
-                                >
+                                <p className="flex items-center gap-1.5 truncate font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#5B6474]">
                                     <span
                                         className="h-1.5 w-1.5 shrink-0 rounded-full"
                                         style={{ background: t.color }}
@@ -421,17 +382,16 @@ export default function DocumentsIndex({
                                     {t.label}
                                 </p>
                                 <div className="mt-2 flex flex-1 flex-col justify-center">
-                                    <p className="text-4xl font-semibold leading-tight tabular-nums tracking-tight text-[#1C1B1A]">
+                                    <p className="text-[26px] font-semibold leading-tight tabular-nums tracking-tight text-[#111827]">
                                         {formatNumber(count)}
                                     </p>
-                                    <p className="mt-1 truncate text-sm text-[#8A8580]">
+                                    <p className="mt-0.5 truncate text-[11px] text-[#5B6474]">
                                         {isActive ? 'Filter aktif · klik untuk lepas' : `${pct}% dari total`}
                                     </p>
                                 </div>
                             </button>
                         );
                     })}
-                </div>
             </div>
 
             <TabNav
@@ -442,9 +402,9 @@ export default function DocumentsIndex({
                 }
             />
 
-            <Card className="mb-5">
+            <Card className="mt-3 mb-5">
                 <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="me-1 hidden font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#8A8580] sm:inline">
+                    <span className="me-1 hidden font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#5B6474] sm:inline">
                         Kelompok
                     </span>
                     {GROUPS.map((g) => {
@@ -457,14 +417,14 @@ export default function DocumentsIndex({
                                 onClick={() => setFilter('group', g.code)}
                                 style={
                                     !isActive
-                                        ? { borderColor: '#E7E1D9', color: '#8A8580' }
+                                        ? { borderColor: '#E3E8F0', color: '#5B6474' }
                                         : undefined
                                 }
                             >
                                 {g.code && (
                                     <span
                                         className="me-1 font-mono text-[11px] font-semibold"
-                                        style={{ color: isActive ? '#D4A96A' : 'rgba(193,18,31,0.6)' }}
+                                        style={{ color: isActive ? '#00205B' : 'rgba(186,12,47,0.6)' }}
                                     >
                                         {g.code}
                                     </span>
@@ -474,8 +434,8 @@ export default function DocumentsIndex({
                                     <span
                                         className="ms-1 rounded-full px-1.5 py-0.5 font-mono text-[10px] font-medium"
                                         style={{
-                                            background: isActive ? 'rgba(255,255,255,0.2)' : '#FAF7F2',
-                                            color: isActive ? '#fff' : '#8A8580',
+                                            background: isActive ? 'rgba(255,255,255,0.2)' : '#F5F7FA',
+                                            color: isActive ? '#fff' : '#5B6474',
                                         }}
                                     >
                                         {formatNumber(groupCounts[g.code])}
@@ -485,7 +445,7 @@ export default function DocumentsIndex({
                         );
                     })}
                     {activeFilterCount > 0 && (
-                        <span className="ms-auto inline-flex items-center gap-2 whitespace-nowrap text-xs text-[#8A8580]">
+                        <span className="ms-auto inline-flex items-center gap-2 whitespace-nowrap text-xs text-[#5B6474]">
                             <span className="font-mono">{activeFilterCount} filter aktif</span>
                             <Button type="link" size="small" onClick={resetFilters} className="p-0">
                                 Reset
@@ -493,7 +453,7 @@ export default function DocumentsIndex({
                         </span>
                     )}
                 </div>
-                <div className="my-3.5 h-px" style={{ background: 'rgba(231,225,217,0.6)' }} />
+                <div className="my-3.5 h-px" style={{ background: 'rgba(227,232,240,0.6)' }} />
                 <form onSubmit={apply} className="flex flex-wrap items-center gap-2">
                     <Input.Search
                         value={search}
@@ -555,17 +515,17 @@ export default function DocumentsIndex({
             <section>
                 {documents.data.length > 0 && (
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                        <p className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-[#8A8580]">
+                        <p className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-[#5B6474]">
                             {formatNumber(documents.total)} dokumen ditemukan
                             {documents.last_page > 1 &&
                                 ` · halaman ${documents.current_page} / ${documents.last_page}`}
                         </p>
-                        <p className="flex items-center gap-3 text-[11px] text-[#8A8580]">
+                        <p className="flex items-center gap-3 text-[11px] text-[#5B6474]">
                             <span className="flex items-center gap-1.5">
                                 <span
                                     aria-hidden="true"
                                     className="h-3 w-[3px] rounded-full"
-                                    style={{ background: '#D99A2B' }}
+                                    style={{ background: '#B45309' }}
                                 />
                                 ≤ 30 hari
                             </span>
@@ -573,7 +533,7 @@ export default function DocumentsIndex({
                                 <span
                                     aria-hidden="true"
                                     className="h-3 w-[3px] rounded-full"
-                                    style={{ background: '#C1121F' }}
+                                    style={{ background: '#BA0C2F' }}
                                 />
                                 kedaluwarsa
                             </span>
@@ -582,14 +542,14 @@ export default function DocumentsIndex({
                 )}
 
                 {documents.data.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-[#E7E1D9] bg-[#FAF7F2]/40 px-6 py-16 text-center">
-                        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-white text-[#8A8580] shadow-sm ring-1 ring-inset ring-[#E7E1D9]">
+                    <div className="rounded-2xl border border-dashed border-[#E3E8F0] bg-[#F5F7FA]/40 px-6 py-16 text-center">
+                        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-white text-[#5B6474] shadow-sm ring-1 ring-inset ring-[#E3E8F0]">
                             <FileStack size={20} />
                         </span>
-                        <p className="mt-4 text-sm font-semibold text-[#1C1B1A]">
+                        <p className="mt-4 text-sm font-semibold text-[#111827]">
                             Tidak ada dokumen cocok
                         </p>
-                        <p className="mt-1 text-xs text-[#8A8580]">
+                        <p className="mt-1 text-xs text-[#5B6474]">
                             Ubah filter atau unggah dokumen baru.
                         </p>
                         {canCreate && (
@@ -607,7 +567,7 @@ export default function DocumentsIndex({
                         rowKey="id"
                         pagination={false}
                         scroll={{ x: 800 }}
-                        className="rounded-2xl border border-[#E7E1D9] bg-white shadow-[0_20px_44px_-32px_rgba(28,27,26,0.4)]"
+                        className="rounded-2xl border border-[#E3E8F0] bg-white shadow-[0_20px_44px_-32px_rgba(17,24,39,0.4)]"
                         size="middle"
                         onRow={(record) => ({
                             id: `record-doc-${record.id}`,
@@ -617,13 +577,13 @@ export default function DocumentsIndex({
 
                 {documents.last_page > 1 && (
                     <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <p className="text-xs text-[#8A8580]">
+                        <p className="text-xs text-[#5B6474]">
                             Menampilkan{' '}
-                            <span className="font-mono font-semibold text-[#1C1B1A]">
+                            <span className="font-mono font-semibold text-[#111827]">
                                 {documents.from}–{documents.to}
                             </span>{' '}
                             dari{' '}
-                            <span className="font-mono font-semibold text-[#1C1B1A]">
+                            <span className="font-mono font-semibold text-[#111827]">
                                 {formatNumber(documents.total)}
                             </span>{' '}
                             dokumen
@@ -638,7 +598,7 @@ export default function DocumentsIndex({
                             >
                                 Sebelumnya
                             </Button>
-                            <span className="rounded-lg bg-[#FAF7F2] px-3 py-1.5 font-mono text-xs font-medium text-[#8A8580]">
+                            <span className="rounded-lg bg-[#F5F7FA] px-3 py-1.5 font-mono text-xs font-medium text-[#5B6474]">
                                 {documents.current_page} / {documents.last_page}
                             </span>
                             <Button
@@ -668,14 +628,14 @@ export default function DocumentsIndex({
                         });
                     }}
                 >
-                    <div className="border-b border-[#E7E1D9] px-6 py-5">
-                        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#8A8580]">
+                    <div className="border-b border-[#E3E8F0] px-6 py-5">
+                        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#5B6474]">
                             Surat Keluar
                         </p>
-                        <h2 className="mt-1 text-lg font-semibold tracking-tight text-[#1C1B1A]">
+                        <h2 className="mt-1 text-lg font-semibold tracking-tight text-[#111827]">
                             Terbitkan Surat Umum
                         </h2>
-                        <p className="mt-1.5 text-xs leading-relaxed text-[#8A8580]">
+                        <p className="mt-1.5 text-xs leading-relaxed text-[#5B6474]">
                             Nomor surat dibuat otomatis mengikuti pola{' '}
                             {'{seq}/BT/{bulan romawi}/{tahun}'}. PDF berkop PT Bunga Teratai
                             diarsipkan otomatis ke register.
@@ -684,8 +644,8 @@ export default function DocumentsIndex({
                     <div className="p-6">
                         <Row gutter={16}>
                             <Col span={24}>
-                                <label className="block font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[#8A8580]">
-                                    Kepada Yth. <span className="text-[#C1121F]">*</span>
+                                <label className="block font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[#5B6474]">
+                                    Kepada Yth. <span className="text-[#BA0C2F]">*</span>
                                 </label>
                                 <Input
                                     value={letterForm.data.to}
@@ -695,8 +655,8 @@ export default function DocumentsIndex({
                                 />
                             </Col>
                             <Col span={24}>
-                                <label className="mt-4 block font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[#8A8580]">
-                                    Perihal / Subjek <span className="text-[#C1121F]">*</span>
+                                <label className="mt-4 block font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[#5B6474]">
+                                    Perihal / Subjek <span className="text-[#BA0C2F]">*</span>
                                 </label>
                                 <Input
                                     value={letterForm.data.subject}
@@ -706,7 +666,7 @@ export default function DocumentsIndex({
                                 />
                             </Col>
                             <Col span={12}>
-                                <label className="mt-4 block font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[#8A8580]">
+                                <label className="mt-4 block font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[#5B6474]">
                                     Tanggal
                                 </label>
                                 <Input
@@ -717,7 +677,7 @@ export default function DocumentsIndex({
                                 />
                             </Col>
                             <Col span={12}>
-                                <label className="mt-4 block font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[#8A8580]">
+                                <label className="mt-4 block font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[#5B6474]">
                                     Penandatangan
                                 </label>
                                 <Input
@@ -728,8 +688,8 @@ export default function DocumentsIndex({
                                 />
                             </Col>
                             <Col span={24}>
-                                <label className="mt-4 block font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[#8A8580]">
-                                    Isi Surat <span className="text-[#C1121F]">*</span>
+                                <label className="mt-4 block font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[#5B6474]">
+                                    Isi Surat <span className="text-[#BA0C2F]">*</span>
                                 </label>
                                 <Input.TextArea
                                     rows={6}
@@ -739,14 +699,14 @@ export default function DocumentsIndex({
                                     className="mt-1"
                                 />
                                 {letterForm.errors.body && (
-                                    <p className="mt-1 text-xs text-[#C1121F]">
+                                    <p className="mt-1 text-xs text-[#BA0C2F]">
                                         {letterForm.errors.body}
                                     </p>
                                 )}
                             </Col>
                         </Row>
                     </div>
-                    <div className="flex flex-col-reverse gap-2 border-t border-[#E7E1D9] bg-[#FAF7F2]/50 px-6 py-4 sm:flex-row sm:justify-end">
+                    <div className="flex flex-col-reverse gap-2 border-t border-[#E3E8F0] bg-[#F5F7FA]/50 px-6 py-4 sm:flex-row sm:justify-end">
                         <Button onClick={() => setLetterOpen(false)}>Batal</Button>
                         <Button
                             type="primary"

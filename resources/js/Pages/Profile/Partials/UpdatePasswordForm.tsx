@@ -4,11 +4,11 @@ import { FormEventHandler, useRef } from 'react';
 import { Input } from 'antd';
 
 const FormLabel = ({ children }: { children: React.ReactNode }) => (
-    <label className="mb-1 block text-sm font-medium text-[#1C1B1A]">{children}</label>
+    <label className="mb-1 block text-sm font-medium text-[#111827]">{children}</label>
 );
 
 const FormError = ({ message }: { message?: string }) =>
-    message ? <div className="mt-1 text-xs text-[#C1121F]">{message}</div> : null;
+    message ? <div className="mt-1 text-xs text-[#BA0C2F]">{message}</div> : null;
 
 export default function UpdatePasswordForm({
     className = '',
@@ -55,11 +55,11 @@ export default function UpdatePasswordForm({
     return (
         <section className={className}>
             <header>
-                <h2 className="text-lg font-medium text-[#1C1B1A]">
+                <h2 className="text-lg font-medium text-[#111827]">
                     Update Password
                 </h2>
 
-                <p className="mt-1 text-sm text-[#8A8580]">
+                <p className="mt-1 text-sm text-[#5B6474]">
                     Ensure your account is using a long, random password to stay
                     secure.
                 </p>
@@ -104,7 +104,7 @@ export default function UpdatePasswordForm({
                     <PrimaryButton disabled={processing}>Save</PrimaryButton>
 
                     {recentlySuccessful && (
-                        <p className="text-sm text-[#8A8580]">Saved.</p>
+                        <p className="text-sm text-[#5B6474]">Saved.</p>
                     )}
                 </div>
             </form>

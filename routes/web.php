@@ -46,6 +46,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/dokumen/{document}/reject', [DocumentController::class, 'reject'])->name('documents.reject');
     Route::post('/dokumen/{document}/versions', [DocumentController::class, 'storeVersion'])->name('documents.versions');
     Route::get('/dokumen/{document}/download/{version?}', [DocumentController::class, 'download'])->name('documents.download');
+    Route::get('/dokumen/{document}/preview/{version?}', [DocumentController::class, 'preview'])->name('documents.preview');
     Route::post('/dokumen/{document}/archive', [DocumentController::class, 'archive'])->name('documents.archive');
     Route::post('/dokumen/{document}/void', [DocumentController::class, 'void'])->name('documents.void');
 
@@ -235,6 +236,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/api/sync/pack/{vessel}', [\App\Http\Controllers\Api\SyncController::class, 'pack'])->name('sync.pack');
     Route::get('/api/sync/conflicts', [\App\Http\Controllers\Api\SyncController::class, 'conflicts'])->name('sync.conflicts');
     Route::post('/api/sync/conflicts/{conflict}/resolve', [\App\Http\Controllers\Api\SyncController::class, 'resolveConflict'])->name('sync.conflicts.resolve');
+
+// AIS (Automatic Identification System) - mock data untuk prototype
+Route::get('/api/ais/radius', [\App\Http\Controllers\Api\AisController::class, 'radius'])->name('ais.radius');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

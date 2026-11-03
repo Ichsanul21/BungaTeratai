@@ -217,3 +217,29 @@ export function formatPriceInput(value: string | number | null | undefined): str
 export function parsePriceInput(value: string | number | null | undefined): string {
     return parseNumericInput(value, 2);
 }
+
+/**
+ * Jarak waktu relatif dalam bahasa Indonesia ("8 jam 18 menit lalu").
+ * Dipakai untuk label "Received" pada popup AIS.
+ */
+export function relativeTimeId(value: string | null | undefined, now: number = Date.now()): string {
+    if (!value) return '—';
+    const time = new Date(String(value).replace(' ', 'T')).getTime();
+    if (Number.isNaN(time)) return '—';
+
+    const diffMs = Math.max(0, now - time);
+    const minutes = Math.floor(diffMs / 60_000);
+
+    if (minutes < 1) return 'baru saja';
+    if (minutes < 60) return `${minutes} menit lalu`;
+
+    const hours = Math.floor(minutes / 60);
+    const restMinutes = minutes % 60;
+    if (hours < 24) {
+        return restMinutes > 0 ? `${hours} jam ${restMinutes} menit lalu` : `${hours} jam lalu`;
+    }
+
+    const days = Math.floor(hours / 24);
+    const restHours = hours % 24;
+    return restHours > 0 ? `${days} hari ${restHours} jam lalu` : `${days} hari lalu`;
+}

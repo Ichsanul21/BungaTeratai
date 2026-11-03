@@ -55,10 +55,10 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_DOT_COLORS: Record<string, string> = {
-    aktif: '#2F8F68',
-    dalam_perbaikan: '#D4A96A',
-    dock: '#EFE3D3',
-    mangkrak: '#EFE3D3',
+    aktif: '#15803D',
+    dalam_perbaikan: '#00205B',
+    dock: '#FFFFFF',
+    mangkrak: '#FFFFFF',
 };
 
 const VERIF_TONES: Record<string, BadgeTone> = {
@@ -120,14 +120,14 @@ function HeroMetric({
     gold?: boolean;
 }) {
     return (
-        <div className="min-w-0 rounded-xl border border-[#E7E1D9] bg-[#FAF7F2] p-4">
-            <p className="truncate font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#8A8580]">
+        <div className="min-w-0 rounded-xl border border-[#E3E8F0] bg-[#F5F7FA] p-4">
+            <p className="truncate font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#5B6474]">
                 {label}
             </p>
-            <p className="mt-2 text-2xl font-semibold tabular-nums tracking-tight" style={{ color: gold ? '#D4A96A' : '#1C1B1A' }}>
+            <p className="mt-2 text-2xl font-semibold tabular-nums tracking-tight" style={{ color: gold ? '#00205B' : '#111827' }}>
                 {value}
             </p>
-            <p className="mt-2 truncate text-[11px] text-[#8A8580]">{sub}</p>
+            <p className="mt-2 truncate text-[11px] text-[#5B6474]">{sub}</p>
         </div>
     );
 }
@@ -135,12 +135,12 @@ function HeroMetric({
 function RingGauge({ percent }: { percent: number }) {
     const clamped = Math.min(100, Math.max(0, percent));
     const circumference = 2 * Math.PI * 15.5;
-    const strokeColor = clamped >= 90 ? '#2F8F68' : clamped >= 70 ? '#D99A2B' : '#C1121F';
-    const textColor = clamped >= 90 ? '#2F8F68' : clamped >= 70 ? '#D99A2B' : '#C1121F';
+    const strokeColor = clamped >= 90 ? '#15803D' : clamped >= 70 ? '#B45309' : '#BA0C2F';
+    const textColor = clamped >= 90 ? '#15803D' : clamped >= 70 ? '#B45309' : '#BA0C2F';
     return (
         <div className="relative h-28 w-28 shrink-0">
             <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90" aria-hidden="true">
-                <circle cx="18" cy="18" r="15.5" fill="none" strokeWidth="4" stroke="#E7E1D9" />
+                <circle cx="18" cy="18" r="15.5" fill="none" strokeWidth="4" stroke="#E3E8F0" />
                 <circle
                     cx="18"
                     cy="18"
@@ -157,7 +157,7 @@ function RingGauge({ percent }: { percent: number }) {
                 <span className="font-mono text-xl font-semibold tabular-nums" style={{ color: textColor }}>
                     {formatNumber(clamped, 1)}%
                 </span>
-                <span className="mt-0.5 font-mono text-[9px] font-medium uppercase tracking-[0.14em]" style={{ color: '#8A8580' }}>
+                <span className="mt-0.5 font-mono text-[9px] font-medium uppercase tracking-[0.14em]" style={{ color: '#5B6474' }}>
                     Lengkap
                 </span>
             </div>
@@ -314,7 +314,7 @@ export default function FleetShow({
             `}</style>
 
             <section
-                className="bt-anim relative mb-6 overflow-hidden rounded-2xl border border-[#E7E1D9] bg-white shadow-[0_1px_3px_rgba(28,27,26,0.04),0_8px_24px_-8px_rgba(28,27,26,0.06)]"
+                className="bt-anim relative mb-6 overflow-hidden rounded-2xl border border-[#E3E8F0] bg-white shadow-[0_1px_3px_rgba(17,24,39,0.04),0_8px_24px_-8px_rgba(17,24,39,0.06)]"
                 style={{
                     animation: `bt-rise 0.55s ${EASE} both`,
                 }}
@@ -327,23 +327,23 @@ export default function FleetShow({
                     <div className="min-w-0 max-w-2xl">
                         <Link
                             href="/armada"
-                            className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium uppercase tracking-[0.2em] text-[#8A8580] transition-colors hover:text-[#C1121F]"
+                            className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium uppercase tracking-[0.2em] text-[#5B6474] transition-colors hover:text-[#BA0C2F]"
                         >
                             <ArrowLeft size={13} aria-hidden="true" />
                             Registry Armada
                         </Link>
-                        <p className="mt-3 flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-[#8A8580]">
+                        <p className="mt-3 flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-[#5B6474]">
                             <span
                                 aria-hidden="true"
                                 className="bt-anim h-2 w-2 rounded-full"
-                                style={{ background: '#D4A96A', animation: 'bt-pulse-dot 2.4s ease-in-out infinite' }}
+                                style={{ background: '#00205B', animation: 'bt-pulse-dot 2.4s ease-in-out infinite' }}
                             />
                             Detail Kapal
                         </p>
-                        <h1 className="mt-3 text-2xl font-semibold tracking-tight text-[#1C1B1A] sm:text-3xl">
+                        <h1 className="mt-3 text-2xl font-semibold tracking-tight text-[#111827] sm:text-3xl">
                             {vessel.vessel_name}
                         </h1>
-                        <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[#8A8580]">
+                        <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[#5B6474]">
                             <span>
                                 {vessel.vessel_type === 'lainnya' && vessel.vessel_type_custom
                                     ? vessel.vessel_type_custom
@@ -355,8 +355,8 @@ export default function FleetShow({
                             <span>{vessel.base_location ?? 'Pangkalan belum diatur'}</span>
                         </p>
                         <p className="mt-3.5">
-                            <span className="inline-flex items-center gap-2 rounded-full border border-[#E7E1D9] bg-[#FAF7F2] px-3 py-1 text-xs font-semibold text-[#1C1B1A]">
-                                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: STATUS_DOT_COLORS[vessel.operational_status] ?? '#8A8580' }} />
+                            <span className="inline-flex items-center gap-2 rounded-full border border-[#E3E8F0] bg-[#F5F7FA] px-3 py-1 text-xs font-semibold text-[#111827]">
+                                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: STATUS_DOT_COLORS[vessel.operational_status] ?? '#5B6474' }} />
                                 {STATUS_LABELS[vessel.operational_status] ?? vessel.operational_status}
                             </span>
                         </p>
@@ -366,7 +366,7 @@ export default function FleetShow({
                         {canEdit && (
                             <Link
                                 href={`/armada/${vessel.id}/edit`}
-                                className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#C1121F] px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-[#A00F19]"
+                                className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#BA0C2F] px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-[#8E0924]"
                             >
                                 <Edit size={16} aria-hidden="true" />
                                 Edit Data
@@ -375,7 +375,7 @@ export default function FleetShow({
                     </div>
                 </div>
 
-                <div className="relative grid grid-cols-2 gap-3 border-t border-[#E7E1D9] p-6 pt-5 sm:gap-4 lg:grid-cols-4 lg:p-7 lg:pt-6">
+                <div className="relative grid grid-cols-2 gap-3 border-t border-[#E3E8F0] p-6 pt-5 sm:gap-4 lg:grid-cols-4 lg:p-7 lg:pt-6">
                     <HeroMetric
                         label="Kelengkapan Dokumen"
                         value={`${formatNumber(completeness.percent, 1)}%`}
@@ -394,8 +394,8 @@ export default function FleetShow({
             </section>
 
             <div
-                className="bt-anim mb-6 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-white shadow-[0_18px_40px_-30px_rgba(28,27,26,0.35)] sm:grid-cols-3 lg:grid-cols-5"
-                style={{ animation: `bt-rise 0.45s ${EASE} 70ms both`, borderColor: '#E7E1D9' }}
+                className="bt-anim mb-6 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-white shadow-[0_18px_40px_-30px_rgba(17,24,39,0.35)] sm:grid-cols-3 lg:grid-cols-5"
+                style={{ animation: `bt-rise 0.45s ${EASE} 70ms both`, borderColor: '#E3E8F0' }}
             >
                 {[
                     { label: 'Nomor Registrasi', value: vessel.registration_number ?? '-' },
@@ -404,11 +404,11 @@ export default function FleetShow({
                     { label: 'DWT', value: vessel.dwt != null ? formatNumber(vessel.dwt, 2) : '-' },
                     { label: 'Kapasitas', value: capacityLabel ?? '-', colSpan: 'col-span-2 sm:col-span-1' },
                 ].map((item, idx) => (
-                    <div key={idx} className={`border-r border-b border-[#E7E1D9] px-4 py-3.5 ${item.colSpan || ''}`}>
-                        <p className="truncate font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>
+                    <div key={idx} className={`border-r border-b border-[#E3E8F0] px-4 py-3.5 ${item.colSpan || ''}`}>
+                        <p className="truncate font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>
                             {item.label}
                         </p>
-                        <p className="mt-1 truncate font-mono text-sm font-semibold" style={{ color: '#1C1B1A' }} title={item.value}>
+                        <p className="mt-1 truncate font-mono text-sm font-semibold" style={{ color: '#111827' }} title={item.value}>
                             {item.value}
                         </p>
                     </div>
@@ -434,16 +434,16 @@ export default function FleetShow({
 
             {tab === 'overview' && (
                 <div className="bt-anim grid grid-cols-1 gap-5 xl:grid-cols-3" style={{ animation: `bt-rise 0.45s ${EASE} 150ms both` }}>
-                    <div className="rounded-2xl border bg-white p-5 shadow-[0_18px_40px_-30px_rgba(28,27,26,0.35)]" style={{ borderColor: '#E7E1D9' }}>
-                        <h2 className="text-sm font-semibold" style={{ color: '#1C1B1A' }}>Kelengkapan Dokumen</h2>
-                        <p className="mt-0.5 text-xs" style={{ color: '#8A8580' }}>Indikator internal, bukan penilaian nakhoda atau persetujuan otoritas.</p>
+                    <div className="rounded-2xl border bg-white p-5 shadow-[0_18px_40px_-30px_rgba(17,24,39,0.35)]" style={{ borderColor: '#E3E8F0' }}>
+                        <h2 className="text-sm font-semibold" style={{ color: '#111827' }}>Kelengkapan Dokumen</h2>
+                        <p className="mt-0.5 text-xs" style={{ color: '#5B6474' }}>Indikator internal, bukan penilaian nakhoda atau persetujuan otoritas.</p>
                         <div className="mt-5 flex items-center gap-5">
                             <RingGauge percent={completeness.percent} />
                             <div className="min-w-0">
-                                <p className="text-sm font-medium" style={{ color: '#1C1B1A' }}>
+                                <p className="text-sm font-medium" style={{ color: '#111827' }}>
                                     {completeness.met} dari {completeness.total} dokumen wajib terpenuhi
                                 </p>
-                                <p className="mt-1 text-xs leading-relaxed" style={{ color: '#8A8580' }}>
+                                <p className="mt-1 text-xs leading-relaxed" style={{ color: '#5B6474' }}>
                                     {completeness.missing.length > 0
                                         ? `${completeness.missing.length} dokumen belum terpenuhi. Kapal masuk ambang tindak lanjut bila kelengkapan di bawah 90%.`
                                         : 'Seluruh dokumen wajib telah terpenuhi.'}
@@ -451,51 +451,51 @@ export default function FleetShow({
                             </div>
                         </div>
                         {completeness.missing.length > 0 && (
-                            <div className="mt-5 border-t pt-4" style={{ borderColor: '#E7E1D9' }}>
-                                <p className="mb-2 font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>
+                            <div className="mt-5 border-t pt-4" style={{ borderColor: '#E3E8F0' }}>
+                                <p className="mb-2 font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>
                                     Perlu Ditindaklanjuti ({completeness.missing.length})
                                 </p>
                                 <ul className="space-y-1.5">
                                     {completeness.missing.map((m) => (
-                                        <li key={m.code} className="flex items-start justify-between gap-3 rounded-lg px-3 py-2 text-xs" style={{ background: '#FAF7F2' }}>
-                                            <span className="min-w-0" style={{ color: '#1C1B1A' }}>
-                                                <span className="font-mono font-semibold" style={{ color: '#C1121F' }}>{m.group_code}</span>
-                                                <span className="mx-1.5" style={{ color: '#8A8580' }} aria-hidden="true">·</span>
+                                        <li key={m.code} className="flex items-start justify-between gap-3 rounded-lg px-3 py-2 text-xs" style={{ background: '#F5F7FA' }}>
+                                            <span className="min-w-0" style={{ color: '#111827' }}>
+                                                <span className="font-mono font-semibold" style={{ color: '#BA0C2F' }}>{m.group_code}</span>
+                                                <span className="mx-1.5" style={{ color: '#5B6474' }} aria-hidden="true">·</span>
                                                 {m.name}
                                             </span>
-                                            <span className="shrink-0 font-medium" style={{ color: '#C1121F' }}>{m.reason}</span>
+                                            <span className="shrink-0 font-medium" style={{ color: '#BA0C2F' }}>{m.reason}</span>
                                         </li>
                                     ))}
                                 </ul>
                             </div>
                         )}
-                        <Link href="/dokumen" className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold transition-colors duration-150 hover:underline" style={{ color: '#C1121F' }}>
+                        <Link href="/dokumen" className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold transition-colors duration-150 hover:underline" style={{ color: '#BA0C2F' }}>
                             Kelola di Document Center
                             <ChevronRight size={13} aria-hidden="true" />
                         </Link>
                     </div>
 
-                    <div className="rounded-2xl border bg-white p-5 shadow-[0_18px_40px_-30px_rgba(28,27,26,0.35)] xl:col-span-2" style={{ borderColor: '#E7E1D9' }}>
-                        <h2 className="text-sm font-semibold" style={{ color: '#1C1B1A' }}>Identitas & Spesifikasi</h2>
-                        <p className="mt-0.5 text-xs" style={{ color: '#8A8580' }}>Data registri teknis dan administrasi kapal.</p>
+                    <div className="rounded-2xl border bg-white p-5 shadow-[0_18px_40px_-30px_rgba(17,24,39,0.35)] xl:col-span-2" style={{ borderColor: '#E3E8F0' }}>
+                        <h2 className="text-sm font-semibold" style={{ color: '#111827' }}>Identitas & Spesifikasi</h2>
+                        <p className="mt-0.5 text-xs" style={{ color: '#5B6474' }}>Data registri teknis dan administrasi kapal.</p>
                         <div className="mt-5 grid grid-cols-1 gap-x-8 gap-y-6 md:grid-cols-2 2xl:grid-cols-3">
                             <div>
-                                <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#C1121F' }}>Identifikasi & Komunikasi</h3>
+                                <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#BA0C2F' }}>Identifikasi & Komunikasi</h3>
                                 <dl className="mt-3 space-y-3">
                                     {[
                                         { label: 'IMO', value: vessel.imo },
                                         { label: 'MMSI', value: vessel.mmsi },
                                         { label: 'Call Sign', value: vessel.call_sign },
                                     ].map((item) => (
-                                        <div key={item.label} className="flex items-baseline justify-between gap-4 border-b border-dashed pb-2" style={{ borderColor: 'rgba(231,225,217,0.8)' }}>
-                                            <dt className="shrink-0 text-xs font-medium" style={{ color: '#8A8580' }}>{item.label}</dt>
-                                            <dd className="min-w-0 text-right text-[13px] font-medium font-mono" style={{ color: '#1C1B1A' }}>{item.value ?? '-'}</dd>
+                                        <div key={item.label} className="flex items-baseline justify-between gap-4 border-b border-dashed pb-2" style={{ borderColor: 'rgba(227,232,240,0.8)' }}>
+                                            <dt className="shrink-0 text-xs font-medium" style={{ color: '#5B6474' }}>{item.label}</dt>
+                                            <dd className="min-w-0 text-right text-[13px] font-medium font-mono" style={{ color: '#111827' }}>{item.value ?? '-'}</dd>
                                         </div>
                                     ))}
                                 </dl>
                             </div>
                             <div>
-                                <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#C1121F' }}>Dimensi & Mesin</h3>
+                                <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#BA0C2F' }}>Dimensi & Mesin</h3>
                                 <dl className="mt-3 space-y-3">
                                     {[
                                         { label: 'Panjang (LOA)', value: vessel.length_m ? `${formatNumber(vessel.length_m, 2)} m` : null, mono: true },
@@ -504,51 +504,51 @@ export default function FleetShow({
                                         { label: 'Bahan Bakar', value: vessel.fuel_spec, mono: false },
                                         { label: 'Baseline BBM', value: vessel.fuel_baseline_lph ? `${formatNumber(vessel.fuel_baseline_lph, 1)} L/jam` : null, mono: true },
                                     ].map((item) => (
-                                        <div key={item.label} className="flex items-baseline justify-between gap-4 border-b border-dashed pb-2" style={{ borderColor: 'rgba(231,225,217,0.8)' }}>
-                                            <dt className="shrink-0 text-xs font-medium" style={{ color: '#8A8580' }}>{item.label}</dt>
-                                            <dd className={`min-w-0 text-right text-[13px] font-medium ${item.mono ? 'font-mono' : ''}`} style={{ color: '#1C1B1A' }}>{item.value ?? '-'}</dd>
+                                        <div key={item.label} className="flex items-baseline justify-between gap-4 border-b border-dashed pb-2" style={{ borderColor: 'rgba(227,232,240,0.8)' }}>
+                                            <dt className="shrink-0 text-xs font-medium" style={{ color: '#5B6474' }}>{item.label}</dt>
+                                            <dd className={`min-w-0 text-right text-[13px] font-medium ${item.mono ? 'font-mono' : ''}`} style={{ color: '#111827' }}>{item.value ?? '-'}</dd>
                                         </div>
                                     ))}
                                 </dl>
                             </div>
                             <div>
-                                <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#C1121F' }}>Administrasi</h3>
+                                <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#BA0C2F' }}>Administrasi</h3>
                                 <dl className="mt-3 space-y-3">
                                     {[
                                         { label: 'Pemilik', value: vessel.owner, mono: false },
                                         { label: 'Operator', value: vessel.operator, mono: false },
                                         { label: 'Terdaftar Sejak', value: vessel.created_at ? formatDate(vessel.created_at) : null, mono: true },
                                     ].map((item) => (
-                                        <div key={item.label} className="flex items-baseline justify-between gap-4 border-b border-dashed pb-2" style={{ borderColor: 'rgba(231,225,217,0.8)' }}>
-                                            <dt className="shrink-0 text-xs font-medium" style={{ color: '#8A8580' }}>{item.label}</dt>
-                                            <dd className={`min-w-0 text-right text-[13px] font-medium ${item.mono ? 'font-mono' : ''}`} style={{ color: '#1C1B1A' }}>{item.value ?? '-'}</dd>
+                                        <div key={item.label} className="flex items-baseline justify-between gap-4 border-b border-dashed pb-2" style={{ borderColor: 'rgba(227,232,240,0.8)' }}>
+                                            <dt className="shrink-0 text-xs font-medium" style={{ color: '#5B6474' }}>{item.label}</dt>
+                                            <dd className={`min-w-0 text-right text-[13px] font-medium ${item.mono ? 'font-mono' : ''}`} style={{ color: '#111827' }}>{item.value ?? '-'}</dd>
                                         </div>
                                     ))}
                                 </dl>
                             </div>
                         </div>
                         {vessel.notes && (
-                            <div className="mt-5 rounded-lg border-l-2 px-3.5 py-2.5 text-xs leading-relaxed" style={{ borderColor: '#C1121F', background: '#FAF7F2', color: '#8A8580' }}>
-                                <span className="font-semibold" style={{ color: '#1C1B1A' }}>Catatan: </span>
+                            <div className="mt-5 rounded-lg border-l-2 px-3.5 py-2.5 text-xs leading-relaxed" style={{ borderColor: '#BA0C2F', background: '#F5F7FA', color: '#5B6474' }}>
+                                <span className="font-semibold" style={{ color: '#111827' }}>Catatan: </span>
                                 {vessel.notes}
                             </div>
                         )}
-                        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border px-3.5 py-2.5 text-xs" style={{ borderColor: '#E7E1D9', color: '#8A8580' }}>
-                            <MapPin size={14} aria-hidden="true" style={{ color: '#C1121F' }} />
-                            <span className="font-semibold" style={{ color: '#1C1B1A' }}>Posisi terakhir</span>
+                        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border px-3.5 py-2.5 text-xs" style={{ borderColor: '#E3E8F0', color: '#5B6474' }}>
+                            <MapPin size={14} aria-hidden="true" style={{ color: '#BA0C2F' }} />
+                            <span className="font-semibold" style={{ color: '#111827' }}>Posisi terakhir</span>
                             <span className="font-mono">{vessel.last_lat ?? '-'}, {vessel.last_lng ?? '-'}</span>
                             {pos && (
                                 <>
                                     <span aria-hidden="true">·</span>
                                     <span className="inline-flex items-center gap-1.5">
-                                        <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: pos.fresh ? '#2F8F68' : '#8A8580' }} />
+                                        <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: pos.fresh ? '#15803D' : '#5B6474' }} />
                                         {pos.label}
                                     </span>
                                     <span aria-hidden="true">·</span>
                                     <span>{formatDateTime(vessel.last_position_at)}</span>
                                 </>
                             )}
-                            <span className="ms-auto rounded px-1.5 py-0.5 font-medium" style={{ background: 'rgba(217,154,43,0.1)', color: '#D99A2B' }}>SIMULASI</span>
+                            <span className="ms-auto rounded px-1.5 py-0.5 font-medium" style={{ background: 'rgba(180,83,9,0.1)', color: '#B45309' }}>SIMULASI</span>
                         </div>
                     </div>
                 </div>
@@ -556,72 +556,72 @@ export default function FleetShow({
 
             {tab === 'dokumen' && (
                 <section className="bt-anim" style={{ animation: `bt-rise 0.45s ${EASE} 150ms both` }}>
-                    <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-white px-4 py-3" style={{ borderColor: '#E7E1D9' }}>
-                        <div className="text-sm" style={{ color: '#8A8580' }}>
-                            <span className="font-medium" style={{ color: '#1C1B1A' }}>Berkas Offline (PSC):</span> manifest dokumen aktif + masa berlaku + checksum — diunduh sebelum berlayar agar bisa ditunjukkan saat inspeksi tanpa internet.
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-white px-4 py-3" style={{ borderColor: '#E3E8F0' }}>
+                        <div className="text-sm" style={{ color: '#5B6474' }}>
+                            <span className="font-medium" style={{ color: '#111827' }}>Berkas Offline (PSC):</span> manifest dokumen aktif + masa berlaku + checksum — diunduh sebelum berlayar agar bisa ditunjukkan saat inspeksi tanpa internet.
                         </div>
                         <div className="flex items-center gap-3">
-                            {packMsg && <span className="text-xs font-medium" style={{ color: '#2F8F68' }}>{packMsg}</span>}
+                            {packMsg && <span className="text-xs font-medium" style={{ color: '#15803D' }}>{packMsg}</span>}
                             <Button onClick={() => void downloadOfflinePack()} loading={packBusy} icon={<Download size={13} />}>
                                 {packBusy ? 'Menyiapkan…' : 'Unduh Berkas Offline'}
                             </Button>
                         </div>
                     </div>
-                    <div className="overflow-hidden rounded-2xl border bg-white shadow-[0_20px_44px_-32px_rgba(28,27,26,0.4)]" style={{ borderColor: '#E7E1D9' }}>
+                    <div className="overflow-hidden rounded-2xl border bg-white shadow-[0_20px_44px_-32px_rgba(17,24,39,0.4)]" style={{ borderColor: '#E3E8F0' }}>
                         {documents.length === 0 ? (
-                            <div className="px-6 py-12 text-center" style={{ background: 'rgba(250,247,242,0.4)' }}>
+                            <div className="px-6 py-12 text-center" style={{ background: 'rgba(245,247,250,0.4)' }}>
                                 <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm">
-                                    <FileStack size={20} aria-hidden="true" style={{ color: '#8A8580' }} />
+                                    <FileStack size={20} aria-hidden="true" style={{ color: '#5B6474' }} />
                                 </span>
-                                <p className="mt-4 text-sm font-semibold" style={{ color: '#1C1B1A' }}>Belum ada dokumen kapal</p>
-                                <p className="mt-1 text-xs" style={{ color: '#8A8580' }}>Unggah dokumen identitas dan sertifikat kapal di Document Center.</p>
-                                <Link href="/dokumen/create" className="mt-5 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90" style={{ background: '#C1121F' }}>
+                                <p className="mt-4 text-sm font-semibold" style={{ color: '#111827' }}>Belum ada dokumen kapal</p>
+                                <p className="mt-1 text-xs" style={{ color: '#5B6474' }}>Unggah dokumen identitas dan sertifikat kapal di Document Center.</p>
+                                <Link href="/dokumen/create" className="mt-5 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90" style={{ background: '#BA0C2F' }}>
                                     Unggah Dokumen
                                 </Link>
                             </div>
                         ) : (
                             <table className="w-full" style={{ minWidth: '52rem' }}>
                                 <thead>
-                                    <tr className="border-b" style={{ borderColor: '#E7E1D9', background: 'rgba(250,247,242,0.7)' }}>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Dokumen</th>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Grup</th>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Kategori</th>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Nomor</th>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Berlaku s/d</th>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Status</th>
+                                    <tr className="border-b" style={{ borderColor: '#E3E8F0', background: 'rgba(245,247,250,0.7)' }}>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Dokumen</th>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Grup</th>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Kategori</th>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Nomor</th>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Berlaku s/d</th>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {documents.map((row) => {
                                         const d = row.has_expiry ? daysUntil(row.expiry_date) : null;
-                                        const railColor = row.verification_status === 'rejected' || (d !== null && d < 0) ? '#C1121F' : row.verification_status === 'revision_required' ? '#D99A2B' : null;
+                                        const railColor = row.verification_status === 'rejected' || (d !== null && d < 0) ? '#BA0C2F' : row.verification_status === 'revision_required' ? '#B45309' : null;
                                         return (
-                                            <tr key={row.id} className="border-b transition-colors duration-150 hover:bg-[#FAF7F2]/50" style={{ borderColor: '#E7E1D9' }}>
+                                            <tr key={row.id} className="border-b transition-colors duration-150 hover:bg-[#F5F7FA]/50" style={{ borderColor: '#E3E8F0' }}>
                                                 <td className="relative px-4 py-3.5 align-middle">
                                                     {railColor && <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full" style={{ background: railColor }} />}
-                                                    <Link href={`/dokumen/${row.id}`} className="text-sm font-semibold transition-colors duration-150 hover:underline" style={{ color: '#1C1B1A' }}>
+                                                    <Link href={`/dokumen/${row.id}`} className="text-sm font-semibold transition-colors duration-150 hover:underline" style={{ color: '#111827' }}>
                                                         {row.document_name}
                                                     </Link>
                                                 </td>
                                                 <td className="px-4 py-3.5 align-middle">
-                                                    <span className="rounded px-1.5 py-0.5 font-mono text-[11px] font-semibold" style={{ background: '#FAF7F2', color: '#1E4668' }}>
+                                                    <span className="rounded px-1.5 py-0.5 font-mono text-[11px] font-semibold" style={{ background: '#F5F7FA', color: '#00205B' }}>
                                                         {row.group_code}
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3.5 align-middle">
-                                                    <span className="text-[13px]" style={{ color: '#8A8580' }}>{row.category_name}</span>
+                                                    <span className="text-[13px]" style={{ color: '#5B6474' }}>{row.category_name}</span>
                                                 </td>
                                                 <td className="px-4 py-3.5 align-middle">
-                                                    <span className="font-mono text-[13px]" style={{ color: '#1C1B1A' }}>{row.document_number ?? '-'}</span>
+                                                    <span className="font-mono text-[13px]" style={{ color: '#111827' }}>{row.document_number ?? '-'}</span>
                                                 </td>
                                                 <td className="px-4 py-3.5 align-middle">
                                                     {!row.has_expiry ? (
-                                                        <span className="text-xs" style={{ color: '#8A8580' }}>Tanpa masa berlaku</span>
+                                                        <span className="text-xs" style={{ color: '#5B6474' }}>Tanpa masa berlaku</span>
                                                     ) : (
-                                                        <span className={`text-[13px] ${d !== null && d < 0 ? 'font-semibold' : d !== null && d <= 30 ? 'font-semibold' : ''}`} style={{ color: d !== null && d < 0 ? '#C1121F' : d !== null && d <= 30 ? '#D99A2B' : '#1C1B1A' }}>
+                                                        <span className={`text-[13px] ${d !== null && d < 0 ? 'font-semibold' : d !== null && d <= 30 ? 'font-semibold' : ''}`} style={{ color: d !== null && d < 0 ? '#BA0C2F' : d !== null && d <= 30 ? '#B45309' : '#111827' }}>
                                                             {row.expiry_date}
                                                             {d !== null && (
-                                                                <span className="ms-1.5 text-xs font-normal" style={{ color: '#8A8580' }}>
+                                                                <span className="ms-1.5 text-xs font-normal" style={{ color: '#5B6474' }}>
                                                                     {d < 0 ? `lewat ${Math.abs(d)} hr` : `${d} hr lagi`}
                                                                 </span>
                                                             )}
@@ -645,41 +645,41 @@ export default function FleetShow({
 
             {tab === 'perjalanan' && (
                 <section className="bt-anim" style={{ animation: `bt-rise 0.45s ${EASE} 150ms both` }}>
-                    <div className="overflow-hidden rounded-2xl border bg-white shadow-[0_20px_44px_-32px_rgba(28,27,26,0.4)]" style={{ borderColor: '#E7E1D9' }}>
+                    <div className="overflow-hidden rounded-2xl border bg-white shadow-[0_20px_44px_-32px_rgba(17,24,39,0.4)]" style={{ borderColor: '#E3E8F0' }}>
                         {voyages.length === 0 ? (
-                            <div className="px-6 py-12 text-center" style={{ background: 'rgba(250,247,242,0.4)' }}>
+                            <div className="px-6 py-12 text-center" style={{ background: 'rgba(245,247,250,0.4)' }}>
                                 <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm">
-                                    <Anchor size={20} aria-hidden="true" style={{ color: '#8A8580' }} />
+                                    <Anchor size={20} aria-hidden="true" style={{ color: '#5B6474' }} />
                                 </span>
-                                <p className="mt-4 text-sm font-semibold" style={{ color: '#1C1B1A' }}>Belum ada riwayat perjalanan</p>
-                                <p className="mt-1 text-xs" style={{ color: '#8A8580' }}>Perjalanan kapal ini akan tampil setelah dibuat di Voyage Management.</p>
+                                <p className="mt-4 text-sm font-semibold" style={{ color: '#111827' }}>Belum ada riwayat perjalanan</p>
+                                <p className="mt-1 text-xs" style={{ color: '#5B6474' }}>Perjalanan kapal ini akan tampil setelah dibuat di Voyage Management.</p>
                             </div>
                         ) : (
                             <table className="w-full" style={{ minWidth: '40rem' }}>
                                 <thead>
-                                    <tr className="border-b" style={{ borderColor: '#E7E1D9', background: 'rgba(250,247,242,0.7)' }}>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Kode</th>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Rute</th>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Jadwal Berangkat</th>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Status</th>
+                                    <tr className="border-b" style={{ borderColor: '#E3E8F0', background: 'rgba(245,247,250,0.7)' }}>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Kode</th>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Rute</th>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Jadwal Berangkat</th>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {voyages.map((row) => {
-                                        const railColor = row.voyage_status === 'delayed' ? '#D99A2B' : row.voyage_status === 'cancelled' ? '#C1121F' : null;
+                                        const railColor = row.voyage_status === 'delayed' ? '#B45309' : row.voyage_status === 'cancelled' ? '#BA0C2F' : null;
                                         return (
-                                            <tr key={row.id} className="border-b transition-colors duration-150 hover:bg-[#FAF7F2]/50" style={{ borderColor: '#E7E1D9' }}>
+                                            <tr key={row.id} className="border-b transition-colors duration-150 hover:bg-[#F5F7FA]/50" style={{ borderColor: '#E3E8F0' }}>
                                                 <td className="relative px-4 py-3.5 align-middle">
                                                     {railColor && <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full" style={{ background: railColor }} />}
-                                                    <span className="font-mono text-[13px] font-semibold" style={{ color: '#1C1B1A' }}>{row.voyage_code}</span>
+                                                    <span className="font-mono text-[13px] font-semibold" style={{ color: '#111827' }}>{row.voyage_code}</span>
                                                 </td>
                                                 <td className="px-4 py-3.5 align-middle">
-                                                    <span className="text-[13px]" style={{ color: '#1C1B1A' }}>
-                                                        {row.origin} <span style={{ color: '#8A8580' }} aria-hidden="true">→</span> {row.destination}
+                                                    <span className="text-[13px]" style={{ color: '#111827' }}>
+                                                        {row.origin} <span style={{ color: '#5B6474' }} aria-hidden="true">→</span> {row.destination}
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3.5 align-middle">
-                                                    <span className="font-mono text-[13px]" style={{ color: '#1C1B1A' }}>{formatDateTime(row.planned_departure)}</span>
+                                                    <span className="font-mono text-[13px]" style={{ color: '#111827' }}>{formatDateTime(row.planned_departure)}</span>
                                                 </td>
                                                 <td className="px-4 py-3.5 align-middle">
                                                     <Badge tone={row.voyage_status === 'completed' ? 'success' : row.voyage_status === 'cancelled' || row.voyage_status === 'delayed' ? 'danger' : 'info'}>
@@ -698,44 +698,44 @@ export default function FleetShow({
 
             {tab === 'awak' && (
                 <section className="bt-anim" style={{ animation: `bt-rise 0.45s ${EASE} 150ms both` }}>
-                    <div className="overflow-hidden rounded-2xl border bg-white shadow-[0_20px_44px_-32px_rgba(28,27,26,0.4)]" style={{ borderColor: '#E7E1D9' }}>
+                    <div className="overflow-hidden rounded-2xl border bg-white shadow-[0_20px_44px_-32px_rgba(17,24,39,0.4)]" style={{ borderColor: '#E3E8F0' }}>
                         {crews.length === 0 ? (
-                            <div className="px-6 py-12 text-center" style={{ background: 'rgba(250,247,242,0.4)' }}>
+                            <div className="px-6 py-12 text-center" style={{ background: 'rgba(245,247,250,0.4)' }}>
                                 <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm">
-                                    <UserRound size={20} aria-hidden="true" style={{ color: '#8A8580' }} />
+                                    <UserRound size={20} aria-hidden="true" style={{ color: '#5B6474' }} />
                                 </span>
-                                <p className="mt-4 text-sm font-semibold" style={{ color: '#1C1B1A' }}>Belum ada awak ditempatkan</p>
-                                <p className="mt-1 text-xs" style={{ color: '#8A8580' }}>Penempatan ABK dikelola di menu SDM & Karyawan.</p>
+                                <p className="mt-4 text-sm font-semibold" style={{ color: '#111827' }}>Belum ada awak ditempatkan</p>
+                                <p className="mt-1 text-xs" style={{ color: '#5B6474' }}>Penempatan ABK dikelola di menu SDM & Karyawan.</p>
                             </div>
                         ) : (
                             <table className="w-full" style={{ minWidth: '48rem' }}>
                                 <thead>
-                                    <tr className="border-b" style={{ borderColor: '#E7E1D9', background: 'rgba(250,247,242,0.7)' }}>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Nama</th>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Jabatan Pelayaran</th>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Penempatan</th>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Mulai</th>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Selesai</th>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Status</th>
+                                    <tr className="border-b" style={{ borderColor: '#E3E8F0', background: 'rgba(245,247,250,0.7)' }}>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Nama</th>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Jabatan Pelayaran</th>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Penempatan</th>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Mulai</th>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Selesai</th>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {crews.map((row) => (
-                                        <tr key={row.id} className="border-b transition-colors duration-150 hover:bg-[#FAF7F2]/50" style={{ borderColor: '#E7E1D9' }}>
+                                        <tr key={row.id} className="border-b transition-colors duration-150 hover:bg-[#F5F7FA]/50" style={{ borderColor: '#E3E8F0' }}>
                                             <td className="px-4 py-3.5 align-middle">
-                                                <span className="text-sm font-semibold" style={{ color: '#1C1B1A' }}>{row.name}</span>
+                                                <span className="text-sm font-semibold" style={{ color: '#111827' }}>{row.name}</span>
                                             </td>
                                             <td className="px-4 py-3.5 align-middle">
-                                                <span className="text-[13px] capitalize" style={{ color: '#1C1B1A' }}>{row.rank?.replace('_', ' ')}</span>
+                                                <span className="text-[13px] capitalize" style={{ color: '#111827' }}>{row.rank?.replace('_', ' ')}</span>
                                             </td>
                                             <td className="px-4 py-3.5 align-middle">
-                                                <span className="text-[13px]" style={{ color: '#1C1B1A' }}>{row.role}</span>
+                                                <span className="text-[13px]" style={{ color: '#111827' }}>{row.role}</span>
                                             </td>
                                             <td className="px-4 py-3.5 align-middle">
-                                                <span className="font-mono text-[13px]" style={{ color: '#1C1B1A' }}>{formatDate(row.start_date)}</span>
+                                                <span className="font-mono text-[13px]" style={{ color: '#111827' }}>{formatDate(row.start_date)}</span>
                                             </td>
                                             <td className="px-4 py-3.5 align-middle">
-                                                <span className="font-mono text-[13px]" style={{ color: '#1C1B1A' }}>{formatDate(row.end_date)}</span>
+                                                <span className="font-mono text-[13px]" style={{ color: '#111827' }}>{formatDate(row.end_date)}</span>
                                             </td>
                                             <td className="px-4 py-3.5 align-middle">
                                                 <Badge tone={row.status === 'aktif' ? 'success' : 'neutral'}>{row.status}</Badge>
@@ -751,48 +751,48 @@ export default function FleetShow({
 
             {tab === 'pemeliharaan' && (
                 <section className="bt-anim" style={{ animation: `bt-rise 0.45s ${EASE} 150ms both` }}>
-                    <div className="overflow-hidden rounded-2xl border bg-white shadow-[0_20px_44px_-32px_rgba(28,27,26,0.4)]" style={{ borderColor: '#E7E1D9' }}>
+                    <div className="overflow-hidden rounded-2xl border bg-white shadow-[0_20px_44px_-32px_rgba(17,24,39,0.4)]" style={{ borderColor: '#E3E8F0' }}>
                         {services.length === 0 ? (
-                            <div className="px-6 py-12 text-center" style={{ background: 'rgba(250,247,242,0.4)' }}>
+                            <div className="px-6 py-12 text-center" style={{ background: 'rgba(245,247,250,0.4)' }}>
                                 <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm">
-                                    <Wrench size={20} aria-hidden="true" style={{ color: '#8A8580' }} />
+                                    <Wrench size={20} aria-hidden="true" style={{ color: '#5B6474' }} />
                                 </span>
-                                <p className="mt-4 text-sm font-semibold" style={{ color: '#1C1B1A' }}>Belum ada catatan servis</p>
-                                <p className="mt-1 text-xs" style={{ color: '#8A8580' }}>Pemeliharaan dan pemeriksaan dicatat di menu Operations.</p>
+                                <p className="mt-4 text-sm font-semibold" style={{ color: '#111827' }}>Belum ada catatan servis</p>
+                                <p className="mt-1 text-xs" style={{ color: '#5B6474' }}>Pemeliharaan dan pemeriksaan dicatat di menu Operations.</p>
                             </div>
                         ) : (
                             <table className="w-full" style={{ minWidth: '56rem' }}>
                                 <thead>
-                                    <tr className="border-b" style={{ borderColor: '#E7E1D9', background: 'rgba(250,247,242,0.7)' }}>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Servis</th>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Jenis</th>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Bengkel</th>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Mulai</th>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Selesai</th>
-                                        <th className="px-4 py-3 text-right font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Biaya</th>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Status</th>
+                                    <tr className="border-b" style={{ borderColor: '#E3E8F0', background: 'rgba(245,247,250,0.7)' }}>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Servis</th>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Jenis</th>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Bengkel</th>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Mulai</th>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Selesai</th>
+                                        <th className="px-4 py-3 text-right font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Biaya</th>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {services.map((row) => (
-                                        <tr key={row.id} className="border-b transition-colors duration-150 hover:bg-[#FAF7F2]/50" style={{ borderColor: '#E7E1D9' }}>
+                                        <tr key={row.id} className="border-b transition-colors duration-150 hover:bg-[#F5F7FA]/50" style={{ borderColor: '#E3E8F0' }}>
                                             <td className="px-4 py-3.5 align-middle">
-                                                <span className="text-sm font-semibold" style={{ color: '#1C1B1A' }}>{row.title}</span>
+                                                <span className="text-sm font-semibold" style={{ color: '#111827' }}>{row.title}</span>
                                             </td>
                                             <td className="px-4 py-3.5 align-middle">
                                                 <Badge tone={row.type === 'drydock' ? 'info' : 'neutral'}>{row.type}</Badge>
                                             </td>
                                             <td className="px-4 py-3.5 align-middle">
-                                                <span className="text-[13px]" style={{ color: '#1C1B1A' }}>{row.workshop ?? '-'}</span>
+                                                <span className="text-[13px]" style={{ color: '#111827' }}>{row.workshop ?? '-'}</span>
                                             </td>
                                             <td className="px-4 py-3.5 align-middle">
-                                                <span className="font-mono text-[13px]" style={{ color: '#1C1B1A' }}>{formatDate(row.start_date)}</span>
+                                                <span className="font-mono text-[13px]" style={{ color: '#111827' }}>{formatDate(row.start_date)}</span>
                                             </td>
                                             <td className="px-4 py-3.5 align-middle">
-                                                <span className="font-mono text-[13px]" style={{ color: '#1C1B1A' }}>{formatDate(row.end_date)}</span>
+                                                <span className="font-mono text-[13px]" style={{ color: '#111827' }}>{formatDate(row.end_date)}</span>
                                             </td>
                                             <td className="px-4 py-3.5 align-middle text-right">
-                                                <span className="font-mono text-[13px] font-semibold tabular-nums" style={{ color: '#1C1B1A' }}>{formatRupiah(row.cost)}</span>
+                                                <span className="font-mono text-[13px] font-semibold tabular-nums" style={{ color: '#111827' }}>{formatRupiah(row.cost)}</span>
                                             </td>
                                             <td className="px-4 py-3.5 align-middle">
                                                 <Badge tone={row.status === 'selesai' ? 'success' : row.status === 'proses' ? 'warning' : 'neutral'}>{row.status}</Badge>
@@ -808,50 +808,50 @@ export default function FleetShow({
 
             {tab === 'kondisi' && (
                 <div className="bt-anim grid grid-cols-1 gap-5 xl:grid-cols-2" style={{ animation: `bt-rise 0.45s ${EASE} 150ms both` }}>
-                    <div className="rounded-2xl border bg-white p-5 shadow-[0_18px_40px_-30px_rgba(28,27,26,0.35)]" style={{ borderColor: '#E7E1D9' }}>
-                        <h2 className="text-sm font-semibold" style={{ color: '#1C1B1A' }}>Riwayat Kondisi Kapal</h2>
-                        <p className="mt-0.5 text-xs" style={{ color: '#8A8580' }}>Skor ceklis pemeriksaan, skala 0 sampai 100.</p>
+                    <div className="rounded-2xl border bg-white p-5 shadow-[0_18px_40px_-30px_rgba(17,24,39,0.35)]" style={{ borderColor: '#E3E8F0' }}>
+                        <h2 className="text-sm font-semibold" style={{ color: '#111827' }}>Riwayat Kondisi Kapal</h2>
+                        <p className="mt-0.5 text-xs" style={{ color: '#5B6474' }}>Skor ceklis pemeriksaan, skala 0 sampai 100.</p>
                         {conditions.length === 0 ? (
-                            <div className="mt-5 px-6 py-12 text-center" style={{ background: 'rgba(250,247,242,0.4)' }}>
+                            <div className="mt-5 px-6 py-12 text-center" style={{ background: 'rgba(245,247,250,0.4)' }}>
                                 <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm">
-                                    <Activity size={20} aria-hidden="true" style={{ color: '#8A8580' }} />
+                                    <Activity size={20} aria-hidden="true" style={{ color: '#5B6474' }} />
                                 </span>
-                                <p className="mt-4 text-sm font-semibold" style={{ color: '#1C1B1A' }}>Belum ada pemeriksaan kondisi</p>
-                                <p className="mt-1 text-xs" style={{ color: '#8A8580' }}>Ceklis kondisi dicatat dari menu Operations.</p>
+                                <p className="mt-4 text-sm font-semibold" style={{ color: '#111827' }}>Belum ada pemeriksaan kondisi</p>
+                                <p className="mt-1 text-xs" style={{ color: '#5B6474' }}>Ceklis kondisi dicatat dari menu Operations.</p>
                             </div>
                         ) : (
                             <>
-                                <div className="mt-5 flex items-center justify-between gap-4 rounded-xl px-4 py-3.5" style={{ background: 'rgba(250,247,242,0.7)' }}>
+                                <div className="mt-5 flex items-center justify-between gap-4 rounded-xl px-4 py-3.5" style={{ background: 'rgba(245,247,250,0.7)' }}>
                                     <div>
-                                        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Skor Terakhir</p>
-                                        <p className="mt-1 font-mono text-2xl font-semibold tabular-nums" style={{ color: Number(conditions[0].score) >= 85 ? '#2F8F68' : Number(conditions[0].score) >= 70 ? '#D99A2B' : '#C1121F' }}>
+                                        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Skor Terakhir</p>
+                                        <p className="mt-1 font-mono text-2xl font-semibold tabular-nums" style={{ color: Number(conditions[0].score) >= 85 ? '#15803D' : Number(conditions[0].score) >= 70 ? '#B45309' : '#BA0C2F' }}>
                                             {formatNumber(conditions[0].score)}
-                                            <span className="text-sm font-medium" style={{ color: '#8A8580' }}> /100</span>
+                                            <span className="text-sm font-medium" style={{ color: '#5B6474' }}> /100</span>
                                         </p>
                                     </div>
                                     {conditions.length > 1 && (
                                         <div className="text-right">
-                                            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Tren</p>
+                                            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Tren</p>
                                             <Sparkline
                                                 values={[...conditions].reverse().map((c) => Number(c.score))}
-                                                color={Number(conditions[0].score) >= 85 ? '#2F8F68' : Number(conditions[0].score) >= 70 ? '#D99A2B' : '#C1121F'}
+                                                color={Number(conditions[0].score) >= 85 ? '#15803D' : Number(conditions[0].score) >= 70 ? '#B45309' : '#BA0C2F'}
                                             />
                                         </div>
                                     )}
                                 </div>
                                 <ul className="mt-4 space-y-2.5">
                                     {conditions.map((c) => (
-                                        <li key={c.id} className="rounded-xl border px-4 py-3" style={{ borderColor: '#E7E1D9' }}>
+                                        <li key={c.id} className="rounded-xl border px-4 py-3" style={{ borderColor: '#E3E8F0' }}>
                                             <div className="flex items-center justify-between gap-3">
-                                                <span className="font-mono text-[11px]" style={{ color: '#8A8580' }}>{formatDateTime(c.checked_at)}</span>
+                                                <span className="font-mono text-[11px]" style={{ color: '#5B6474' }}>{formatDateTime(c.checked_at)}</span>
                                                 <span className="rounded-full px-2 py-0.5 font-mono text-[11px] font-semibold tabular-nums" style={{
-                                                    background: Number(c.score) >= 85 ? 'rgba(47,143,104,0.1)' : Number(c.score) >= 70 ? 'rgba(217,154,43,0.1)' : 'rgba(193,18,31,0.1)',
-                                                    color: Number(c.score) >= 85 ? '#2F8F68' : Number(c.score) >= 70 ? '#D99A2B' : '#C1121F',
+                                                    background: Number(c.score) >= 85 ? 'rgba(21,128,61,0.1)' : Number(c.score) >= 70 ? 'rgba(180,83,9,0.1)' : 'rgba(186,12,47,0.1)',
+                                                    color: Number(c.score) >= 85 ? '#15803D' : Number(c.score) >= 70 ? '#B45309' : '#BA0C2F',
                                                 }}>
                                                     Skor {formatNumber(c.score)}
                                                 </span>
                                             </div>
-                                            {c.notes && <p className="mt-1.5 text-sm" style={{ color: '#1C1B1A' }}>{c.notes}</p>}
+                                            {c.notes && <p className="mt-1.5 text-sm" style={{ color: '#111827' }}>{c.notes}</p>}
                                         </li>
                                     ))}
                                 </ul>
@@ -859,41 +859,41 @@ export default function FleetShow({
                         )}
                     </div>
 
-                    <div className="rounded-2xl border bg-white p-5 shadow-[0_18px_40px_-30px_rgba(28,27,26,0.35)]" style={{ borderColor: '#E7E1D9' }}>
-                        <h2 className="text-sm font-semibold" style={{ color: '#1C1B1A' }}>Monitoring BBM</h2>
-                        <p className="mt-0.5 text-xs" style={{ color: '#8A8580' }}>Konsumsi aktual perjalanan dibandingkan baseline kapal.</p>
+                    <div className="rounded-2xl border bg-white p-5 shadow-[0_18px_40px_-30px_rgba(17,24,39,0.35)]" style={{ borderColor: '#E3E8F0' }}>
+                        <h2 className="text-sm font-semibold" style={{ color: '#111827' }}>Monitoring BBM</h2>
+                        <p className="mt-0.5 text-xs" style={{ color: '#5B6474' }}>Konsumsi aktual perjalanan dibandingkan baseline kapal.</p>
                         {fuelLogs.length === 0 ? (
-                            <div className="mt-5 px-6 py-12 text-center" style={{ background: 'rgba(250,247,242,0.4)' }}>
+                            <div className="mt-5 px-6 py-12 text-center" style={{ background: 'rgba(245,247,250,0.4)' }}>
                                 <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm">
-                                    <Fuel size={20} aria-hidden="true" style={{ color: '#8A8580' }} />
+                                    <Fuel size={20} aria-hidden="true" style={{ color: '#5B6474' }} />
                                 </span>
-                                <p className="mt-4 text-sm font-semibold" style={{ color: '#1C1B1A' }}>Belum ada trip BBM</p>
-                                <p className="mt-1 text-xs" style={{ color: '#8A8580' }}>Log trip BBM dicatat dari menu Operations.</p>
+                                <p className="mt-4 text-sm font-semibold" style={{ color: '#111827' }}>Belum ada trip BBM</p>
+                                <p className="mt-1 text-xs" style={{ color: '#5B6474' }}>Log trip BBM dicatat dari menu Operations.</p>
                             </div>
                         ) : (
                             <>
                                 <div className="mt-5 grid grid-cols-2 gap-3">
-                                    <div className="rounded-xl px-4 py-3.5" style={{ background: 'rgba(250,247,242,0.7)' }}>
-                                        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Rata-rata Konsumsi</p>
-                                        <p className="mt-1 font-mono text-2xl font-semibold tabular-nums" style={{ color: '#1C1B1A' }}>
+                                    <div className="rounded-xl px-4 py-3.5" style={{ background: 'rgba(245,247,250,0.7)' }}>
+                                        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Rata-rata Konsumsi</p>
+                                        <p className="mt-1 font-mono text-2xl font-semibold tabular-nums" style={{ color: '#111827' }}>
                                             {formatNumber(avgLph, 1)}
-                                            <span className="text-sm font-medium" style={{ color: '#8A8580' }}> L/jam</span>
+                                            <span className="text-sm font-medium" style={{ color: '#5B6474' }}> L/jam</span>
                                         </p>
-                                        <p className="mt-1 text-[11px]" style={{ color: '#8A8580' }}>
+                                        <p className="mt-1 text-[11px]" style={{ color: '#5B6474' }}>
                                             {formatNumber(totalLiters, 2)} L dalam {formatNumber(totalHours, 1)} jam
                                         </p>
                                     </div>
-                                    <div className="rounded-xl px-4 py-3.5" style={{ background: 'rgba(250,247,242,0.7)' }}>
-                                        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Baseline Kapal</p>
-                                        <p className="mt-1 font-mono text-2xl font-semibold tabular-nums" style={{ color: '#1C1B1A' }}>
+                                    <div className="rounded-xl px-4 py-3.5" style={{ background: 'rgba(245,247,250,0.7)' }}>
+                                        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Baseline Kapal</p>
+                                        <p className="mt-1 font-mono text-2xl font-semibold tabular-nums" style={{ color: '#111827' }}>
                                             {baseline != null ? (
                                                 <>
                                                     {formatNumber(baseline, 1)}
-                                                    <span className="text-sm font-medium" style={{ color: '#8A8580' }}> L/jam</span>
+                                                    <span className="text-sm font-medium" style={{ color: '#5B6474' }}> L/jam</span>
                                                 </>
                                             ) : '-'}
                                         </p>
-                                        <p className="mt-1 text-[11px] font-medium" style={{ color: baselineDiff != null && Math.abs(baselineDiff) > 10 ? '#C1121F' : '#8A8580' }}>
+                                        <p className="mt-1 text-[11px] font-medium" style={{ color: baselineDiff != null && Math.abs(baselineDiff) > 10 ? '#BA0C2F' : '#5B6474' }}>
                                             {baselineDiff != null ? `${baselineDiff > 0 ? '+' : ''}${formatNumber(baselineDiff, 1)}% dari baseline` : 'baseline belum diatur'}
                                         </p>
                                     </div>
@@ -902,22 +902,22 @@ export default function FleetShow({
                                     {fuelLogs.map((f) => {
                                         const lph = f.duration_hours > 0 ? f.liters / f.duration_hours : 0;
                                         return (
-                                            <li key={f.id} className="rounded-xl border px-4 py-3" style={{ borderColor: '#E7E1D9' }}>
+                                            <li key={f.id} className="rounded-xl border px-4 py-3" style={{ borderColor: '#E3E8F0' }}>
                                                 <div className="flex items-center justify-between gap-3">
-                                                    <p className="min-w-0 truncate text-sm font-semibold" style={{ color: '#1C1B1A' }}>{f.route}</p>
+                                                    <p className="min-w-0 truncate text-sm font-semibold" style={{ color: '#111827' }}>{f.route}</p>
                                                     <Badge tone={FUEL_TONES[f.analysis_status] ?? 'neutral'}>
                                                         {FUEL_LABELS[f.analysis_status] ?? f.analysis_status}
                                                         {` (${f.analysis_diff_pct > 0 ? '+' : ''}${formatNumber(f.analysis_diff_pct, 1)}%)`}
                                                     </Badge>
                                                 </div>
-                                                <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs" style={{ color: '#8A8580' }}>
+                                                <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs" style={{ color: '#5B6474' }}>
                                                     <span>{formatDate(f.trip_date)}</span>
                                                     <span aria-hidden="true">·</span>
                                                     <span className="font-mono">{formatNumber(f.duration_hours, 1)} jam</span>
                                                     <span aria-hidden="true">·</span>
                                                     <span className="font-mono">{formatNumber(f.liters, 2)} L</span>
                                                     <span aria-hidden="true">·</span>
-                                                    <span className="font-mono font-semibold" style={{ color: '#1C1B1A' }}>{formatNumber(lph, 1)} L/jam</span>
+                                                    <span className="font-mono font-semibold" style={{ color: '#111827' }}>{formatNumber(lph, 1)} L/jam</span>
                                                 </p>
                                             </li>
                                         );
@@ -931,38 +931,38 @@ export default function FleetShow({
 
             {tab === 'aktivitas' && (
                 <section className="bt-anim" style={{ animation: `bt-rise 0.45s ${EASE} 150ms both` }}>
-                    <div className="overflow-hidden rounded-2xl border bg-white shadow-[0_20px_44px_-32px_rgba(28,27,26,0.4)]" style={{ borderColor: '#E7E1D9' }}>
+                    <div className="overflow-hidden rounded-2xl border bg-white shadow-[0_20px_44px_-32px_rgba(17,24,39,0.4)]" style={{ borderColor: '#E3E8F0' }}>
                         {auditLogs.length === 0 ? (
-                            <div className="px-6 py-12 text-center" style={{ background: 'rgba(250,247,242,0.4)' }}>
+                            <div className="px-6 py-12 text-center" style={{ background: 'rgba(245,247,250,0.4)' }}>
                                 <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm">
-                                    <History size={20} aria-hidden="true" style={{ color: '#8A8580' }} />
+                                    <History size={20} aria-hidden="true" style={{ color: '#5B6474' }} />
                                 </span>
-                                <p className="mt-4 text-sm font-semibold" style={{ color: '#1C1B1A' }}>Belum ada aktivitas</p>
+                                <p className="mt-4 text-sm font-semibold" style={{ color: '#111827' }}>Belum ada aktivitas</p>
                             </div>
                         ) : (
                             <table className="w-full" style={{ minWidth: '44rem' }}>
                                 <thead>
-                                    <tr className="border-b" style={{ borderColor: '#E7E1D9', background: 'rgba(250,247,242,0.7)' }}>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Waktu</th>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Pengguna</th>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Aksi</th>
-                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#8A8580' }}>Ringkasan</th>
+                                    <tr className="border-b" style={{ borderColor: '#E3E8F0', background: 'rgba(245,247,250,0.7)' }}>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Waktu</th>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Pengguna</th>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Aksi</th>
+                                        <th className="px-4 py-3 text-left font-mono text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: '#5B6474' }}>Ringkasan</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {auditLogs.map((row) => (
-                                        <tr key={row.id} className="border-b transition-colors duration-150 hover:bg-[#FAF7F2]/50" style={{ borderColor: '#E7E1D9' }}>
+                                        <tr key={row.id} className="border-b transition-colors duration-150 hover:bg-[#F5F7FA]/50" style={{ borderColor: '#E3E8F0' }}>
                                             <td className="px-4 py-3.5 align-middle">
-                                                <span className="font-mono text-[13px]" style={{ color: '#1C1B1A' }}>{formatDateTime(row.timestamp)}</span>
+                                                <span className="font-mono text-[13px]" style={{ color: '#111827' }}>{formatDateTime(row.timestamp)}</span>
                                             </td>
                                             <td className="px-4 py-3.5 align-middle">
-                                                <span className="text-[13px] font-medium" style={{ color: '#1C1B1A' }}>{row.user_name ?? 'Sistem'}</span>
+                                                <span className="text-[13px] font-medium" style={{ color: '#111827' }}>{row.user_name ?? 'Sistem'}</span>
                                             </td>
                                             <td className="px-4 py-3.5 align-middle">
                                                 <Badge tone="info">{row.action}</Badge>
                                             </td>
                                             <td className="px-4 py-3.5 align-middle">
-                                                <span className="text-[13px]" style={{ color: '#8A8580' }}>{row.change_summary ?? '-'}</span>
+                                                <span className="text-[13px]" style={{ color: '#5B6474' }}>{row.change_summary ?? '-'}</span>
                                             </td>
                                         </tr>
                                     ))}

@@ -17,7 +17,7 @@ export default function Edit({
             <PageHeader title="Profile" />
 
             <div className="mx-auto max-w-7xl space-y-6">
-                <div className="rounded-xl border border-[#E7E1D9] bg-white p-6 shadow-sm">
+                <div className="rounded-xl border border-[#E3E8F0] bg-white p-6 shadow-sm">
                     <UpdateProfileInformationForm
                         mustVerifyEmail={mustVerifyEmail}
                         status={status}
@@ -25,11 +25,11 @@ export default function Edit({
                     />
                 </div>
 
-                <div className="rounded-xl border border-[#E7E1D9] bg-white p-6 shadow-sm">
+                <div className="rounded-xl border border-[#E3E8F0] bg-white p-6 shadow-sm">
                     <UpdatePasswordForm className="max-w-xl" />
                 </div>
 
-                <div className="rounded-xl border border-[#E7E1D9] bg-white p-6 shadow-sm">
+                <div className="rounded-xl border border-[#E3E8F0] bg-white p-6 shadow-sm">
                     <DeleteUserForm className="max-w-xl" />
                 </div>
             </div>

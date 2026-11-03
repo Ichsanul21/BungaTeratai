@@ -27,11 +27,11 @@ const COMMODITIES = [
 ];
 
 const FormLabel = ({ children }: { children: React.ReactNode }) => (
-    <label className="mb-1 block text-sm font-medium text-[#1C1B1A]">{children}</label>
+    <label className="mb-1 block text-sm font-medium text-[#111827]">{children}</label>
 );
 
 const FormError = ({ message }: { message?: string }) =>
-    message ? <div className="mt-1 text-xs text-[#C1121F]">{message}</div> : null;
+    message ? <div className="mt-1 text-xs text-[#BA0C2F]">{message}</div> : null;
 
 export default function VoyageForm({
     vessels,
@@ -163,7 +163,7 @@ export default function VoyageForm({
 
                 {!isPassengerVessel && (
                     <>
-                        <Divider style={{ margin: '20px 0 16px', borderColor: '#E7E1D9' }} />
+                        <Divider style={{ margin: '20px 0 16px', borderColor: '#E3E8F0' }} />
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div>
                                 <FormLabel>Tugboat (penarik)</FormLabel>
@@ -233,7 +233,7 @@ export default function VoyageForm({
 
                 {showPassenger && (
                     <>
-                        <Divider style={{ margin: '20px 0 16px', borderColor: '#E7E1D9' }} />
+                        <Divider style={{ margin: '20px 0 16px', borderColor: '#E3E8F0' }} />
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div>
                                 <FormLabel>Kapasitas (penumpang)</FormLabel>

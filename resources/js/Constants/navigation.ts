@@ -1,6 +1,5 @@
 import {
     Anchor,
-    Bell,
     BookOpen,
     Boxes,
     ClipboardCheck,
@@ -25,13 +24,6 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: [] },
-    {
-        href: '/notifikasi',
-        label: 'Notifikasi & Reminder',
-        icon: Bell,
-        roles: [],
-        badge: 'notifications',
-    },
     { href: '/dokumen', label: 'Document Center', icon: FileStack, roles: [] },
     { href: '/armada', label: 'Fleet Management', icon: Ship, roles: [] },
     { href: '/perjalanan', label: 'Voyage Management', icon: Anchor, roles: [] },

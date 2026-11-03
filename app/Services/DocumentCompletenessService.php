@@ -191,6 +191,7 @@ class DocumentCompletenessService
             return true;
         }
 
-        return $doc->expiry_date->isFuture();
+        // Dokumen masih berlaku sampai dengan tanggal kedaluwarsanya (termasuk hari ini).
+        return $doc->expiry_date->toDateString() >= now()->toDateString();
     }
 }

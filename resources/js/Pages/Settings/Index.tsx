@@ -30,11 +30,11 @@ const ROLE_LABELS: Record<string, string> = {
 const SUPPLIER_CATEGORIES = ['bengkel', 'sparepart', 'operator_lain', 'pemerintah'];
 
 const FormLabel = ({ children }: { children: React.ReactNode }) => (
-    <label className="mb-1 block text-sm font-medium text-[#1C1B1A]">{children}</label>
+    <label className="mb-1 block text-sm font-medium text-[#111827]">{children}</label>
 );
 
 const FormError = ({ message }: { message?: string }) =>
-    message ? <div className="mt-1 text-xs text-[#C1121F]">{message}</div> : null;
+    message ? <div className="mt-1 text-xs text-[#BA0C2F]">{message}</div> : null;
 
 export default function SettingsIndex({
     tab,
@@ -65,6 +65,14 @@ export default function SettingsIndex({
         { key: 'master', label: 'Master Data', icon: Briefcase },
         ...(canRbac ? [{ key: 'rbac', label: 'Hak Akses (RBAC)', icon: KeyRound }] : []),
     ];
+
+    const clusters = [
+        { key: 'akses', label: 'Akses & Pengguna', tabs: ['users', ...(canRbac ? ['rbac'] : []), 'template'] },
+        { key: 'organisasi', label: 'Organisasi', tabs: ['profil', 'reminder', 'workflow'] },
+        { key: 'master', label: 'Kategori & Master', tabs: ['kategori', 'master'] },
+    ];
+    const activeCluster = clusters.find((c) => c.tabs.includes(tab)) ?? clusters[0];
+    const clusterTabs = tabs.filter((t) => activeCluster.tabs.includes(t.key));
 
     const [modal, setModal] = useState<null | 'editUser' | 'editCustomer' | 'editSupplier' | 'editCatalog' | 'editCategory' | 'addCategory' | 'editTemplate'>(null);
     const [editUser, setEditUser] = useState<any>(null);
@@ -217,8 +225,8 @@ export default function SettingsIndex({
     };
 
     const userColumns = [
-        { title: 'Nama', dataIndex: 'name', key: 'name', render: (v: string) => <span className="font-medium text-[#1C1B1A]">{v}</span> },
-        { title: 'Email', dataIndex: 'email', key: 'email', render: (v: string) => <span className="text-[#8A8580]">{v}</span> },
+        { title: 'Nama', dataIndex: 'name', key: 'name', render: (v: string) => <span className="font-medium text-[#111827]">{v}</span> },
+        { title: 'Email', dataIndex: 'email', key: 'email', render: (v: string) => <span className="text-[#5B6474]">{v}</span> },
         {
             title: 'Role', key: 'roles', render: (_: any, r: any) => (
                 <div className="flex flex-wrap gap-1">
@@ -230,7 +238,7 @@ export default function SettingsIndex({
                 </div>
             ),
         },
-        { title: 'Dibuat', dataIndex: 'created_at', key: 'created_at', render: (v: string) => <span className="text-xs text-[#8A8580]">{formatDate(v)}</span> },
+        { title: 'Dibuat', dataIndex: 'created_at', key: 'created_at', render: (v: string) => <span className="text-xs text-[#5B6474]">{formatDate(v)}</span> },
         ...(canManageUsers ? [{
             title: 'Aksi', key: 'aksi', render: (_: any, u: any) => (
                 <div className="flex gap-2 text-xs font-medium">
@@ -241,14 +249,14 @@ export default function SettingsIndex({
                             editUserForm.setData({ name: u.name, email: u.email, password: '', role: u.roles[0] ?? 'ship_ops' });
                             setModal('editUser');
                         }}
-                        className="text-[#C1121F] hover:underline"
+                        className="text-[#BA0C2F] hover:underline"
                     >
                         Edit
                     </button>
                     <button
                         type="button"
                         onClick={() => setConfirmDel({ url: `/pengaturan/users/${u.id}`, label: `pengguna ${u.email}` })}
-                        className="text-[#C1121F] hover:underline"
+                        className="text-[#BA0C2F] hover:underline"
                     >
                         Hapus
                     </button>
@@ -258,8 +266,8 @@ export default function SettingsIndex({
     ];
 
     const categoryColumns = [
-        { title: 'Kode', dataIndex: 'code', key: 'code', render: (v: string) => <span className="font-mono text-xs text-[#1C1B1A]">{v}</span> },
-        { title: 'Nama', dataIndex: 'name', key: 'name', render: (v: string) => <span className="text-[#1C1B1A]">{v}</span> },
+        { title: 'Kode', dataIndex: 'code', key: 'code', render: (v: string) => <span className="font-mono text-xs text-[#111827]">{v}</span> },
+        { title: 'Nama', dataIndex: 'name', key: 'name', render: (v: string) => <span className="text-[#111827]">{v}</span> },
         { title: 'Kelompok', dataIndex: 'group_code', key: 'group_code', render: (v: string) => <Badge tone="info">{v}</Badge> },
         ...(canManageUsers ? [{
             title: 'Aksi', key: 'aksi', render: (_: any, c: any) => (
@@ -271,14 +279,14 @@ export default function SettingsIndex({
                             editCategoryForm.setData({ name: c.name, group_code: c.group_code, sort: String(c.sort ?? 0) });
                             setModal('editCategory');
                         }}
-                        className="text-[#C1121F] hover:underline"
+                        className="text-[#BA0C2F] hover:underline"
                     >
                         Edit
                     </button>
                     <button
                         type="button"
                         onClick={() => setConfirmDel({ url: `/pengaturan/kategori/${c.id}`, label: `kategori ${c.code} — ${c.name}` })}
-                        className="text-[#C1121F] hover:underline"
+                        className="text-[#BA0C2F] hover:underline"
                     >
                         Hapus
                     </button>
@@ -294,10 +302,39 @@ export default function SettingsIndex({
             <PageHeader
                 title="Pengaturan"
                 description="Users & roles, profil perusahaan, aturan reminder & persetujuan, kategori dokumen, dan master data."
+                metrics={[
+                    { label: 'Pengguna', value: (usersList ?? []).length, tone: 'primary', sub: 'akun terdaftar' },
+                    { label: 'Role', value: (roles ?? []).length, sub: 'grup hak akses' },
+                    { label: 'Template Nomor', value: (templates ?? []).length, tone: 'navy', sub: 'pola penomoran' },
+                    { label: 'Kategori Dokumen', value: (categories ?? []).length, sub: 'A–K + perusahaan' },
+                ]}
             />
 
+            <div className="mb-2 flex flex-wrap items-center gap-1.5">
+                {clusters.map((c) => {
+                    const active = c.key === activeCluster.key;
+                    return (
+                        <button
+                            key={c.key}
+                            type="button"
+                            onClick={() => {
+                                if (!active) {
+                                    router.get('/pengaturan', { tab: c.tabs[0] }, { preserveState: true });
+                                }
+                            }}
+                            className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors ${
+                                active
+                                    ? 'border-[#BA0C2F] bg-[#BA0C2F] text-white'
+                                    : 'border-[#E3E8F0] bg-white text-[#5B6474] hover:border-[#111827]/20 hover:text-[#111827]'
+                            }`}
+                        >
+                            {c.label}
+                        </button>
+                    );
+                })}
+            </div>
             <TabNav
-                tabs={tabs}
+                tabs={clusterTabs}
                 active={tab}
                 onChange={(key) => router.get('/pengaturan', { tab: key }, { preserveState: true })}
             />
@@ -305,7 +342,7 @@ export default function SettingsIndex({
             {tab === 'rbac' && canRbac && (
                 <div className="space-y-4">
                     <Card title="Matriks Hak Akses (RBAC)">
-                        <p className="text-sm text-[#8A8580]">
+                        <p className="text-sm text-[#5B6474]">
                             Atur role mana yang boleh <strong>melihat</strong> / <strong>CRUD</strong> tiap modul & fungsi.
                             Super Admin selalu memiliki semua izin. Perubahan langsung berlaku dan tercatat di Jejak Audit.
                         </p>
@@ -318,8 +355,8 @@ export default function SettingsIndex({
                                     onClick={() => setRbacRoleId(r.id)}
                                     className="rounded-full px-3 py-1.5 text-sm font-medium ring-1 transition"
                                     style={rbacRoleId === r.id
-                                        ? { background: '#C1121F', color: '#FFFFFF', boxShadow: '0 0 0 1px #C1121F' }
-                                        : { background: '#FAF7F2', color: '#1C1B1A', boxShadow: '0 0 0 1px #E7E1D9' }
+                                        ? { background: '#BA0C2F', color: '#FFFFFF', boxShadow: '0 0 0 1px #BA0C2F' }
+                                        : { background: '#F5F7FA', color: '#111827', boxShadow: '0 0 0 1px #E3E8F0' }
                                     }
                                 >
                                     {ROLE_LABELS[r.slug] ?? r.name}
@@ -329,10 +366,10 @@ export default function SettingsIndex({
 
                         {selectedRole && (
                             <div className="mt-5">
-                                <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-[#FAF7F2] px-3 py-2">
+                                <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-[#F5F7FA] px-3 py-2">
                                     <div className="text-sm">
-                                        <span className="font-semibold text-[#1C1B1A]">{ROLE_LABELS[selectedRole.slug] ?? selectedRole.name}</span>
-                                        <span className="ml-2 text-[#8A8580]">
+                                        <span className="font-semibold text-[#111827]">{ROLE_LABELS[selectedRole.slug] ?? selectedRole.name}</span>
+                                        <span className="ml-2 text-[#5B6474]">
                                             {isSuperRole
                                                 ? 'Selalu semua izin (bypass)'
                                                 : `${selectedGrants.length} izin aktif dari ${Object.values(rbacPermissions ?? {}).flat().length}`}
@@ -343,14 +380,14 @@ export default function SettingsIndex({
                                             <button
                                                 type="button"
                                                 onClick={() => setAllForRole(selectedRole.id, (Object.values(rbacPermissions ?? {}) as any[][]).flat().map((p: any) => p.id))}
-                                                className="rounded-md px-2 py-1 text-xs font-medium text-[#C1121F] hover:bg-[#FAF7F2]"
+                                                className="rounded-md px-2 py-1 text-xs font-medium text-[#BA0C2F] hover:bg-[#F5F7FA]"
                                             >
                                                 Centang semua
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => setAllForRole(selectedRole.id, [])}
-                                                className="rounded-md px-2 py-1 text-xs font-medium text-[#8A8580] hover:bg-[#FAF7F2]"
+                                                className="rounded-md px-2 py-1 text-xs font-medium text-[#5B6474] hover:bg-[#F5F7FA]"
                                             >
                                                 Kosongkan
                                             </button>
@@ -360,8 +397,8 @@ export default function SettingsIndex({
 
                                 <div className="mt-4 grid grid-cols-1 gap-5 lg:grid-cols-2">
                                     {Object.entries(rbacPermissions ?? {}).map(([module, perms]) => (
-                                        <div key={module} className="rounded-lg border border-[#E7E1D9] p-3">
-                                            <h3 className="text-xs font-semibold uppercase tracking-wide text-[#8A8580]">
+                                        <div key={module} className="rounded-lg border border-[#E3E8F0] p-3">
+                                            <h3 className="text-xs font-semibold uppercase tracking-wide text-[#5B6474]">
                                                 {MODULE_LABELS[module] ?? module}
                                             </h3>
                                             <ul className="mt-2 space-y-1.5">
@@ -376,12 +413,12 @@ export default function SettingsIndex({
                                                                 checked={isSuperRole ? true : selectedGrants.includes(perm.id)}
                                                                 disabled={isSuperRole}
                                                                 onChange={() => toggleRbacPermission(selectedRole.id, perm.id)}
-                                                                className="mt-0.5 rounded border-[#E7E1D9] text-[#C1121F] focus:ring-[#C1121F]"
+                                                                className="mt-0.5 rounded border-[#E3E8F0] text-[#BA0C2F] focus:ring-[#BA0C2F]"
                                                             />
                                                             <span>
                                                                 {perm.label}
                                                                 {perm.description && (
-                                                                    <span className="block text-xs text-[#8A8580]">{perm.description}</span>
+                                                                    <span className="block text-xs text-[#5B6474]">{perm.description}</span>
                                                                 )}
                                                             </span>
                                                         </label>
@@ -449,7 +486,7 @@ export default function SettingsIndex({
                                 <PrimaryButton disabled={userForm.processing}>Buat Pengguna</PrimaryButton>
                             </form>
                         ) : (
-                            <p className="text-sm text-[#8A8580]">Hanya Super Admin yang dapat menambah pengguna.</p>
+                            <p className="text-sm text-[#5B6474]">Hanya Super Admin yang dapat menambah pengguna.</p>
                         )}
                     </Card>
                 </div>
@@ -481,23 +518,23 @@ export default function SettingsIndex({
 
             {tab === 'template' && (
                 <div className="space-y-3">
-                    <p className="text-sm text-[#8A8580]">
-                        Token pola nomor: <code className="rounded bg-[#FAF7F2] px-1">{'{seq}'}</code>{' '}
-                        <code className="rounded bg-[#FAF7F2] px-1">{'{seq_raw}'}</code>{' '}
-                        <code className="rounded bg-[#FAF7F2] px-1">{'{tahun}'}</code>{' '}
-                        <code className="rounded bg-[#FAF7F2] px-1">{'{bulan_romawi}'}</code>{' '}
-                        <code className="rounded bg-[#FAF7F2] px-1">{'{kode}'}</code>{' '}
-                        <code className="rounded bg-[#FAF7F2] px-1">{'{kode_penyewa}'}</code>{' '}
-                        <code className="rounded bg-[#FAF7F2] px-1">{'{kode_kapal}'}</code>
+                    <p className="text-sm text-[#5B6474]">
+                        Token pola nomor: <code className="rounded bg-[#F5F7FA] px-1">{'{seq}'}</code>{' '}
+                        <code className="rounded bg-[#F5F7FA] px-1">{'{seq_raw}'}</code>{' '}
+                        <code className="rounded bg-[#F5F7FA] px-1">{'{tahun}'}</code>{' '}
+                        <code className="rounded bg-[#F5F7FA] px-1">{'{bulan_romawi}'}</code>{' '}
+                        <code className="rounded bg-[#F5F7FA] px-1">{'{kode}'}</code>{' '}
+                        <code className="rounded bg-[#F5F7FA] px-1">{'{kode_penyewa}'}</code>{' '}
+                        <code className="rounded bg-[#F5F7FA] px-1">{'{kode_kapal}'}</code>
                     </p>
                     {(templates ?? []).map((t: any) => (
-                        <div key={t.id} className="rounded-xl border border-[#E7E1D9] bg-white p-4 shadow-sm">
+                        <div key={t.id} className="rounded-xl border border-[#E3E8F0] bg-white p-4 shadow-sm">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                                 <div>
-                                    <p className="font-semibold text-[#1C1B1A]">
-                                        <span className="font-mono text-xs text-[#8A8580]">{t.code}</span> · {t.name}
+                                    <p className="font-semibold text-[#111827]">
+                                        <span className="font-mono text-xs text-[#5B6474]">{t.code}</span> · {t.name}
                                     </p>
-                                    <p className="text-xs text-[#8A8580]">
+                                    <p className="text-xs text-[#5B6474]">
                                         {t.kategori} · layout: {t.layout_type}
                                         {t.is_generic_letter ? ' · surat umum' : ''}
                                     </p>
@@ -518,21 +555,21 @@ export default function SettingsIndex({
                                                     });
                                                     setModal('editTemplate');
                                                 }}
-                                                className="text-[#C1121F] hover:underline"
+                                                className="text-[#BA0C2F] hover:underline"
                                             >
                                                 Edit
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => router.post(`/pengaturan/templates/${t.id}/reset-counter`, { kind: 'terbit' }, { preserveScroll: true })}
-                                                className="text-[#8A8580] hover:text-[#1C1B1A]"
+                                                className="text-[#5B6474] hover:text-[#111827]"
                                             >
                                                 Reset counter terbit
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => router.post(`/pengaturan/templates/${t.id}/reset-counter`, { kind: 'arsip' }, { preserveScroll: true })}
-                                                className="text-[#8A8580] hover:text-[#1C1B1A]"
+                                                className="text-[#5B6474] hover:text-[#111827]"
                                             >
                                                 Reset counter arsip
                                             </button>
@@ -541,15 +578,15 @@ export default function SettingsIndex({
                                 </div>
                             </div>
                             <div className="mt-2 grid grid-cols-1 gap-2 text-xs md:grid-cols-2">
-                                <p className="rounded-lg bg-[#FAF7F2] px-3 py-1.5 text-[#8A8580]">
+                                <p className="rounded-lg bg-[#F5F7FA] px-3 py-1.5 text-[#5B6474]">
                                     Pola nomor terbit:{' '}
-                                    <span className="font-mono text-[#1C1B1A]">{t.numbering_pattern ?? '—'}</span>
-                                    {' '}<span className="text-[#C1121F]">(counter: {t.seq_last})</span>
+                                    <span className="font-mono text-[#111827]">{t.numbering_pattern ?? '—'}</span>
+                                    {' '}<span className="text-[#BA0C2F]">(counter: {t.seq_last})</span>
                                 </p>
-                                <p className="rounded-lg bg-[#FAF7F2] px-3 py-1.5 text-[#8A8580]">
+                                <p className="rounded-lg bg-[#F5F7FA] px-3 py-1.5 text-[#5B6474]">
                                     Pola nomor arsip:{' '}
-                                    <span className="font-mono text-[#1C1B1A]">{t.archive_pattern ?? '—'}</span>
-                                    {' '}<span className="text-[#C1121F]">(counter: {t.archive_seq_last})</span>
+                                    <span className="font-mono text-[#111827]">{t.archive_pattern ?? '—'}</span>
+                                    {' '}<span className="text-[#BA0C2F]">(counter: {t.archive_seq_last})</span>
                                 </p>
                             </div>
                         </div>
@@ -585,13 +622,13 @@ export default function SettingsIndex({
                             ['Ready for Departure hanya setelah checklist wajib terpenuhi + approval internal + status eksternal jelas', true],
                             ['Status siap berangkat = indikator internal, bukan persetujuan otoritas pelayaran', true],
                         ].map(([label, active]) => (
-                            <li key={label as string} className="flex items-start justify-between gap-3 rounded-lg border border-[#E7E1D9] p-3">
-                                <span className="text-[#1C1B1A]">{label}</span>
+                            <li key={label as string} className="flex items-start justify-between gap-3 rounded-lg border border-[#E3E8F0] p-3">
+                                <span className="text-[#111827]">{label}</span>
                                 <Badge tone={active ? 'success' : 'neutral'}>{active ? 'Aktif' : 'Nonaktif'}</Badge>
                             </li>
                         ))}
                     </ul>
-                    <p className="mt-4 text-xs text-[#8A8580]">
+                    <p className="mt-4 text-xs text-[#5B6474]">
                         Konfigurasi lanjutan (multi-level approver, eskalasi) masuk roadmap implementasi.
                     </p>
                 </Card>
@@ -629,9 +666,9 @@ export default function SettingsIndex({
                         </form>
                         <ul className="max-h-72 space-y-1 overflow-y-auto text-sm">
                             {(customers ?? []).map((c: any) => (
-                                <li key={c.id} className="flex items-center justify-between gap-2 rounded-lg border border-[#E7E1D9] px-3 py-1.5">
-                                    <span className="text-[#1C1B1A]">{c.name}</span>
-                                    <span className="text-xs text-[#8A8580]">{c.phone}</span>
+                                <li key={c.id} className="flex items-center justify-between gap-2 rounded-lg border border-[#E3E8F0] px-3 py-1.5">
+                                    <span className="text-[#111827]">{c.name}</span>
+                                    <span className="text-xs text-[#5B6474]">{c.phone}</span>
                                     <span className="flex gap-2 text-xs font-medium">
                                         <button
                                             type="button"
@@ -640,14 +677,14 @@ export default function SettingsIndex({
                                                 editCustomerForm.setData({ name: c.name, npwp: c.npwp ?? '', address: c.address ?? '', phone: c.phone ?? '', notes: c.notes ?? '' });
                                                 setModal('editCustomer');
                                             }}
-                                            className="text-[#C1121F] hover:underline"
+                                            className="text-[#BA0C2F] hover:underline"
                                         >
                                             Edit
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => setConfirmDel({ url: `/pengaturan/customers/${c.id}`, label: `customer ${c.name}` })}
-                                            className="text-[#C1121F] hover:underline"
+                                            className="text-[#BA0C2F] hover:underline"
                                         >
                                             Hapus
                                         </button>
@@ -694,9 +731,9 @@ export default function SettingsIndex({
                         </form>
                         <ul className="max-h-72 space-y-1 overflow-y-auto text-sm">
                             {(suppliers ?? []).map((s: any) => (
-                                <li key={s.id} className="flex items-center justify-between gap-2 rounded-lg border border-[#E7E1D9] px-3 py-1.5">
-                                    <span className="text-[#1C1B1A]">{s.name}</span>
-                                    <span className="text-xs capitalize text-[#8A8580]">{s.category}</span>
+                                <li key={s.id} className="flex items-center justify-between gap-2 rounded-lg border border-[#E3E8F0] px-3 py-1.5">
+                                    <span className="text-[#111827]">{s.name}</span>
+                                    <span className="text-xs capitalize text-[#5B6474]">{s.category}</span>
                                     <span className="flex gap-2 text-xs font-medium">
                                         <button
                                             type="button"
@@ -713,14 +750,14 @@ export default function SettingsIndex({
                                                 });
                                                 setModal('editSupplier');
                                             }}
-                                            className="text-[#C1121F] hover:underline"
+                                            className="text-[#BA0C2F] hover:underline"
                                         >
                                             Edit
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => setConfirmDel({ url: `/pengaturan/suppliers/${s.id}`, label: `supplier ${s.name}` })}
-                                            className="text-[#C1121F] hover:underline"
+                                            className="text-[#BA0C2F] hover:underline"
                                         >
                                             Hapus
                                         </button>
@@ -753,9 +790,9 @@ export default function SettingsIndex({
                             </form>
                             <ul className="max-h-52 space-y-1 overflow-y-auto text-sm">
                                 {(serviceCatalog ?? []).map((s: any) => (
-                                    <li key={s.id} className="flex items-center justify-between gap-2 rounded-lg border border-[#E7E1D9] px-3 py-1.5">
-                                        <span className={classNames('text-[#1C1B1A]', s.kind === 'biaya' && 'text-[#C1121F]')}>{s.name}</span>
-                                        <span className="tabular-nums text-[#8A8580]">{formatRupiah(s.default_price)}</span>
+                                    <li key={s.id} className="flex items-center justify-between gap-2 rounded-lg border border-[#E3E8F0] px-3 py-1.5">
+                                        <span className={classNames('text-[#111827]', s.kind === 'biaya' && 'text-[#BA0C2F]')}>{s.name}</span>
+                                        <span className="tabular-nums text-[#5B6474]">{formatRupiah(s.default_price)}</span>
                                         <span className="flex gap-2 text-xs font-medium">
                                             <button
                                                 type="button"
@@ -764,14 +801,14 @@ export default function SettingsIndex({
                                                     editCatalogForm.setData({ name: s.name, kind: s.kind, default_price: String(s.default_price) });
                                                     setModal('editCatalog');
                                                 }}
-                                                className="text-[#C1121F] hover:underline"
+                                                className="text-[#BA0C2F] hover:underline"
                                             >
                                                 Edit
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => setConfirmDel({ url: `/pengaturan/katalog/${s.id}`, label: `katalog ${s.name}` })}
-                                                className="text-[#C1121F] hover:underline"
+                                                className="text-[#BA0C2F] hover:underline"
                                             >
                                                 Hapus
                                             </button>
@@ -783,9 +820,9 @@ export default function SettingsIndex({
                         <Card title="Bagan Akun (COA)">
                             <ul className="max-h-48 space-y-1 overflow-y-auto text-sm">
                                 {(accountsList ?? []).map((a: any) => (
-                                    <li key={a.id} className="flex justify-between border-b border-[#E7E1D9] py-1">
-                                        <span className="font-mono text-xs text-[#8A8580]">{a.code}</span>
-                                        <span className="text-[#1C1B1A]">{a.name}</span>
+                                    <li key={a.id} className="flex justify-between border-b border-[#E3E8F0] py-1">
+                                        <span className="font-mono text-xs text-[#5B6474]">{a.code}</span>
+                                        <span className="text-[#111827]">{a.name}</span>
                                     </li>
                                 ))}
                             </ul>
@@ -796,20 +833,20 @@ export default function SettingsIndex({
 
             <Modal show={modal === 'editUser'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitEditUser} className="p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit Pengguna — {editUser?.email}</h2>
+                    <h2 className="text-lg font-semibold text-[#111827]">Edit Pengguna — {editUser?.email}</h2>
                     <div className="mt-4 space-y-3">
-                        <div><label className="text-xs font-medium text-[#8A8580]">Nama *</label>
+                        <div><label className="text-xs font-medium text-[#5B6474]">Nama *</label>
                             <Input value={editUserForm.data.name} onChange={(e) => editUserForm.setData('name', e.target.value)} style={{ marginTop: 4 }} /></div>
-                        <div><label className="text-xs font-medium text-[#8A8580]">Email *</label>
+                        <div><label className="text-xs font-medium text-[#5B6474]">Email *</label>
                             <Input value={editUserForm.data.email} onChange={(e) => editUserForm.setData('email', e.target.value)} style={{ marginTop: 4 }} /></div>
-                        <div><label className="text-xs font-medium text-[#8A8580]">Role *</label>
+                        <div><label className="text-xs font-medium text-[#5B6474]">Role *</label>
                             <SearchableSelect
                                 value={editUserForm.data.role}
                                 options={(roles ?? []).map((r: any) => ({ value: r.slug, label: r.name }))}
                                 onChange={(value) => editUserForm.setData('role', value)}
                                 required
                             /></div>
-                        <div><label className="text-xs font-medium text-[#8A8580]">Password Baru (opsional, min 8)</label>
+                        <div><label className="text-xs font-medium text-[#5B6474]">Password Baru (opsional, min 8)</label>
                             <Input type="password" value={editUserForm.data.password} onChange={(e) => editUserForm.setData('password', e.target.value)} style={{ marginTop: 4 }} /></div>
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
@@ -821,15 +858,15 @@ export default function SettingsIndex({
 
             <Modal show={modal === 'editCustomer'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitEditCustomer} className="p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit Customer — {editCustomer?.name}</h2>
+                    <h2 className="text-lg font-semibold text-[#111827]">Edit Customer — {editCustomer?.name}</h2>
                     <div className="mt-4 space-y-3">
-                        <div><label className="text-xs font-medium text-[#8A8580]">Nama *</label>
+                        <div><label className="text-xs font-medium text-[#5B6474]">Nama *</label>
                             <Input value={editCustomerForm.data.name} onChange={(e) => editCustomerForm.setData('name', e.target.value)} style={{ marginTop: 4 }} /></div>
-                        <div><label className="text-xs font-medium text-[#8A8580]">NPWP</label>
+                        <div><label className="text-xs font-medium text-[#5B6474]">NPWP</label>
                             <Input value={editCustomerForm.data.npwp} onChange={(e) => editCustomerForm.setData('npwp', e.target.value)} style={{ marginTop: 4 }} /></div>
-                        <div><label className="text-xs font-medium text-[#8A8580]">Alamat</label>
+                        <div><label className="text-xs font-medium text-[#5B6474]">Alamat</label>
                             <Input value={editCustomerForm.data.address} onChange={(e) => editCustomerForm.setData('address', e.target.value)} style={{ marginTop: 4 }} /></div>
-                        <div><label className="text-xs font-medium text-[#8A8580]">Telepon</label>
+                        <div><label className="text-xs font-medium text-[#5B6474]">Telepon</label>
                             <Input value={editCustomerForm.data.phone} onChange={(e) => editCustomerForm.setData('phone', e.target.value)} style={{ marginTop: 4 }} /></div>
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
@@ -841,11 +878,11 @@ export default function SettingsIndex({
 
             <Modal show={modal === 'editSupplier'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitEditSupplier} className="p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit Supplier — {editSupplier?.name}</h2>
+                    <h2 className="text-lg font-semibold text-[#111827]">Edit Supplier — {editSupplier?.name}</h2>
                     <div className="mt-4 space-y-3">
-                        <div><label className="text-xs font-medium text-[#8A8580]">Nama *</label>
+                        <div><label className="text-xs font-medium text-[#5B6474]">Nama *</label>
                             <Input value={editSupplierForm.data.name} onChange={(e) => editSupplierForm.setData('name', e.target.value)} style={{ marginTop: 4 }} /></div>
-                        <div><label className="text-xs font-medium text-[#8A8580]">Kategori</label>
+                        <div><label className="text-xs font-medium text-[#5B6474]">Kategori</label>
                             <SearchableSelect
                                 value={editSupplierForm.data.category_is_custom ? 'lainnya' : editSupplierForm.data.category}
                                 options={[
@@ -866,7 +903,7 @@ export default function SettingsIndex({
                             /></div>
                         {editSupplierForm.data.category_is_custom && (
                             <div>
-                                <label className="text-xs font-medium text-[#8A8580]">Kategori Lainnya</label>
+                                <label className="text-xs font-medium text-[#5B6474]">Kategori Lainnya</label>
                                 <Input
                                     value={editSupplierForm.data.category === 'lainnya' ? '' : editSupplierForm.data.category}
                                     onChange={(e) => editSupplierForm.setData('category', e.target.value)}
@@ -878,7 +915,7 @@ export default function SettingsIndex({
                                 <FormError message={editSupplierForm.errors.category} />
                             </div>
                         )}
-                        <div><label className="text-xs font-medium text-[#8A8580]">Telepon</label>
+                        <div><label className="text-xs font-medium text-[#5B6474]">Telepon</label>
                             <Input value={editSupplierForm.data.phone} onChange={(e) => editSupplierForm.setData('phone', e.target.value)} style={{ marginTop: 4 }} /></div>
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
@@ -890,12 +927,12 @@ export default function SettingsIndex({
 
             <Modal show={modal === 'editCatalog'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitEditCatalog} className="p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit Katalog — {editCatalog?.name}</h2>
+                    <h2 className="text-lg font-semibold text-[#111827]">Edit Katalog — {editCatalog?.name}</h2>
                     <div className="mt-4 space-y-3">
-                        <div><label className="text-xs font-medium text-[#8A8580]">Nama *</label>
+                        <div><label className="text-xs font-medium text-[#5B6474]">Nama *</label>
                             <Input value={editCatalogForm.data.name} onChange={(e) => editCatalogForm.setData('name', e.target.value)} style={{ marginTop: 4 }} /></div>
                         <div className="grid grid-cols-2 gap-3">
-                            <div><label className="text-xs font-medium text-[#8A8580]">Jenis</label>
+                            <div><label className="text-xs font-medium text-[#5B6474]">Jenis</label>
                                 <SearchableSelect
                                     value={editCatalogForm.data.kind}
                                     options={[
@@ -904,7 +941,7 @@ export default function SettingsIndex({
                                     ]}
                                     onChange={(value) => editCatalogForm.setData('kind', value)}
                                 /></div>
-                            <div><label className="text-xs font-medium text-[#8A8580]">Harga Default *</label>
+                            <div><label className="text-xs font-medium text-[#5B6474]">Harga Default *</label>
                                 <PriceInput value={editCatalogForm.data.default_price} onChange={(e) => editCatalogForm.setData('default_price', e.target.value)} /></div>
                         </div>
                     </div>
@@ -917,12 +954,12 @@ export default function SettingsIndex({
 
             <Modal show={modal === 'editCategory'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitEditCategory} className="p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit Kategori — {editCategory?.code}</h2>
+                    <h2 className="text-lg font-semibold text-[#111827]">Edit Kategori — {editCategory?.code}</h2>
                     <div className="mt-4 space-y-3">
-                        <div><label className="text-xs font-medium text-[#8A8580]">Nama *</label>
+                        <div><label className="text-xs font-medium text-[#5B6474]">Nama *</label>
                             <Input value={editCategoryForm.data.name} onChange={(e) => editCategoryForm.setData('name', e.target.value)} style={{ marginTop: 4 }} /></div>
                         <div className="grid grid-cols-2 gap-3">
-                            <div><label className="text-xs font-medium text-[#8A8580]">Kelompok</label>
+                            <div><label className="text-xs font-medium text-[#5B6474]">Kelompok</label>
                                 <SearchableSelect
                                     value={editCategoryForm.data.group_code}
                                     options={['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((value) => ({
@@ -931,7 +968,7 @@ export default function SettingsIndex({
                                     }))}
                                     onChange={(value) => editCategoryForm.setData('group_code', value)}
                                 /></div>
-                            <div><label className="text-xs font-medium text-[#8A8580]">Urutan</label>
+                            <div><label className="text-xs font-medium text-[#5B6474]">Urutan</label>
                                 <NumericInput value={editCategoryForm.data.sort} onChange={(e) => editCategoryForm.setData('sort', e.target.value)} /></div>
                         </div>
                     </div>
@@ -944,14 +981,14 @@ export default function SettingsIndex({
 
             <Modal show={modal === 'addCategory'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitAddCategory} className="p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Tambah Kategori Dokumen</h2>
+                    <h2 className="text-lg font-semibold text-[#111827]">Tambah Kategori Dokumen</h2>
                     <div className="mt-4 space-y-3">
-                        <div><label className="text-xs font-medium text-[#8A8580]">Kode *</label>
+                        <div><label className="text-xs font-medium text-[#5B6474]">Kode *</label>
                             <Input value={addCategoryForm.data.code} onChange={(e) => addCategoryForm.setData('code', e.target.value)} placeholder="mis. H1" style={{ marginTop: 4 }} /></div>
-                        <div><label className="text-xs font-medium text-[#8A8580]">Nama *</label>
+                        <div><label className="text-xs font-medium text-[#5B6474]">Nama *</label>
                             <Input value={addCategoryForm.data.name} onChange={(e) => addCategoryForm.setData('name', e.target.value)} style={{ marginTop: 4 }} /></div>
                         <div className="grid grid-cols-2 gap-3">
-                            <div><label className="text-xs font-medium text-[#8A8580]">Kelompok</label>
+                            <div><label className="text-xs font-medium text-[#5B6474]">Kelompok</label>
                                 <SearchableSelect
                                     value={addCategoryForm.data.group_code}
                                     options={['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((value) => ({
@@ -960,7 +997,7 @@ export default function SettingsIndex({
                                     }))}
                                     onChange={(value) => addCategoryForm.setData('group_code', value)}
                                 /></div>
-                            <div><label className="text-xs font-medium text-[#8A8580]">Urutan</label>
+                            <div><label className="text-xs font-medium text-[#5B6474]">Urutan</label>
                                 <NumericInput value={addCategoryForm.data.sort} onChange={(e) => addCategoryForm.setData('sort', e.target.value)} /></div>
                         </div>
                     </div>
@@ -973,16 +1010,16 @@ export default function SettingsIndex({
 
             <Modal show={modal === 'editTemplate'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitEditTemplate} className="p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit Template — {editTemplate?.code}</h2>
+                    <h2 className="text-lg font-semibold text-[#111827]">Edit Template — {editTemplate?.code}</h2>
                     <div className="mt-4 space-y-3">
-                        <div><label className="text-xs font-medium text-[#8A8580]">Nama *</label>
+                        <div><label className="text-xs font-medium text-[#5B6474]">Nama *</label>
                             <Input value={editTemplateForm.data.name} onChange={(e) => editTemplateForm.setData('name', e.target.value)} style={{ marginTop: 4 }} /></div>
-                        <div><label className="text-xs font-medium text-[#8A8580]">Pola Nomor Terbit</label>
+                        <div><label className="text-xs font-medium text-[#5B6474]">Pola Nomor Terbit</label>
                             <Input value={editTemplateForm.data.numbering_pattern} onChange={(e) => editTemplateForm.setData('numbering_pattern', e.target.value)} className="font-mono" style={{ marginTop: 4 }} /></div>
-                        <div><label className="text-xs font-medium text-[#8A8580]">Pola Nomor Arsip</label>
+                        <div><label className="text-xs font-medium text-[#5B6474]">Pola Nomor Arsip</label>
                             <Input value={editTemplateForm.data.archive_pattern} onChange={(e) => editTemplateForm.setData('archive_pattern', e.target.value)} className="font-mono" style={{ marginTop: 4 }} /></div>
                         <label className="flex items-center gap-2 text-sm">
-                            <input type="checkbox" checked={editTemplateForm.data.enabled} onChange={(e) => editTemplateForm.setData('enabled', e.target.checked)} className="rounded border-[#E7E1D9] text-[#C1121F] focus:ring-[#C1121F]" />
+                            <input type="checkbox" checked={editTemplateForm.data.enabled} onChange={(e) => editTemplateForm.setData('enabled', e.target.checked)} className="rounded border-[#E3E8F0] text-[#BA0C2F] focus:ring-[#BA0C2F]" />
                             Template aktif (muncul di form penerbitan)
                         </label>
                     </div>

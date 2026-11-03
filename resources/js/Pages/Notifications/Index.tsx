@@ -1,6 +1,7 @@
 import Badge, { type BadgeTone } from '@/Components/ui/Badge';
 import Card from '@/Components/ui/Card';
 import EmptyState from '@/Components/ui/EmptyState';
+import PageHeader from '@/Components/ui/PageHeader';
 import Authenticated from '@/Layouts/AuthenticatedLayout';
 import { classNames, daysUntil, formatDate, formatDateTime } from '@/lib/format';
 import { type PageProps } from '@/types';
@@ -41,16 +42,16 @@ const EASE = 'cubic-bezier(0.22,1,0.36,1)';
 function GroupHeader({ label, count }: { label: string; count: number }) {
     return (
         <div className="mb-2.5 flex items-center gap-2.5">
-            <h2 className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8A8580]">
+            <h2 className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[#5B6474]">
                 {label}
             </h2>
-            <span className="rounded-full bg-[#FAF7F2] px-1.5 py-0.5 font-mono text-[10px] font-semibold leading-none text-[#8A8580]">
+            <span className="rounded-full bg-[#F5F7FA] px-1.5 py-0.5 font-mono text-[10px] font-semibold leading-none text-[#5B6474]">
                 {count}
             </span>
             <div
                 aria-hidden="true"
                 className="h-px min-w-[1rem] flex-1"
-                style={{ background: 'linear-gradient(to right, #E7E1D9, rgba(231,225,217,0.6), transparent)' }}
+                style={{ background: 'linear-gradient(to right, #E3E8F0, rgba(227,232,240,0.6), transparent)' }}
             />
         </div>
     );
@@ -139,20 +140,20 @@ export default function NotificationsIndex({
 
     const railTone = (tone: BadgeTone): string => {
         switch (tone) {
-            case 'danger': return '#C1121F';
-            case 'warning': return '#D99A2B';
-            case 'info': return '#1E4668';
-            case 'success': return '#2F8F68';
-            default: return '#8A8580';
+            case 'danger': return '#BA0C2F';
+            case 'warning': return '#B45309';
+            case 'info': return '#00205B';
+            case 'success': return '#15803D';
+            default: return '#5B6474';
         }
     };
     const chipStyle = (tone: BadgeTone): React.CSSProperties => {
         switch (tone) {
-            case 'danger': return { background: '#C1121F1A', color: '#C1121F', border: '1px solid #C1121F33' };
-            case 'warning': return { background: '#D99A2B1A', color: '#D99A2B', border: '1px solid #D99A2B33' };
-            case 'info': return { background: '#1E46681A', color: '#1E4668', border: '1px solid #1E466833' };
-            case 'success': return { background: '#2F8F681A', color: '#2F8F68', border: '1px solid #2F8F6833' };
-            default: return { background: '#FAF7F2', color: '#8A8580', border: '1px solid #E7E1D9' };
+            case 'danger': return { background: '#BA0C2F1A', color: '#BA0C2F', border: '1px solid #BA0C2F33' };
+            case 'warning': return { background: '#B453091A', color: '#B45309', border: '1px solid #B4530933' };
+            case 'info': return { background: '#00205B1A', color: '#00205B', border: '1px solid #00205B33' };
+            case 'success': return { background: '#15803D1A', color: '#15803D', border: '1px solid #15803D33' };
+            default: return { background: '#F5F7FA', color: '#5B6474', border: '1px solid #E3E8F0' };
         }
     };
 
@@ -177,138 +178,48 @@ export default function NotificationsIndex({
                     0%, 100% { opacity: 0.55; }
                     50% { opacity: 1; }
                 }
-                .bt-scroll { scrollbar-width: thin; scrollbar-color: rgba(28,27,26,0.22) transparent; }
+                .bt-scroll { scrollbar-width: thin; scrollbar-color: rgba(17,24,39,0.22) transparent; }
                 .bt-scroll::-webkit-scrollbar { width: 5px; }
-                .bt-scroll::-webkit-scrollbar-thumb { background: rgba(28,27,26,0.2); border-radius: 9999px; }
+                .bt-scroll::-webkit-scrollbar-thumb { background: rgba(17,24,39,0.2); border-radius: 9999px; }
                 .bt-scroll::-webkit-scrollbar-track { background: transparent; }
                 @media (prefers-reduced-motion: reduce) {
                     .bt-anim, .bt-anim * { animation: none !important; }
                 }
             `}</style>
 
-            <section
-                className="bt-anim relative mb-7 overflow-hidden rounded-2xl border border-[#E7E1D9] bg-white shadow-[0_1px_3px_rgba(28,27,26,0.04),0_8px_24px_-8px_rgba(28,27,26,0.06)]"
-                style={{
-                    animation: `bt-rise 0.55s ${EASE} both`,
-                }}
-            >
-                <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-0 overflow-hidden"
-                >
-                    <div
-                        className="absolute inset-0 opacity-[0.02]"
-                        style={{ backgroundImage: GRAIN }}
-                    />
-                    <BellRing
-                        aria-hidden="true"
-                        size={180}
-                        strokeWidth={1.5}
-                        className="pointer-events-none absolute -right-8 -top-10 text-[#1C1B1A]/[0.03]"
-                        style={{ transform: 'rotate(8deg)' }}
-                    />
-                </div>
-                <div
-                    aria-hidden="true"
-                    className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[#D4A96A]/30 to-transparent"
-                />
-
-                <div className="relative flex flex-col gap-6 p-6 lg:p-7 xl:flex-row xl:items-end xl:justify-between">
-                    <div className="min-w-0 max-w-2xl">
-                        <p className="flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-[#8A8580]">
-                            <span
-                                aria-hidden="true"
-                                className="bt-anim h-2 w-2 rounded-full"
-                                style={{ background: '#D4A96A', animation: 'bt-pulse-dot 2.4s ease-in-out infinite' }}
-                            />
-                            Pusat Notifikasi
-                        </p>
-                        <h1 className="mt-3 text-2xl font-semibold tracking-tight text-[#1C1B1A] sm:text-3xl">
-                            {counts.unread > 0 ? (
-                                <>
-                                    <span className="text-[#C1121F]">{counts.unread}</span> notifikasi
-                                    menunggu dibaca.
-                                </>
-                            ) : (
-                                'Semua notifikasi sudah dibaca.'
-                            )}
-                        </h1>
-                        <p className="mt-2 max-w-xl text-sm leading-relaxed text-[#8A8580]">
-                            Pengingat dokumen, persetujuan, dan kejadian operasional.
-                            Notifikasi eksternal (email/WA) belum diaktifkan.
-                        </p>
-                    </div>
-
-                    <div className="flex flex-col gap-2.5 sm:flex-row xl:shrink-0">
-                        {counts.unread > 0 && (
-                            <Button
-                                type="primary"
-                                onClick={markAll}
-                                disabled={busy}
-                                icon={<CheckCheck size={16} />}
-                            >
-                                Tandai semua dibaca
-                            </Button>
-                        )}
-                    </div>
-                </div>
-
-                <div className="relative grid grid-cols-2 gap-3 border-t border-[#E7E1D9] p-6 pt-5 sm:gap-4 lg:grid-cols-4 lg:p-7 lg:pt-6">
-                    <div className="min-w-0 rounded-xl border border-[#E7E1D9] bg-[#FAF7F2] p-4">
-                        <p className="truncate font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#8A8580]">
-                            Belum Dibaca
-                        </p>
-                        <p
-                            className="mt-2 text-2xl font-semibold tabular-nums tracking-tight"
-                            style={{ color: counts.unread > 0 ? '#D4A96A' : '#1C1B1A' }}
+            <PageHeader
+                eyebrow="Pusat Notifikasi"
+                title={counts.unread > 0 ? `${counts.unread} notifikasi menunggu dibaca` : 'Semua notifikasi sudah dibaca'}
+                description="Pengingat dokumen, persetujuan, dan kejadian operasional. Notifikasi eksternal (email/WA) belum diaktifkan."
+                metrics={[
+                    { label: 'Belum Dibaca', value: counts.unread, tone: counts.unread > 0 ? 'primary' : 'neutral', sub: counts.unread > 0 ? 'menunggu ditindak' : 'tidak ada tumpukan' },
+                    { label: 'Total Notifikasi', value: counts.semua, sub: 'termasuk yang sudah dibaca' },
+                    { label: 'Reminder Dokumen', value: counts.reminder, tone: 'warning', sub: 'dokumen & endorsement' },
+                    { label: 'Jatuh Tempo', value: due.length, tone: dueExpired > 0 ? 'danger' : 'neutral', sub: dueExpired > 0 ? `${dueExpired} sudah kedaluwarsa` : 'masa berlaku terdekat' },
+                ]}
+                actions={
+                    counts.unread > 0 && (
+                        <Button
+                            type="primary"
+                            onClick={markAll}
+                            disabled={busy}
+                            icon={<CheckCheck size={16} />}
                         >
-                            {counts.unread}
-                        </p>
-                        <p className="mt-2 truncate text-[11px] text-[#8A8580]">
-                            {counts.unread > 0 ? 'menunggu ditindak' : 'tidak ada tumpukan'}
-                        </p>
-                    </div>
-                    <div className="min-w-0 rounded-xl border border-[#E7E1D9] bg-[#FAF7F2] p-4">
-                        <p className="truncate font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#8A8580]">
-                            Total Notifikasi
-                        </p>
-                        <p className="mt-2 text-2xl font-semibold tabular-nums tracking-tight text-[#1C1B1A]">
-                            {counts.semua}
-                        </p>
-                        <p className="mt-2 truncate text-[11px] text-[#8A8580]">
-                            termasuk yang sudah dibaca
-                        </p>
-                    </div>
-                    <div className="min-w-0 rounded-xl border border-[#E7E1D9] bg-[#FAF7F2] p-4">
-                        <p className="truncate font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#8A8580]">
-                            Reminder Dokumen
-                        </p>
-                        <p className="mt-2 text-2xl font-semibold tabular-nums tracking-tight text-[#1C1B1A]">
-                            {counts.reminder}
-                        </p>
-                        <p className="mt-2 truncate text-[11px] text-[#8A8580]">
-                            dokumen &amp; endorsement
-                        </p>
-                    </div>
-                    <div className="min-w-0 rounded-xl border border-[#E7E1D9] bg-[#FAF7F2] p-4">
-                        <p className="truncate font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#8A8580]">
-                            Dokumen Jatuh Tempo
-                        </p>
-                        <p className="mt-2 text-2xl font-semibold tabular-nums tracking-tight text-[#1C1B1A]">
-                            {due.length}
-                        </p>
-                        <p className="mt-2 truncate text-[11px] text-[#8A8580]">
-                            {dueExpired > 0 ? `${dueExpired} sudah kedaluwarsa` : 'masa berlaku terdekat'}
-                        </p>
-                    </div>
-                </div>
-            </section>
+                            Tandai semua dibaca
+                        </Button>
+                    )
+                }
+            />
 
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-[216px_minmax(0,1fr)_360px]">
             <nav
                 aria-label="Filter notifikasi"
-                className="bt-anim mb-5 flex flex-wrap gap-2"
+                className="bt-anim flex flex-wrap gap-2 xl:sticky xl:top-6 xl:flex-col xl:self-start"
                 style={{ animation: `bt-rise 0.45s ${EASE} 70ms both` }}
             >
+                <p className="hidden font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#5B6474] xl:mb-1 xl:block">
+                    Filter
+                </p>
                 {tabs.map((t) => {
                     const TabIcon = t.icon;
                     const active = filter === t.key;
@@ -316,10 +227,10 @@ export default function NotificationsIndex({
                         <Link
                             key={t.key}
                             href={`/notifikasi?filter=${t.key}`}
-                            className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors duration-200"
+                            className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors duration-200 xl:w-full xl:justify-between"
                             style={active
-                                ? { borderColor: '#C1121F', background: '#C1121F', color: '#FFFFFF', boxShadow: '0 10px 24px -12px rgba(193,18,31,0.55)' }
-                                : { borderColor: '#E7E1D9', background: '#FFFFFF', color: '#8A8580' }
+                                ? { borderColor: '#BA0C2F', background: '#BA0C2F', color: '#FFFFFF', boxShadow: '0 10px 24px -12px rgba(186,12,47,0.55)' }
+                                : { borderColor: '#E3E8F0', background: '#FFFFFF', color: '#5B6474' }
                             }
                         >
                             <TabIcon size={14} />
@@ -329,7 +240,7 @@ export default function NotificationsIndex({
                                     className="rounded-full px-1.5 py-0.5 font-mono text-[10px] font-semibold leading-none"
                                     style={active
                                         ? { background: 'rgba(255,255,255,0.2)', color: '#FFFFFF' }
-                                        : { background: '#FAF7F2', color: '#8A8580' }
+                                        : { background: '#F5F7FA', color: '#5B6474' }
                                     }
                                 >
                                     {t.count}
@@ -340,9 +251,8 @@ export default function NotificationsIndex({
                 })}
             </nav>
 
-            <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
                 <div
-                    className="bt-anim min-w-0 space-y-6 xl:col-span-2"
+                    className="bt-anim min-w-0 space-y-6"
                     style={{ animation: `bt-rise 0.45s ${EASE} 120ms both` }}
                 >
                     {notifications.length === 0 ? (
@@ -368,9 +278,9 @@ export default function NotificationsIndex({
                                                 key={n.id}
                                                 className="relative overflow-hidden rounded-xl border bg-white p-4 transition duration-200"
                                                 style={{
-                                                    borderColor: n.read_status ? '#E7E1D9' : 'rgba(193,18,31,0.3)',
-                                                    background: n.read_status ? '#FFFFFF' : 'rgba(193,18,31,0.03)',
-                                                    boxShadow: '0 1px 2px rgba(28,27,26,0.04), 0 12px 32px -24px rgba(28,27,26,0.18)',
+                                                    borderColor: n.read_status ? '#E3E8F0' : 'rgba(186,12,47,0.3)',
+                                                    background: n.read_status ? '#FFFFFF' : 'rgba(186,12,47,0.03)',
+                                                    boxShadow: '0 1px 2px rgba(17,24,39,0.04), 0 12px 32px -24px rgba(17,24,39,0.18)',
                                                 }}
                                             >
                                                 <span
@@ -390,21 +300,21 @@ export default function NotificationsIndex({
                                                     </span>
                                                     <div className="min-w-0 flex-1">
                                                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                                            <p className="text-sm font-semibold leading-snug text-[#1C1B1A]">
+                                                            <p className="text-sm font-semibold leading-snug text-[#111827]">
                                                                 {n.title}
                                                             </p>
                                                             <Badge tone={meta.tone}>{meta.label}</Badge>
                                                             {!n.read_status && (
-                                                                <span className="rounded-full px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-white" style={{ background: '#C1121F' }}>
+                                                                <span className="rounded-full px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-white" style={{ background: '#BA0C2F' }}>
                                                                     Baru
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <p className="mt-1 text-sm leading-relaxed text-[#8A8580]">
+                                                        <p className="mt-1 text-sm leading-relaxed text-[#5B6474]">
                                                             {n.message}
                                                         </p>
-                                                        <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t pt-2.5" style={{ borderColor: '#E7E1D9' }}>
-                                                            <p className="inline-flex items-center gap-1.5 font-mono text-[11px] text-[#8A8580]">
+                                                        <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t pt-2.5" style={{ borderColor: '#E3E8F0' }}>
+                                                            <p className="inline-flex items-center gap-1.5 font-mono text-[11px] text-[#5B6474]">
                                                                 <Clock size={12} />{' '}
                                                                 {formatDateTime(n.created_at)}
                                                             </p>
@@ -414,9 +324,9 @@ export default function NotificationsIndex({
                                                                         href={n.link}
                                                                         className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors duration-150"
                                                                         style={{
-                                                                            borderColor: 'rgba(193,18,31,0.25)',
-                                                                            background: 'rgba(193,18,31,0.06)',
-                                                                            color: '#C1121F',
+                                                                            borderColor: 'rgba(186,12,47,0.25)',
+                                                                            background: 'rgba(186,12,47,0.06)',
+                                                                            color: '#BA0C2F',
                                                                         }}
                                                                     >
                                                                         Buka <ChevronRight size={13} />
@@ -432,7 +342,7 @@ export default function NotificationsIndex({
                                                                                 { preserveScroll: true },
                                                                             )
                                                                         }
-                                                                        className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg px-2 py-1 text-xs font-medium text-[#8A8580] transition-colors duration-150 hover:bg-[#FAF7F2] hover:text-[#1C1B1A]"
+                                                                        className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg px-2 py-1 text-xs font-medium text-[#5B6474] transition-colors duration-150 hover:bg-[#F5F7FA] hover:text-[#111827]"
                                                                     >
                                                                         <CheckCheck size={13} /> Tandai dibaca
                                                                     </button>
@@ -451,7 +361,7 @@ export default function NotificationsIndex({
                 </div>
 
                 <div
-                    className="bt-anim self-start xl:sticky xl:top-24"
+                    className="bt-anim self-start xl:sticky xl:top-6"
                     style={{ animation: `bt-rise 0.45s ${EASE} 170ms both` }}
                 >
                     <Card
@@ -463,10 +373,10 @@ export default function NotificationsIndex({
                                     className="rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold"
                                     style={
                                         dueFilter === 'expired'
-                                            ? { background: '#C1121F1A', color: '#C1121F', border: '1px solid #C1121F40' }
+                                            ? { background: '#BA0C2F1A', color: '#BA0C2F', border: '1px solid #BA0C2F40' }
                                             : dueFilter === 'safe'
-                                              ? { background: '#FAF7F2', color: '#8A8580', border: '1px solid #E7E1D9' }
-                                              : { background: '#D99A2B1A', color: '#D99A2B', border: '1px solid #D99A2B40' }
+                                              ? { background: '#F5F7FA', color: '#5B6474', border: '1px solid #E3E8F0' }
+                                              : { background: '#B453091A', color: '#B45309', border: '1px solid #B4530940' }
                                     }
                                 >
                                     {filteredDue.length}
@@ -474,7 +384,7 @@ export default function NotificationsIndex({
                                 <Link
                                     href="/dokumen?validity=expiring_soon"
                                     className="text-xs font-medium transition-colors duration-150 hover:underline"
-                                    style={{ color: '#C1121F' }}
+                                    style={{ color: '#BA0C2F' }}
                                 >
                                     Kelola →
                                 </Link>
@@ -503,14 +413,14 @@ export default function NotificationsIndex({
                                                 onClick={() => setDueFilter(t.key)}
                                                 className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors duration-200"
                                                 style={active
-                                                    ? { borderColor: '#C1121F', background: '#C1121F', color: '#FFFFFF' }
-                                                    : { borderColor: '#E7E1D9', background: '#FFFFFF', color: '#8A8580' }
+                                                    ? { borderColor: '#BA0C2F', background: '#BA0C2F', color: '#FFFFFF' }
+                                                    : { borderColor: '#E3E8F0', background: '#FFFFFF', color: '#5B6474' }
                                                 }
                                             >
                                                 {t.label}
                                                 <span
                                                     className="font-mono text-[10px] font-semibold leading-none"
-                                                    style={{ color: active ? 'rgba(255,255,255,0.75)' : '#8A8580' }}
+                                                    style={{ color: active ? 'rgba(255,255,255,0.75)' : '#5B6474' }}
                                                 >
                                                     {dueCounts[t.key]}
                                                 </span>
@@ -519,7 +429,7 @@ export default function NotificationsIndex({
                                     })}
                                 </div>
                                 {filteredDue.length === 0 ? (
-                                    <div className="flex min-h-[6rem] items-center justify-center rounded-xl border border-dashed px-4 py-6 text-center text-xs" style={{ borderColor: '#E7E1D9', background: 'rgba(250,247,242,0.5)', color: '#8A8580' }}>
+                                    <div className="flex min-h-[6rem] items-center justify-center rounded-xl border border-dashed px-4 py-6 text-center text-xs" style={{ borderColor: '#E3E8F0', background: 'rgba(245,247,250,0.5)', color: '#5B6474' }}>
                                         Tidak ada reminder pada kategori ini.
                                     </div>
                                 ) : (
@@ -534,22 +444,22 @@ export default function NotificationsIndex({
                                                     key={i}
                                                     className="flex items-start gap-3 rounded-xl border p-3 transition-colors duration-200"
                                                     style={expired
-                                                        ? { borderColor: 'rgba(193,18,31,0.3)', background: 'rgba(193,18,31,0.04)' }
-                                                        : { borderColor: '#E7E1D9' }
+                                                        ? { borderColor: 'rgba(186,12,47,0.3)', background: 'rgba(186,12,47,0.04)' }
+                                                        : { borderColor: '#E3E8F0' }
                                                     }
                                                 >
                                                     {days === null ? (
-                                                        <span className="mt-0.5 flex h-11 w-14 shrink-0 items-center justify-center rounded-lg text-[#8A8580]" style={{ background: '#FAF7F2', border: '1px solid #E7E1D9' }}>
+                                                        <span className="mt-0.5 flex h-11 w-14 shrink-0 items-center justify-center rounded-lg text-[#5B6474]" style={{ background: '#F5F7FA', border: '1px solid #E3E8F0' }}>
                                                             <CalendarClock size={16} />
                                                         </span>
                                                     ) : (
                                                         <span
                                                             className="mt-0.5 flex h-11 w-14 shrink-0 flex-col items-center justify-center rounded-lg"
                                                             style={expired
-                                                                ? { background: '#C1121F1A', color: '#C1121F', border: '1px solid #C1121F33' }
+                                                                ? { background: '#BA0C2F1A', color: '#BA0C2F', border: '1px solid #BA0C2F33' }
                                                                 : urgent
-                                                                  ? { background: '#D99A2B1A', color: '#D99A2B', border: '1px solid #D99A2B33' }
-                                                                  : { background: '#FAF7F2', color: '#8A8580', border: '1px solid #E7E1D9' }
+                                                                  ? { background: '#B453091A', color: '#B45309', border: '1px solid #B4530933' }
+                                                                  : { background: '#F5F7FA', color: '#5B6474', border: '1px solid #E3E8F0' }
                                                             }
                                                         >
                                                             <span className="text-base font-semibold leading-none tabular-nums">
@@ -561,17 +471,17 @@ export default function NotificationsIndex({
                                                         </span>
                                                     )}
                                                     <div className="min-w-0 flex-1">
-                                                        <p className="text-sm font-medium leading-snug text-[#1C1B1A]">
+                                                        <p className="text-sm font-medium leading-snug text-[#111827]">
                                                             {d.message}
                                                         </p>
-                                                        <p className="mt-1 truncate font-mono text-[11px] text-[#8A8580]">
+                                                        <p className="mt-1 truncate font-mono text-[11px] text-[#5B6474]">
                                                             berlaku s.d. {formatDate(d.expiry)}
                                                         </p>
                                                         {d.refType === 'document' && (
                                                             <Link
                                                                 href={`/dokumen/${d.refId}`}
                                                                 className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium transition-colors duration-150 hover:underline"
-                                                                style={{ color: '#C1121F' }}
+                                                                style={{ color: '#BA0C2F' }}
                                                             >
                                                                 Buka dokumen{' '}
                                                                 <ChevronRight size={12} />
@@ -584,28 +494,28 @@ export default function NotificationsIndex({
                                     </ul>
                                 </div>
                                 )}
-                                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t pt-3" style={{ borderColor: '#E7E1D9' }}>
-                                    <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-[#8A8580]">
+                                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t pt-3" style={{ borderColor: '#E3E8F0' }}>
+                                    <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-[#5B6474]">
                                         <span
                                             aria-hidden="true"
                                             className="h-1.5 w-1.5 rounded-full"
-                                            style={{ background: '#C1121F' }}
+                                            style={{ background: '#BA0C2F' }}
                                         />
                                         kedaluwarsa
                                     </span>
-                                    <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-[#8A8580]">
+                                    <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-[#5B6474]">
                                         <span
                                             aria-hidden="true"
                                             className="h-1.5 w-1.5 rounded-full"
-                                            style={{ background: '#D99A2B' }}
+                                            style={{ background: '#B45309' }}
                                         />
                                         mendesak · 7 hari ke depan
                                     </span>
-                                    <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-[#8A8580]">
+                                    <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-[#5B6474]">
                                         <span
                                             aria-hidden="true"
                                             className="h-1.5 w-1.5 rounded-full"
-                                            style={{ background: '#8A8580' }}
+                                            style={{ background: '#5B6474' }}
                                         />
                                         belum mendesak
                                     </span>

@@ -2,14 +2,15 @@ import Badge, { type BadgeTone } from '@/Components/ui/Badge';
 import DataTable from '@/Components/ui/DataTable';
 import EmptyState from '@/Components/ui/EmptyState';
 import PageHeader from '@/Components/ui/PageHeader';
+import TabNav from '@/Components/ui/TabNav';
 import { VOYAGE_STATUS_LABELS } from '@/Constants/navigation';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { formatDateTime } from '@/lib/format';
 import { type PageProps } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { Anchor, Plus, Search } from 'lucide-react';
+import { Anchor, CheckCircle2, ClipboardCheck, Plus, Search, Ship } from 'lucide-react';
 import { useState } from 'react';
-import { Button, Input, Skeleton, Tabs, Tag } from 'antd';
+import { Button, Input, Skeleton } from 'antd';
 
 const STATUS_TONES: Record<string, BadgeTone> = {
     draft: 'neutral',
@@ -44,36 +45,16 @@ export default function VoyagesIndex({
     const [search, setSearch] = useState(filters.search ?? '');
     const [loading] = useState(false);
 
-    const groups = [
-        { key: 'semua', label: 'Semua' },
-        { key: 'aktif', label: 'Aktif', count: statusCounts.aktif },
-        { key: 'pending_review', label: 'Menunggu Pemeriksaan', count: statusCounts.pending_review },
-        { key: 'completed', label: 'Selesai', count: statusCounts.completed },
-    ];
-
     const apply = () => {
         router.get('/perjalanan', { group, search }, { preserveState: true, replace: true });
     };
 
-    const tabItems = groups.map((g) => ({
-        key: g.key,
-        label: (
-            <span className="inline-flex items-center gap-2">
-                {g.label}
-                {g.count !== undefined && (
-                    <span
-                        className={`inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1.5 py-0.5 text-xs ${
-                            group === g.key
-                                ? 'bg-[#C1121F]/10 text-[#C1121F]'
-                                : 'bg-[#FAF7F2] text-[#8A8580]'
-                        }`}
-                    >
-                        {g.count}
-                    </span>
-                )}
-            </span>
-        ),
-    }));
+    const tabs = [
+        { key: 'semua', label: 'Semua', icon: Anchor },
+        { key: 'aktif', label: 'Aktif', count: statusCounts.aktif, icon: Ship },
+        { key: 'pending_review', label: 'Menunggu Pemeriksaan', count: statusCounts.pending_review, icon: ClipboardCheck },
+        { key: 'completed', label: 'Selesai', count: statusCounts.completed, icon: CheckCircle2 },
+    ];
 
     const columns = [
         {
@@ -82,7 +63,7 @@ export default function VoyagesIndex({
             render: (r: any) => (
                 <Link
                     href={`/perjalanan/${r.id}`}
-                    className="font-semibold text-[#1C1B1A] hover:text-[#C1121F] hover:underline"
+                    className="font-semibold text-[#111827] hover:text-[#BA0C2F] hover:underline"
                 >
                     {r.voyage_code}
                 </Link>
@@ -93,8 +74,8 @@ export default function VoyagesIndex({
             label: 'Vessel & Aktivitas',
             render: (r: any) => (
                 <div>
-                    <p className="font-medium text-[#1C1B1A]">{r.vessel_name}</p>
-                    <p className="text-xs capitalize text-[#8A8580]">
+                    <p className="font-medium text-[#111827]">{r.vessel_name}</p>
+                    <p className="text-xs capitalize text-[#5B6474]">
                         {r.activity_type?.replace('_', ' ')}
                     </p>
                 </div>
@@ -145,7 +126,7 @@ export default function VoyagesIndex({
             label: '',
             className: 'text-right',
             render: (r: any) => (
-                <Link href={`/perjalanan/${r.id}`} className="text-sm font-medium text-[#C1121F] hover:underline">
+                <Link href={`/perjalanan/${r.id}`} className="text-sm font-medium text-[#BA0C2F] hover:underline">
                     Detail →
                 </Link>
             ),
@@ -159,6 +140,12 @@ export default function VoyagesIndex({
             <PageHeader
                 title="Voyage Management"
                 description="Perencanaan hingga penutupan perjalanan: checklist dinamis, persetujuan internal, dan bukti persetujuan eksternal."
+                metrics={[
+                    { label: 'Aktif', value: statusCounts.aktif, tone: 'primary', sub: 'sedang berjalan' },
+                    { label: 'Menunggu', value: statusCounts.pending_review, tone: 'warning', sub: 'pemeriksaan internal' },
+                    { label: 'Selesai', value: statusCounts.completed, tone: 'success', sub: 'tertutup' },
+                    { label: 'Ditampilkan', value: voyages.length, sub: 'sesuai filter' },
+                ]}
                 actions={
                     canCreate && (
                         <Link href="/perjalanan/create">
@@ -170,14 +157,16 @@ export default function VoyagesIndex({
                 }
             />
 
-            <Tabs
-                activeKey={group}
-                onChange={(key) => router.get('/perjalanan', { group: key }, { preserveState: true, replace: true })}
-                items={tabItems}
-                className="mb-5"
+            <TabNav
+                tabs={tabs}
+                active={group}
+                onChange={(key) => {
+                    setSearch('');
+                    router.get('/perjalanan', { group: key }, { preserveState: true, replace: true });
+                }}
             />
 
-            <div className="mb-5 flex max-w-lg gap-2">
+            <div className="mt-3 mb-3 flex flex-wrap items-center gap-3">
                 <Input.Search
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
@@ -185,8 +174,12 @@ export default function VoyagesIndex({
                     placeholder="Cari kode / rute..."
                     enterButton="Cari"
                     allowClear
-                    prefix={<Search size={15} className="text-[#8A8580]" />}
+                    prefix={<Search size={15} className="text-[#5B6474]" />}
+                    className="max-w-sm"
                 />
+                <span className="ms-auto font-mono text-[11px] tabular-nums text-[#5B6474]">
+                    {voyages.length} perjalanan
+                </span>
             </div>
 
             <Skeleton loading={loading} active paragraph={{ rows: 6 }}>

@@ -75,15 +75,15 @@ export default function Modal({
                         }`}
                     >
                         {title && (
-                            <div className="border-b border-[#E7E1D9] px-6 py-4">
-                                <h2 className="text-lg font-semibold text-[#1C1B1A]">{title}</h2>
+                            <div className="border-b border-[#E3E8F0] px-6 py-4">
+                                <h2 className="text-lg font-semibold text-[#111827]">{title}</h2>
                             </div>
                         )}
                         <div className={fullScreen ? 'h-[calc(100%-8rem)] overflow-y-auto' : ''}>
                             {children}
                         </div>
                         {footer && (
-                            <div className="border-t border-[#E7E1D9] px-6 py-4">
+                            <div className="border-t border-[#E3E8F0] px-6 py-4">
                                 {footer}
                             </div>
                         )}

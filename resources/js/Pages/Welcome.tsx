@@ -13,12 +13,12 @@ export default function Welcome({
     return (
         <>
             <Head title="Welcome" />
-            <div style={{ background: '#FAF7F2', minHeight: '100vh' }}>
+            <div style={{ background: '#F5F7FA', minHeight: '100vh' }}>
                 <div className="relative flex min-h-screen flex-col items-center justify-center">
                     <div className="relative w-full max-w-7xl px-6">
                         <header className="grid grid-cols-2 items-center gap-2 py-10 lg:grid-cols-3">
                             <div className="flex lg:col-start-2 lg:justify-center">
-                                <Ship size={48} style={{ color: '#C1121F' }} />
+                                <Ship size={48} style={{ color: '#BA0C2F' }} />
                             </div>
                             <nav className="-mx-3 flex flex-1 justify-end">
                                 {auth.user ? (
@@ -40,10 +40,10 @@ export default function Welcome({
 
                         <main className="mt-6">
                             <div className="mb-12 text-center">
-                                <Title level={1} style={{ color: '#1C1B1A', fontWeight: 700 }}>
+                                <Title level={1} style={{ color: '#111827', fontWeight: 700 }}>
                                     Bunga Teratai
                                 </Title>
-                                <Text style={{ fontSize: 18, color: '#8A8580' }}>
+                                <Text style={{ fontSize: 18, color: '#5B6474' }}>
                                     Sistem ERP Manajemen Dokumen & Operasi Pelayaran
                                 </Text>
                             </div>
@@ -51,16 +51,16 @@ export default function Welcome({
                             <Row gutter={[24, 24]}>
                                 <Col xs={24} md={12} lg={8}>
                                     <Card
-                                        style={{ height: '100%', borderRadius: 12, border: '1px solid #E7E1D9' }}
+                                        style={{ height: '100%', borderRadius: 12, border: '1px solid #E3E8F0' }}
                                         styles={{ body: { padding: 24 } }}
                                     >
-                                        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full" style={{ background: '#C1121F1A' }}>
-                                            <Ship size={24} style={{ color: '#C1121F' }} />
+                                        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full" style={{ background: '#BA0C2F1A' }}>
+                                            <Ship size={24} style={{ color: '#BA0C2F' }} />
                                         </div>
-                                        <Title level={4} style={{ color: '#1C1B1A', margin: 0 }}>
+                                        <Title level={4} style={{ color: '#111827', margin: 0 }}>
                                             Manajemen Armada
                                         </Title>
-                                        <Text style={{ color: '#8A8580', display: 'block', marginTop: 12 }}>
+                                        <Text style={{ color: '#5B6474', display: 'block', marginTop: 12 }}>
                                             Kelola data kapal, dokumen, dan operasional armada dengan sistem terpadu.
                                         </Text>
                                     </Card>
@@ -68,16 +68,16 @@ export default function Welcome({
 
                                 <Col xs={24} md={12} lg={8}>
                                     <Card
-                                        style={{ height: '100%', borderRadius: 12, border: '1px solid #E7E1D9' }}
+                                        style={{ height: '100%', borderRadius: 12, border: '1px solid #E3E8F0' }}
                                         styles={{ body: { padding: 24 } }}
                                     >
-                                        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full" style={{ background: '#1E46681A' }}>
-                                            <Ship size={24} style={{ color: '#1E4668' }} />
+                                        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full" style={{ background: '#00205B1A' }}>
+                                            <Ship size={24} style={{ color: '#00205B' }} />
                                         </div>
-                                        <Title level={4} style={{ color: '#1C1B1A', margin: 0 }}>
+                                        <Title level={4} style={{ color: '#111827', margin: 0 }}>
                                             Perjalanan & Voyage
                                         </Title>
-                                        <Text style={{ color: '#8A8580', display: 'block', marginTop: 12 }}>
+                                        <Text style={{ color: '#5B6474', display: 'block', marginTop: 12 }}>
                                             Pantau perjalanan kapal, status, dan dokumen perjalanan secara real-time.
                                         </Text>
                                     </Card>
@@ -85,16 +85,16 @@ export default function Welcome({
 
                                 <Col xs={24} md={12} lg={8}>
                                     <Card
-                                        style={{ height: '100%', borderRadius: 12, border: '1px solid #E7E1D9' }}
+                                        style={{ height: '100%', borderRadius: 12, border: '1px solid #E3E8F0' }}
                                         styles={{ body: { padding: 24 } }}
                                     >
-                                        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full" style={{ background: '#2F8F681A' }}>
-                                            <Ship size={24} style={{ color: '#2F8F68' }} />
+                                        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full" style={{ background: '#15803D1A' }}>
+                                            <Ship size={24} style={{ color: '#15803D' }} />
                                         </div>
-                                        <Title level={4} style={{ color: '#1C1B1A', margin: 0 }}>
+                                        <Title level={4} style={{ color: '#111827', margin: 0 }}>
                                             Keuangan & Invoice
                                         </Title>
-                                        <Text style={{ color: '#8A8580', display: 'block', marginTop: 12 }}>
+                                        <Text style={{ color: '#5B6474', display: 'block', marginTop: 12 }}>
                                             Kelola invoice, pembayaran, dan laporan keuangan dengan mudah.
                                         </Text>
                                     </Card>
@@ -104,7 +104,7 @@ export default function Welcome({
                             {!auth.user && (
                                 <div className="mt-12 text-center">
                                     <Link href={route('login')}>
-                                        <Button type="primary" size="large" style={{ background: '#C1121F', borderColor: '#C1121F' }}>
+                                        <Button type="primary" size="large" style={{ background: '#BA0C2F', borderColor: '#BA0C2F' }}>
                                             Masuk ke Sistem
                                         </Button>
                                     </Link>
@@ -113,7 +113,7 @@ export default function Welcome({
                         </main>
 
                         <footer className="py-16 text-center">
-                            <Text style={{ color: '#8A8580' }}>
+                            <Text style={{ color: '#5B6474' }}>
                                 Laravel v{laravelVersion} (PHP v{phpVersion})
                             </Text>
                         </footer>

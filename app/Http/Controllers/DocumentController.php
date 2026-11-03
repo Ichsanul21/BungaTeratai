@@ -503,50 +503,9 @@ class DocumentController extends Controller
     {
         $this->authorize('download', $document);
 
-        $path = $document->file_path;
-        if ($versionId) {
-            $version = $document->versions()->find($versionId);
-            $path = $version?->file_path;
-        }
+        $path = $this->resolveDocumentPath($document, $versionId);
 
-        if (! $path || ! Storage::disk('local')->exists($path)) {
-            // Jika dokumen merupakan terbitan sistem, buat ulang file PDF-nya secara otomatis
-            if ($document->source_type === 'terbitan') {
-                $generator = app(\App\Services\Generators\DocumentGeneratorService::class);
-                $voyage = $document->voyages()->first();
-                $templateCode = $document->template?->code;
-
-                if ($voyage && ($templateCode === 'SPAL' || str_contains($document->document_name, 'SPAL'))) {
-                    $res = $generator->generateSpal($voyage);
-                    $path = $res['path'];
-                } elseif ($voyage && ($templateCode === 'KEAGENAN' || str_contains($document->document_name, 'Keagenan'))) {
-                    $agency = $voyage->agencyAppointments()->first();
-                    if ($agency) {
-                        $res = $generator->generateAgency($agency);
-                        $path = $res['path'];
-                    }
-                } elseif ($templateCode === 'PO' || str_contains($document->document_name, 'Purchase Order')) {
-                    $po = \App\Models\PurchaseOrder::where('po_number', $document->document_number)->first();
-                    if ($po) {
-                        $res = $generator->generatePo($po);
-                        $path = $res['path'];
-                    }
-                } elseif ($templateCode === 'INV_CHARTER' || str_contains($document->document_name, 'Invoice Charter')) {
-                    $inv = \App\Models\Invoice::where('number', $document->document_number)->first();
-                    if ($inv) {
-                        $res = $generator->generateCharterInvoice($inv, $inv->invoice_kind ?? 'dp');
-                        $path = $res['path'];
-                    }
-                } elseif ($templateCode === 'INV_FINANCE' || str_contains($document->document_name, 'Invoice')) {
-                    $inv = \App\Models\Invoice::where('number', $document->document_number)->first();
-                    if ($inv) {
-                        $path = $generator->generateFinanceInvoice($inv);
-                    }
-                }
-            }
-        }
-
-        if (! $path || ! Storage::disk('local')->exists($path)) {
+        if (! $path) {
             return back()->with('error', 'Dokumen belum diunggah atau tidak ditemukan.');
         }
 
@@ -554,6 +513,92 @@ class DocumentController extends Controller
         $name = preg_replace('/[^A-Za-z0-9._-]+/', '_', $document->document_name).($ext ? ".{$ext}" : '');
 
         return Storage::disk('local')->download($path, $name);
+    }
+
+    /**
+     * Tampilkan berkas dokumen langsung di browser (inline) untuk pratinjau.
+     * Memakai otorisasi unduh yang sama; dokumen terbitan bisa diregenerasi.
+     */
+    public function preview(Request $request, Document $document, ?int $versionId = null)
+    {
+        $this->authorize('download', $document);
+
+        $path = $this->resolveDocumentPath($document, $versionId);
+
+        if (! $path) {
+            return back()->with('error', 'Dokumen belum diunggah atau tidak ditemukan.');
+        }
+
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $mime = match ($ext) {
+            'pdf' => 'application/pdf',
+            'jpg', 'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            default => Storage::disk('local')->mimeType($path) ?: 'application/octet-stream',
+        };
+        $name = preg_replace('/[^A-Za-z0-9._-]+/', '_', $document->document_name).($ext ? ".{$ext}" : '');
+
+        return Storage::disk('local')->response($path, $name, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="'.$name.'"',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    /**
+     * Tentukan path berkas dokumen; regenerasi otomatis untuk dokumen terbitan.
+     */
+    private function resolveDocumentPath(Document $document, ?int $versionId = null): ?string
+    {
+        $path = $document->file_path;
+        if ($versionId) {
+            $version = $document->versions()->find($versionId);
+            $path = $version?->file_path;
+        }
+
+        if ($path && Storage::disk('local')->exists($path)) {
+            return $path;
+        }
+
+        if ($document->source_type === 'terbitan') {
+            $generator = app(\App\Services\Generators\DocumentGeneratorService::class);
+            $voyage = $document->voyages()->first();
+            $templateCode = $document->template?->code;
+
+            if ($voyage && ($templateCode === 'SPAL' || str_contains($document->document_name, 'SPAL'))) {
+                $res = $generator->generateSpal($voyage);
+                $path = $res['path'];
+            } elseif ($voyage && ($templateCode === 'KEAGENAN' || str_contains($document->document_name, 'Keagenan'))) {
+                $agency = $voyage->agencyAppointments()->first();
+                if ($agency) {
+                    $res = $generator->generateAgency($agency);
+                    $path = $res['path'];
+                }
+            } elseif ($templateCode === 'PO' || str_contains($document->document_name, 'Purchase Order')) {
+                $po = \App\Models\PurchaseOrder::where('po_number', $document->document_number)->first();
+                if ($po) {
+                    $res = $generator->generatePo($po);
+                    $path = $res['path'];
+                }
+            } elseif ($templateCode === 'INV_CHARTER' || str_contains($document->document_name, 'Invoice Charter')) {
+                $inv = \App\Models\Invoice::where('number', $document->document_number)->first();
+                if ($inv) {
+                    $res = $generator->generateCharterInvoice($inv, $inv->invoice_kind ?? 'dp');
+                    $path = $res['path'];
+                }
+            } elseif ($templateCode === 'INV_FINANCE' || str_contains($document->document_name, 'Invoice')) {
+                $inv = \App\Models\Invoice::where('number', $document->document_number)->first();
+                if ($inv) {
+                    $path = $generator->generateFinanceInvoice($inv);
+                }
+            }
+        }
+
+        if (! $path || ! Storage::disk('local')->exists($path)) {
+            return null;
+        }
+
+        return $path;
     }
 
     private function mapDocument(

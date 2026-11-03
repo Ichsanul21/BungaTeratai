@@ -36,7 +36,7 @@ export default function ResetPassword({
                     help={errors.email}
                 >
                     <Input
-                        prefix={<Mail size={16} className="text-[#8A8580]" />}
+                        prefix={<Mail size={16} className="text-[#5B6474]" />}
                         type="email"
                         name="email"
                         value={data.email}
@@ -52,7 +52,7 @@ export default function ResetPassword({
                     help={errors.password}
                 >
                     <Input.Password
-                        prefix={<Lock size={16} className="text-[#8A8580]" />}
+                        prefix={<Lock size={16} className="text-[#5B6474]" />}
                         name="password"
                         value={data.password}
                         autoComplete="new-password"
@@ -69,7 +69,7 @@ export default function ResetPassword({
                     help={errors.password_confirmation}
                 >
                     <Input.Password
-                        prefix={<Lock size={16} className="text-[#8A8580]" />}
+                        prefix={<Lock size={16} className="text-[#5B6474]" />}
                         name="password_confirmation"
                         value={data.password_confirmation}
                         autoComplete="new-password"

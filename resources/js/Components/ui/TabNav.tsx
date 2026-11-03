@@ -23,19 +23,11 @@ export default function TabNav({
             key: tab.key,
             label: (
                 <span className="inline-flex items-center gap-2">
-                    {Icon && <Icon size={16} />}
-                    {tab.label}
-                    {tab.count !== undefined && (
-                        <span
-                            className={`inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1.5 py-0.5 text-xs ${
-                                tab.key === active
-                                    ? 'bg-[#C1121F]/10 text-[#C1121F]'
-                                    : 'bg-[#FAF7F2] text-[#8A8580]'
-                            }`}
-                        >
-                            {tab.count}
-                        </span>
-                    )}
+                    {Icon && <Icon size={14} aria-hidden="true" />}
+                    <span>
+                        {tab.label}
+                        {tab.count !== undefined && ` (${tab.count})`}
+                    </span>
                 </span>
             ),
         };
@@ -46,7 +38,9 @@ export default function TabNav({
             activeKey={active}
             onChange={onChange}
             items={items}
-            className="mb-5"
+            type="card"
+            className="bt-tabs"
+            tabBarStyle={{ marginBottom: 0 }}
         />
     );
 }

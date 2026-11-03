@@ -215,7 +215,7 @@ export default function VoyagesShow({
             <div id={`record-voyage-${voyage.id}`}>
 
             <div className="mb-4">
-                <Link href="/perjalanan" className="inline-flex items-center gap-1.5 text-sm text-[#8A8580] hover:text-[#1C1B1A]">
+                <Link href="/perjalanan" className="inline-flex items-center gap-1.5 text-sm text-[#5B6474] hover:text-[#111827]">
                     <ArrowLeft size={15} /> Kembali ke Voyage Management
                 </Link>
             </div>
@@ -270,15 +270,16 @@ export default function VoyagesShow({
                 }
             />
 
-            <Skeleton loading={loading} active paragraph={{ rows: 8 }}>
-                <TabNav tabs={tabs} active={tab} onChange={setTab} />
+            <TabNav tabs={tabs} active={tab} onChange={setTab} />
 
+            <Skeleton loading={loading} active paragraph={{ rows: 8 }}>
                 {tab === 'overview' && (
                     <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
                         <Card title="Status Perjalanan" className="xl:col-span-2">
                             {/* Current Status Badge - Large & Prominent */}
-                            <div className="mb-6 rounded-xl border-2 border-[#C1121F]/20 bg-gradient-to-br from-[#C1121F]/5 to-transparent p-5">
-                                <div className="flex items-start justify-between gap-4">
+                            <div className="mb-6 overflow-hidden rounded-xl border border-[#E3E8F0] bg-white">
+                                <div className="border-l-4 border-[#BA0C2F] p-5">
+                                    <div className="flex items-start justify-between gap-4">
                                     <div className="flex-1">
                                         <Text type="secondary" className="text-xs uppercase tracking-wide">
                                             Status Saat Ini
@@ -313,6 +314,7 @@ export default function VoyagesShow({
                                         />
                                     )}
                                 </div>
+                                </div>
                             </div>
 
                             {/* Simplified Steps - Only Show Key Milestones */}
@@ -322,7 +324,7 @@ export default function VoyagesShow({
                                 </Text>
                                 <div className="relative">
                                     {/* Progress Line */}
-                                    <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-[#E7E1D9]" />
+                                    <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-[#E3E8F0]" />
                                     
                                     {/* Steps */}
                                     <div className="space-y-4">
@@ -346,10 +348,10 @@ export default function VoyagesShow({
                                                     <div
                                                         className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 ${
                                                             isCurrent
-                                                                ? 'border-[#C1121F] bg-[#C1121F] text-white'
+                                                                ? 'border-[#BA0C2F] bg-[#BA0C2F] text-white'
                                                                 : isCompleted
-                                                                ? 'border-[#2F8F68] bg-[#2F8F68] text-white'
-                                                                : 'border-[#E7E1D9] bg-white text-[#8A8580]'
+                                                                ? 'border-[#15803D] bg-[#15803D] text-white'
+                                                                : 'border-[#E3E8F0] bg-white text-[#5B6474]'
                                                         }`}
                                                     >
                                                         <step.icon className="h-4 w-4" />
@@ -360,16 +362,16 @@ export default function VoyagesShow({
                                                         <div
                                                             className={`text-sm font-semibold ${
                                                                 isCurrent
-                                                                    ? 'text-[#C1121F]'
+                                                                    ? 'text-[#BA0C2F]'
                                                                     : isCompleted
-                                                                    ? 'text-[#1C1B1A]'
-                                                                    : 'text-[#8A8580]'
+                                                                    ? 'text-[#111827]'
+                                                                    : 'text-[#5B6474]'
                                                             }`}
                                                         >
                                                             {step.label}
                                                         </div>
                                                         {isCurrent && (
-                                                            <div className="mt-1 text-xs text-[#8A8580]">
+                                                            <div className="mt-1 text-xs text-[#5B6474]">
                                                                 ← Status saat ini
                                                             </div>
                                                         )}
@@ -401,17 +403,17 @@ export default function VoyagesShow({
                                     <Progress
                                         percent={checklistPct}
                                         size="small"
-                                        strokeColor={checklistTerpenuhi.length === checklistWajib.length && checklistWajib.length > 0 ? '#2F8F68' : '#D99A2B'}
+                                        strokeColor={checklistTerpenuhi.length === checklistWajib.length && checklistWajib.length > 0 ? '#15803D' : '#B45309'}
                                         className="flex-1"
                                     />
-                                    <Text strong className="text-sm tabular-nums text-[#1C1B1A]">
+                                    <Text strong className="text-sm tabular-nums text-[#111827]">
                                         {checklistTerpenuhi.length}/{checklistWajib.length}
                                     </Text>
                                 </div>
                             </div>
 
                             {/* Disclaimer */}
-                            <div className="rounded-lg bg-[#1E4668]/5 p-2.5">
+                            <div className="rounded-lg bg-[#00205B]/5 p-2.5">
                                 <Text type="secondary" className="text-[11px]">
                                     Status kesiapan adalah <strong>indikator internal sistem</strong> - bukan
                                     pengganti penilaian nakhoda atau persetujuan otoritas pelayaran.
@@ -445,16 +447,16 @@ export default function VoyagesShow({
                                     ['Kelebihan Hari', (demurrage?.demurrage_days ?? 0) > 0 ? `${demurrage?.demurrage_days} hari` : 'Dalam batas'],
                                     ['Estimasi Demurrage', (demurrage?.demurrage_amount ?? 0) > 0 ? formatRupiah(demurrage?.demurrage_amount ?? 0) : 'Rp 0'],
                                 ].map(([k, v]) => (
-                                    <div key={k as string} className="rounded-lg border border-[#E7E1D9] bg-[#FAF7F2]/30 p-3">
+                                    <div key={k as string} className="rounded-lg border border-[#E3E8F0] bg-[#F5F7FA]/30 p-3">
                                         <Text type="secondary" className="text-xs uppercase tracking-wide">{k}</Text>
-                                        <p className="mt-1 font-semibold text-[#1C1B1A]">{v as string}</p>
+                                        <p className="mt-1 font-semibold text-[#111827]">{v as string}</p>
                                     </div>
                                 ))}
                             </div>
-                            <Divider style={{ margin: '16px 0 12px', borderColor: '#E7E1D9' }} />
+                            <Divider style={{ margin: '16px 0 12px', borderColor: '#E3E8F0' }} />
                             <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
                                 <Text type="secondary">
-                                    Status kepatuhan: <Text strong className="text-[#1C1B1A]">{demurrage?.status ?? 'Dalam batas laytime'}</Text>
+                                    Status kepatuhan: <Text strong className="text-[#111827]">{demurrage?.status ?? 'Dalam batas laytime'}</Text>
                                 </Text>
                                 <div className="flex gap-2">
                                     <Button type="link" size="small" onClick={() => setTab('berkas')}>
@@ -474,7 +476,7 @@ export default function VoyagesShow({
                         <Card title="Vessel Utama">
                             <Link
                                 href={`/armada/${voyage.vessel_id}`}
-                                className="inline-flex items-center gap-2 text-sm font-semibold text-[#C1121F] hover:underline"
+                                className="inline-flex items-center gap-2 text-sm font-semibold text-[#BA0C2F] hover:underline"
                             >
                                 <Ship size={16} /> {voyage.vessel_name} ({voyage.vessel_type?.replace('_', ' ')})
                             </Link>
@@ -490,11 +492,11 @@ export default function VoyagesShow({
                             ) : (
                                 relationships.map((r, i) => (
                                     <div key={i} className="flex items-center gap-3 text-sm">
-                                        <span className="rounded-lg bg-[#1E4668]/10 px-2.5 py-1 font-medium text-[#1E4668]">
+                                        <span className="rounded-lg bg-[#00205B]/10 px-2.5 py-1 font-medium text-[#00205B]">
                                             {r.tugboat_name}
                                         </span>
                                         <Text type="secondary">menarik</Text>
-                                        <span className="rounded-lg bg-[#D99A2B]/10 px-2.5 py-1 font-medium text-[#D99A2B]">
+                                        <span className="rounded-lg bg-[#B45309]/10 px-2.5 py-1 font-medium text-[#B45309]">
                                             {r.barge_name}
                                         </span>
                                     </div>
@@ -502,10 +504,10 @@ export default function VoyagesShow({
                             )}
                             {cargo.length > 0 && (
                                 <>
-                                    <Divider style={{ margin: '16px 0', borderColor: '#E7E1D9' }} />
+                                    <Divider style={{ margin: '16px 0', borderColor: '#E3E8F0' }} />
                                     <Text type="secondary" className="mb-2 block text-xs font-semibold uppercase tracking-wide">Muatan</Text>
                                     {cargo.map((c) => (
-                                        <div key={c.id} className="text-sm text-[#1C1B1A]">
+                                        <div key={c.id} className="text-sm text-[#111827]">
                                             <span className="capitalize">{c.commodity_type?.replace('_', ' ')}</span>
                                             {c.weight_ton && (
                                                 <Text type="secondary"> · {formatNumber(c.weight_ton, 1)} ton</Text>
@@ -527,8 +529,8 @@ export default function VoyagesShow({
                             ) : (
                                 <ul className="space-y-2">
                                     {documents.map((d) => (
-                                        <li key={d.id} className="flex items-center justify-between gap-2 rounded-lg border border-[#E7E1D9] px-3 py-2 text-sm">
-                                            <Link href={`/dokumen/${d.id}`} className="font-medium text-[#1C1B1A] hover:text-[#C1121F]">
+                                        <li key={d.id} className="flex items-center justify-between gap-2 rounded-lg border border-[#E3E8F0] px-3 py-2 text-sm">
+                                            <Link href={`/dokumen/${d.id}`} className="font-medium text-[#111827] hover:text-[#BA0C2F]">
                                                 {d.document_name}
                                             </Link>
                                             <Text type="secondary" className="text-xs">
@@ -554,7 +556,7 @@ export default function VoyagesShow({
                             >
                                 <select
                                     name="document_id"
-                                    className="block w-full rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20"
+                                    className="block w-full rounded-md border border-[#E3E8F0] bg-white p-2 text-sm shadow-sm focus:border-[#BA0C2F] focus:outline-none focus:ring-2 focus:ring-[#BA0C2F]/20"
                                 >
                                     <option value="">— pilih dokumen —</option>
                                     {(linkableDocuments ?? []).map((d) => (
@@ -572,22 +574,22 @@ export default function VoyagesShow({
                 )}
 
                 {tab === 'checklist' && (
-                    <div className="overflow-hidden rounded-xl border border-[#E7E1D9] bg-white shadow-sm">
-                        <table className="min-w-full divide-y divide-[#E7E1D9] text-sm">
-                            <thead className="bg-[#FAF7F2]">
+                    <div className="overflow-hidden rounded-xl border border-[#E3E8F0] bg-white shadow-sm">
+                        <table className="min-w-full divide-y divide-[#E3E8F0] text-sm">
+                            <thead className="bg-[#F5F7FA]">
                                 <tr>
                                     {['Grup', 'Persyaratan', 'Sifat', 'Status', 'Aksi'].map((h) => (
-                                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#8A8580]">
+                                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#5B6474]">
                                             {h}
                                         </th>
                                     ))}
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-[#E7E1D9]">
+                            <tbody className="divide-y divide-[#E3E8F0]">
                                 {checklists.map((c) => (
                                     <tr key={c.id}>
-                                        <td className="px-4 py-3 text-[#8A8580]">{c.group_code}</td>
-                                        <td className="px-4 py-3 font-medium text-[#1C1B1A]">{c.name}</td>
+                                        <td className="px-4 py-3 text-[#5B6474]">{c.group_code}</td>
+                                        <td className="px-4 py-3 font-medium text-[#111827]">{c.name}</td>
                                         <td className="px-4 py-3">
                                             <Badge tone={c.applicability === 'wajib' ? 'info' : 'neutral'}>
                                                 {c.applicability === 'wajib' ? 'Wajib' : c.applicability === 'kondisional' ? 'Kondisional' : 'Menunggu Konfirmasi'}
@@ -619,13 +621,13 @@ export default function VoyagesShow({
                                                     <select
                                                         name="completion_status"
                                                         defaultValue={c.completion_status}
-                                                        className="rounded-md border border-[#E7E1D9] bg-white py-1 text-xs shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20"
+                                                        className="rounded-md border border-[#E3E8F0] bg-white py-1 text-xs shadow-sm focus:border-[#BA0C2F] focus:outline-none focus:ring-2 focus:ring-[#BA0C2F]/20"
                                                     >
                                                         <option value="terpenuhi">Terpenuhi</option>
                                                         <option value="belum">Belum</option>
                                                         <option value="tidak_berlaku">Tidak Berlaku</option>
                                                     </select>
-                                                    <button type="submit" className="text-xs font-medium text-[#C1121F] hover:underline">
+                                                    <button type="submit" className="text-xs font-medium text-[#BA0C2F] hover:underline">
                                                         Simpan
                                                     </button>
                                                 </form>
@@ -637,7 +639,7 @@ export default function VoyagesShow({
                                 ))}
                             </tbody>
                         </table>
-                        <div className="border-t border-[#E7E1D9] bg-[#FAF7F2] p-3">
+                        <div className="border-t border-[#E3E8F0] bg-[#F5F7FA] p-3">
                             <Text type="secondary" className="text-xs">
                                 Item kondisional tidak diwajibkan untuk semua perjalanan, hanya berlaku sesuai
                                 jenis kapal & muatan.
@@ -669,11 +671,11 @@ export default function VoyagesShow({
                                                 dsr_date: fd.get('dsr_date') || null,
                                             }, { preserveScroll: true });
                                         }}
-                                        className="mt-4 flex flex-wrap items-end gap-3 border-t border-[#E7E1D9] pt-4"
+                                        className="mt-4 flex flex-wrap items-end gap-3 border-t border-[#E3E8F0] pt-4"
                                     >
                                         <div>
                                             <Text type="secondary" className="text-xs font-medium">Tahap saat ini</Text>
-                                            <select name="charter_stage" defaultValue={voyage.charter_stage} className="mt-1 block rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20">
+                                            <select name="charter_stage" defaultValue={voyage.charter_stage} className="mt-1 block rounded-md border border-[#E3E8F0] bg-white p-2 text-sm shadow-sm focus:border-[#BA0C2F] focus:outline-none focus:ring-2 focus:ring-[#BA0C2F]/20">
                                                 {CHARTER_STAGES.map((s) => (
                                                     <option key={s} value={s}>{CHARTER_LABELS[s]}</option>
                                                 ))}
@@ -681,13 +683,13 @@ export default function VoyagesShow({
                                         </div>
                                         <div>
                                             <Text type="secondary" className="text-xs font-medium">DSR — Total Muatan (MT)</Text>
-                                            <NumericInput name="dsr_mt" decimalPlaces={2} defaultValue={voyage.dsr_mt ?? ''} className="mt-1 block w-32 rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20" />
+                                            <NumericInput name="dsr_mt" decimalPlaces={2} defaultValue={voyage.dsr_mt ?? ''} className="mt-1 block w-32 rounded-md border border-[#E3E8F0] bg-white p-2 text-sm shadow-sm focus:border-[#BA0C2F] focus:outline-none focus:ring-2 focus:ring-[#BA0C2F]/20" />
                                         </div>
                                         <div>
                                             <Text type="secondary" className="text-xs font-medium">Tanggal DSR</Text>
-                                            <input name="dsr_date" type="date" defaultValue={voyage.dsr_date ?? ''} className="mt-1 block rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20" />
+                                            <input name="dsr_date" type="date" defaultValue={voyage.dsr_date ?? ''} className="mt-1 block rounded-md border border-[#E3E8F0] bg-white p-2 text-sm shadow-sm focus:border-[#BA0C2F] focus:outline-none focus:ring-2 focus:ring-[#BA0C2F]/20" />
                                         </div>
-                                        <Button type="primary" htmlType="submit" style={{ background: '#1C1B1A', borderColor: '#1C1B1A' }}>
+                                        <Button type="primary" htmlType="submit" style={{ background: '#111827', borderColor: '#111827' }}>
                                             Simpan Tahap
                                         </Button>
                                     </form>
@@ -726,14 +728,14 @@ export default function VoyagesShow({
                                 />
                                 {(charterInvoices ?? []).length > 0 && (
                                     <>
-                                        <Divider style={{ margin: '16px 0 12px', borderColor: '#E7E1D9' }} />
+                                        <Divider style={{ margin: '16px 0 12px', borderColor: '#E3E8F0' }} />
                                         <Text type="secondary" className="mb-2 block text-xs font-semibold uppercase tracking-wide">
                                             Invoice Charter (DP / Pelunasan)
                                         </Text>
                                         <ul className="space-y-1.5">
                                             {(charterInvoices ?? []).map((inv: any) => (
-                                                <li key={inv.id} className="flex items-center justify-between gap-2 rounded-lg border border-[#E7E1D9] px-3 py-2 text-sm">
-                                                    <span className="font-medium text-[#1C1B1A]">
+                                                <li key={inv.id} className="flex items-center justify-between gap-2 rounded-lg border border-[#E3E8F0] px-3 py-2 text-sm">
+                                                    <span className="font-medium text-[#111827]">
                                                         {inv.number}
                                                         <Text type="secondary" className="ms-2 text-xs font-normal">
                                                             {inv.fp_number ? `FP: ${inv.fp_number}` : 'FP: —'}
@@ -743,8 +745,8 @@ export default function VoyagesShow({
                                                         <Badge tone={inv.status === 'paid' ? 'success' : inv.status === 'partial' ? 'warning' : 'danger'}>
                                                             {inv.status}
                                                         </Badge>
-                                                        <span className="tabular-nums text-[#1C1B1A]">{formatRupiah(inv.total)}</span>
-                                                        <a href={`/cetak/invoice-charter/${inv.id}?kind=${inv.invoice_kind === 'pelunasan' ? 'pelunasan' : 'dp'}`} target="_blank" rel="noreferrer" className="text-xs font-medium text-[#C1121F] hover:underline">
+                                                        <span className="tabular-nums text-[#111827]">{formatRupiah(inv.total)}</span>
+                                                        <a href={`/cetak/invoice-charter/${inv.id}?kind=${inv.invoice_kind === 'pelunasan' ? 'pelunasan' : 'dp'}`} target="_blank" rel="noreferrer" className="text-xs font-medium text-[#BA0C2F] hover:underline">
                                                             Cetak
                                                         </a>
                                                     </span>
@@ -753,7 +755,7 @@ export default function VoyagesShow({
                                         </ul>
                                     </>
                                 )}
-                                <Divider style={{ margin: '16px 0 12px', borderColor: '#E7E1D9' }} />
+                                <Divider style={{ margin: '16px 0 12px', borderColor: '#E3E8F0' }} />
                                 <Text type="secondary" className="mb-2 block text-xs font-semibold uppercase tracking-wide">Terbitkan Invoice Charter</Text>
                                 <Text type="secondary" className="mb-2 block text-xs">
                                     Auto-fill dari SPAL (rate x MT). Pelunasan memakai DSR. PPN 11%, PPh 1,2%, nomor terbit urut, PDF otomatis terarsip. Kolom FP: nomor & file (sistem tidak menerbitkan FP).
@@ -770,7 +772,7 @@ export default function VoyagesShow({
                                         <select
                                             value={issueInvForm.data.kind}
                                             onChange={(e) => issueInvForm.setData('kind', e.target.value)}
-                                            className="mt-1 block w-44 rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20"
+                                            className="mt-1 block w-44 rounded-md border border-[#E3E8F0] bg-white p-2 text-sm shadow-sm focus:border-[#BA0C2F] focus:outline-none focus:ring-2 focus:ring-[#BA0C2F]/20"
                                         >
                                             <option value="dp">DP (50% / terms)</option>
                                             <option value="dp100">DP 100% (penuh)</option>
@@ -783,7 +785,7 @@ export default function VoyagesShow({
                                             value={issueInvForm.data.fp_number}
                                             onChange={(e) => issueInvForm.setData('fp_number', e.target.value)}
                                             placeholder="010.045-777.197.2026"
-                                            className="mt-1 block w-56 rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20"
+                                            className="mt-1 block w-56 rounded-md border border-[#E3E8F0] bg-white p-2 text-sm shadow-sm focus:border-[#BA0C2F] focus:outline-none focus:ring-2 focus:ring-[#BA0C2F]/20"
                                         />
                                     </div>
                                     <PrimaryButton disabled={issueInvForm.processing || !voyage.spal_number || !voyage.freight_rate}>
@@ -791,7 +793,7 @@ export default function VoyagesShow({
                                     </PrimaryButton>
                                 </form>
                                 {!voyage.spal_number && <Text type="secondary" className="mt-1.5 block text-xs">Terbitkan SPAL terlebih dahulu.</Text>}
-                                {issueInvForm.errors?.kind && <p className="mt-1 text-xs text-[#C1121F]">{issueInvForm.errors.kind}</p>}
+                                {issueInvForm.errors?.kind && <p className="mt-1 text-xs text-[#BA0C2F]">{issueInvForm.errors.kind}</p>}
                             </Card>
                         )}
 
@@ -801,24 +803,24 @@ export default function VoyagesShow({
                             ) : (
                                 <ul className="space-y-2">
                                     {(agency ?? []).map((ag: any) => (
-                                        <li key={ag.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#E7E1D9] px-3 py-2.5 text-sm">
+                                        <li key={ag.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#E3E8F0] px-3 py-2.5 text-sm">
                                             <div>
-                                                <p className="font-medium text-[#1C1B1A]">
+                                                <p className="font-medium text-[#111827]">
                                                     <Text type="secondary" className="font-mono text-xs">{ag.letter_no}</Text> · {ag.agent_name}
                                                 </p>
-                                                <p className="text-xs capitalize text-[#8A8580]">
+                                                <p className="text-xs capitalize text-[#5B6474]">
                                                     {ag.port_type} · {ag.port_name ?? '—'} · Nakhoda: {ag.captain_name ?? '—'} {ag.captain_phone ? `(${ag.captain_phone})` : ''} · GRT {ag.grt ?? '—'}
                                                 </p>
                                             </div>
                                             <div className="flex items-center gap-2 text-xs font-medium">
-                                                <a href={`/cetak/keagenan/${ag.id}`} target="_blank" rel="noreferrer" className="text-[#C1121F] hover:underline">Cetak</a>
+                                                <a href={`/cetak/keagenan/${ag.id}`} target="_blank" rel="noreferrer" className="text-[#BA0C2F] hover:underline">Cetak</a>
                                                 <Text type="secondary">{formatDate(ag.letter_date)}</Text>
                                                 {actions.can_update && (
                                                     <Popconfirm
                                                         title="Hapus surat keagenan ini?"
                                                         onConfirm={() => router.delete(`/perjalanan/${voyage.id}/keagenan/${ag.id}`, { preserveScroll: true })}
                                                     >
-                                                        <button type="button" className="text-[#C1121F] hover:underline">Hapus</button>
+                                                        <button type="button" className="text-[#BA0C2F] hover:underline">Hapus</button>
                                                     </Popconfirm>
                                                 )}
                                             </div>
@@ -836,11 +838,11 @@ export default function VoyagesShow({
                                             onSuccess: () => (e.currentTarget as HTMLFormElement).reset(),
                                         });
                                     }}
-                                    className="mt-4 grid grid-cols-2 gap-3 border-t border-[#E7E1D9] pt-4 md:grid-cols-4"
+                                    className="mt-4 grid grid-cols-2 gap-3 border-t border-[#E3E8F0] pt-4 md:grid-cols-4"
                                 >
                                     <div>
                                         <Text type="secondary" className="text-xs font-medium">Jenis Pelabuhan *</Text>
-                                        <select name="port_type" className="mt-1 block rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20">
+                                        <select name="port_type" className="mt-1 block rounded-md border border-[#E3E8F0] bg-white p-2 text-sm shadow-sm focus:border-[#BA0C2F] focus:outline-none focus:ring-2 focus:ring-[#BA0C2F]/20">
                                             <option value="muat">Muat</option>
                                             <option value="bongkar">Bongkar</option>
                                             <option value="lainnya">Lainnya</option>
@@ -848,27 +850,27 @@ export default function VoyagesShow({
                                     </div>
                                     <div>
                                         <Text type="secondary" className="text-xs font-medium">Nama Pelabuhan</Text>
-                                        <input name="port_name" className="mt-1 block rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20" />
+                                        <input name="port_name" className="mt-1 block rounded-md border border-[#E3E8F0] bg-white p-2 text-sm shadow-sm focus:border-[#BA0C2F] focus:outline-none focus:ring-2 focus:ring-[#BA0C2F]/20" />
                                     </div>
                                     <div>
                                         <Text type="secondary" className="text-xs font-medium">Agen *</Text>
-                                        <input name="agent_name" required className="mt-1 block rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20" />
+                                        <input name="agent_name" required className="mt-1 block rounded-md border border-[#E3E8F0] bg-white p-2 text-sm shadow-sm focus:border-[#BA0C2F] focus:outline-none focus:ring-2 focus:ring-[#BA0C2F]/20" />
                                     </div>
                                     <div>
                                         <Text type="secondary" className="text-xs font-medium">Alamat Agen</Text>
-                                        <input name="agent_address" className="mt-1 block rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20" />
+                                        <input name="agent_address" className="mt-1 block rounded-md border border-[#E3E8F0] bg-white p-2 text-sm shadow-sm focus:border-[#BA0C2F] focus:outline-none focus:ring-2 focus:ring-[#BA0C2F]/20" />
                                     </div>
                                     <div>
                                         <Text type="secondary" className="text-xs font-medium">Nakhoda</Text>
-                                        <input name="captain_name" className="mt-1 block rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20" />
+                                        <input name="captain_name" className="mt-1 block rounded-md border border-[#E3E8F0] bg-white p-2 text-sm shadow-sm focus:border-[#BA0C2F] focus:outline-none focus:ring-2 focus:ring-[#BA0C2F]/20" />
                                     </div>
                                     <div>
                                         <Text type="secondary" className="text-xs font-medium">HP Nakhoda</Text>
-                                        <input name="captain_phone" className="mt-1 block rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20" />
+                                        <input name="captain_phone" className="mt-1 block rounded-md border border-[#E3E8F0] bg-white p-2 text-sm shadow-sm focus:border-[#BA0C2F] focus:outline-none focus:ring-2 focus:ring-[#BA0C2F]/20" />
                                     </div>
                                     <div>
                                         <Text type="secondary" className="text-xs font-medium">Tanggal Surat</Text>
-                                        <input name="letter_date" type="date" className="mt-1 block rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20" />
+                                        <input name="letter_date" type="date" className="mt-1 block rounded-md border border-[#E3E8F0] bg-white p-2 text-sm shadow-sm focus:border-[#BA0C2F] focus:outline-none focus:ring-2 focus:ring-[#BA0C2F]/20" />
                                     </div>
                                     <div className="flex items-end">
                                         <Button type="primary" htmlType="submit">
@@ -885,8 +887,8 @@ export default function VoyagesShow({
                             ) : (
                                 <ul className="grid grid-cols-1 gap-2 md:grid-cols-2">
                                     {documents.map((d: any) => (
-                                        <li key={d.id} className="flex items-center justify-between rounded-lg border border-[#E7E1D9] px-3 py-2 text-sm">
-                                            <Link href={`/dokumen/${d.id}`} className="font-medium text-[#1C1B1A] hover:text-[#C1121F]">
+                                        <li key={d.id} className="flex items-center justify-between rounded-lg border border-[#E3E8F0] px-3 py-2 text-sm">
+                                            <Link href={`/dokumen/${d.id}`} className="font-medium text-[#111827] hover:text-[#BA0C2F]">
                                                 {d.document_name}
                                             </Link>
                                             <Text type="secondary" className="text-xs">{d.group_code} · {d.verification_status}</Text>
@@ -911,9 +913,9 @@ export default function VoyagesShow({
                                             ['Turun (Landed)', voyage.landed],
                                             ['Batal', voyage.cancelled],
                                         ].map(([k, v]) => (
-                                            <div key={k as string} className="rounded-lg bg-[#FAF7F2] p-3">
+                                            <div key={k as string} className="rounded-lg bg-[#F5F7FA] p-3">
                                                 <Text type="secondary" className="text-xs uppercase tracking-wide">{k}</Text>
-                                                <p className="mt-0.5 text-xl font-semibold tabular-nums text-[#1C1B1A]">
+                                                <p className="mt-0.5 text-xl font-semibold tabular-nums text-[#111827]">
                                                     {v == null ? '—' : formatNumber(Number(v))}
                                                 </p>
                                             </div>
@@ -931,11 +933,11 @@ export default function VoyagesShow({
                                                     { preserveScroll: true },
                                                 );
                                             }}
-                                            className="mt-4 flex flex-wrap items-end gap-2 border-t border-[#E7E1D9] pt-4"
+                                            className="mt-4 flex flex-wrap items-end gap-2 border-t border-[#E3E8F0] pt-4"
                                         >
                                             <div>
                                                 <Text type="secondary" className="text-xs font-medium">Jenis Log</Text>
-                                                <select name="type" className="mt-1 block rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20">
+                                                <select name="type" className="mt-1 block rounded-md border border-[#E3E8F0] bg-white p-2 text-sm shadow-sm focus:border-[#BA0C2F] focus:outline-none focus:ring-2 focus:ring-[#BA0C2F]/20">
                                                     <option value="keberangkatan">Keberangkatan (jumlah naik)</option>
                                                     <option value="kedatangan">Kedatangan (jumlah turun)</option>
                                                     <option value="batal">Pembatalan tiket</option>
@@ -944,9 +946,9 @@ export default function VoyagesShow({
                                             </div>
                                             <div>
                                                 <Text type="secondary" className="text-xs font-medium">Jumlah</Text>
-                                                <NumericInput name="count" min={0} className="mt-1 block w-28 rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20" />
+                                                <NumericInput name="count" min={0} className="mt-1 block w-28 rounded-md border border-[#E3E8F0] bg-white p-2 text-sm shadow-sm focus:border-[#BA0C2F] focus:outline-none focus:ring-2 focus:ring-[#BA0C2F]/20" />
                                             </div>
-                                            <Button type="primary" htmlType="submit" style={{ background: '#1C1B1A', borderColor: '#1C1B1A' }}>
+                                            <Button type="primary" htmlType="submit" style={{ background: '#111827', borderColor: '#111827' }}>
                                                 Catat Log
                                             </Button>
                                         </form>
@@ -970,8 +972,8 @@ export default function VoyagesShow({
                                     <Paragraph type="secondary" className="text-sm mb-0">Tidak ada data muatan.</Paragraph>
                                 ) : (
                                     cargo.map((c) => (
-                                        <div key={c.id} className="rounded-lg border border-[#E7E1D9] p-3 text-sm">
-                                            <p className="font-semibold capitalize text-[#1C1B1A]">
+                                        <div key={c.id} className="rounded-lg border border-[#E3E8F0] p-3 text-sm">
+                                            <p className="font-semibold capitalize text-[#111827]">
                                                 {c.commodity_type?.replace('_', ' ')}
                                             </p>
                                             <Text type="secondary">
@@ -991,7 +993,7 @@ export default function VoyagesShow({
                             title="Persetujuan Internal"
                             actions={
                                 actions.can_approve && (
-                                    <Button type="primary" size="small" style={{ background: '#2F8F68', borderColor: '#2F8F68' }} onClick={() => setModal('approve')}>
+                                    <Button type="primary" size="small" style={{ background: '#15803D', borderColor: '#15803D' }} onClick={() => setModal('approve')}>
                                         Beri Keputusan
                                     </Button>
                                 )
@@ -1004,7 +1006,7 @@ export default function VoyagesShow({
                             ) : (
                                 <ul className="space-y-3">
                                     {approvals.filter((a) => a.scope === 'internal').map((a) => (
-                                        <li key={a.id} className="rounded-lg border border-[#E7E1D9] p-3">
+                                        <li key={a.id} className="rounded-lg border border-[#E3E8F0] p-3">
                                             <div className="flex items-center justify-between">
                                                 <Badge
                                                     tone={
@@ -1019,8 +1021,8 @@ export default function VoyagesShow({
                                                 </Badge>
                                                 <Text type="secondary" className="text-xs">{formatDateTime(a.decision_timestamp)}</Text>
                                             </div>
-                                            <p className="mt-1.5 text-xs text-[#8A8580]">{a.approver_name} · persetujuan internal</p>
-                                            {a.comments && <p className="mt-1 text-sm italic text-[#1C1B1A]">"{a.comments}"</p>}
+                                            <p className="mt-1.5 text-xs text-[#5B6474]">{a.approver_name} · persetujuan internal</p>
+                                            {a.comments && <p className="mt-1 text-sm italic text-[#111827]">"{a.comments}"</p>}
                                         </li>
                                     ))}
                                 </ul>
@@ -1036,8 +1038,8 @@ export default function VoyagesShow({
                                 )
                             }
                         >
-                            <div className="rounded-lg border border-[#E7E1D9] p-3 text-sm">
-                                <p className="font-medium text-[#1C1B1A]">
+                            <div className="rounded-lg border border-[#E3E8F0] p-3 text-sm">
+                                <p className="font-medium text-[#111827]">
                                     Status:{' '}
                                     {voyage.external_approval_status === 'terkonfirmasi'
                                         ? 'Terkonfirmasi'
@@ -1046,12 +1048,12 @@ export default function VoyagesShow({
                                           : 'Tidak berlaku untuk jenis perjalanan ini'}
                                 </p>
                                 {voyage.has_external_evidence && (
-                                    <p className="mt-1 flex items-center gap-1.5 text-xs text-[#2F8F68]">
+                                    <p className="mt-1 flex items-center gap-1.5 text-xs text-[#15803D]">
                                         <CheckCircle2 size={14} /> Bukti lampiran tersimpan
                                     </p>
                                 )}
                             </div>
-                            <div className="mt-3 rounded-lg bg-[#D99A2B]/5 p-3">
+                            <div className="mt-3 rounded-lg bg-[#B45309]/5 p-3">
                                 <Text type="secondary" className="text-xs leading-relaxed">
                                     Persetujuan eksternal hanya dapat dikonfirmasi dengan <strong>lampiran
                                     bukti/sumber sah</strong> (berkas dari pihak otoritas/agen/penerima).
@@ -1077,17 +1079,17 @@ export default function VoyagesShow({
                                     const reason = e.reason || (e.payload && e.payload.reason) || null;
 
                                     return {
-                                        color: isBackward ? '#D99A2B' : '#C1121F',
+                                        color: isBackward ? '#B45309' : '#BA0C2F',
                                         children: (
                                             <div>
                                                 <div className="flex flex-wrap items-center gap-2">
-                                                    <p className="text-sm font-semibold text-[#1C1B1A]">
+                                                    <p className="text-sm font-semibold text-[#111827]">
                                                         {isBackward
                                                             ? 'Status Dimundurkan'
                                                             : (hasStatusChange ? 'Perubahan Status' : e.description)}
                                                     </p>
                                                     {isBackward && (
-                                                        <span className="rounded bg-[#D99A2B]/15 px-2 py-0.5 text-[11px] font-semibold text-[#D99A2B]">
+                                                        <span className="rounded bg-[#B45309]/15 px-2 py-0.5 text-[11px] font-semibold text-[#B45309]">
                                                             Status Mundur
                                                         </span>
                                                     )}
@@ -1095,22 +1097,22 @@ export default function VoyagesShow({
                                                 {hasStatusChange && (
                                                     <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
                                                         <Text type="secondary">Status sebelumnya:</Text>
-                                                        <span className="rounded bg-[#FAF7F2] px-2 py-0.5 font-medium text-[#1C1B1A]">
+                                                        <span className="rounded bg-[#F5F7FA] px-2 py-0.5 font-medium text-[#111827]">
                                                             {fromLabel}
                                                         </span>
                                                         <Text type="secondary">menjadi</Text>
-                                                        <span className="rounded bg-[#C1121F]/10 px-2 py-0.5 font-semibold text-[#C1121F]">
+                                                        <span className="rounded bg-[#BA0C2F]/10 px-2 py-0.5 font-semibold text-[#BA0C2F]">
                                                             {toLabel}
                                                         </span>
                                                     </div>
                                                 )}
                                                 {reason && (
-                                                    <p className="mt-1.5 rounded bg-[#FAF7F2]/80 px-2.5 py-1.5 text-xs text-[#1C1B1A]">
+                                                    <p className="mt-1.5 rounded bg-[#F5F7FA]/80 px-2.5 py-1.5 text-xs text-[#111827]">
                                                         <Text type="secondary" className="font-semibold">Alasan: </Text>
                                                         {reason}
                                                     </p>
                                                 )}
-                                                <p className="mt-1 text-xs text-[#8A8580]">
+                                                <p className="mt-1 text-xs text-[#5B6474]">
                                                     {formatDateTime(e.occurred_at)} · Pelaku: {e.user_name ?? 'Sistem'}
                                                 </p>
                                             </div>
@@ -1132,16 +1134,16 @@ export default function VoyagesShow({
                             <>
                                 <ul className="space-y-2">
                                     {expenses.bills.map((b) => (
-                                        <li key={b.id} className="flex items-center justify-between rounded-lg border border-[#E7E1D9] px-3 py-2 text-sm">
-                                            <span className="font-medium text-[#1C1B1A]">{b.number} · {b.category}</span>
-                                            <span className="tabular-nums text-[#1C1B1A]">{formatRupiah(b.total)}</span>
+                                        <li key={b.id} className="flex items-center justify-between rounded-lg border border-[#E3E8F0] px-3 py-2 text-sm">
+                                            <span className="font-medium text-[#111827]">{b.number} · {b.category}</span>
+                                            <span className="tabular-nums text-[#111827]">{formatRupiah(b.total)}</span>
                                         </li>
                                     ))}
                                 </ul>
-                                <Divider style={{ margin: '16px 0', borderColor: '#E7E1D9' }} />
+                                <Divider style={{ margin: '16px 0', borderColor: '#E3E8F0' }} />
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm font-semibold text-[#1C1B1A]">Total Biaya</span>
-                                    <span className="text-lg font-semibold tabular-nums text-[#C1121F]">
+                                    <span className="text-sm font-semibold text-[#111827]">Total Biaya</span>
+                                    <span className="text-lg font-semibold tabular-nums text-[#BA0C2F]">
                                         {formatRupiah(expenses.total)}
                                     </span>
                                 </div>
@@ -1174,7 +1176,7 @@ export default function VoyagesShow({
                                 { key: 'pic', label: 'PIC', children: voyage.person_in_charge },
                             ]}
                         />
-                        <div className="mt-6 rounded-lg bg-[#FAF7F2] p-3">
+                        <div className="mt-6 rounded-lg bg-[#F5F7FA] p-3">
                             <Text type="secondary" className="text-xs">
                                 Dokumen resmi PT Bunga Teratai - DEMO DATA. Indikator kesiapan bersifat internal.
                             </Text>
@@ -1185,16 +1187,16 @@ export default function VoyagesShow({
 
             <Modal show={modal === 'approve'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitApprove} className="p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Keputusan Persetujuan Internal</h2>
-                    <p className="mt-1 text-sm text-[#8A8580]">
+                    <h2 className="text-lg font-semibold text-[#111827]">Keputusan Persetujuan Internal</h2>
+                    <p className="mt-1 text-sm text-[#5B6474]">
                         Keputusan tercatat di histori & audit trail. Bukan persetujuan otoritas.
                     </p>
                     <div className="mt-4">
-                        <label className="text-sm font-medium text-[#1C1B1A]">Keputusan</label>
+                        <label className="text-sm font-medium text-[#111827]">Keputusan</label>
                         <select
                             value={approveForm.data.decision}
                             onChange={(e) => approveForm.setData('decision', e.target.value)}
-                            className="mt-1 block w-full rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20"
+                            className="mt-1 block w-full rounded-md border border-[#E3E8F0] bg-white p-2 text-sm shadow-sm focus:border-[#BA0C2F] focus:outline-none focus:ring-2 focus:ring-[#BA0C2F]/20"
                         >
                             <option value="approved">Approve — Setujui</option>
                             <option value="revision_required">Request Revision — Minta Revisi</option>
@@ -1202,15 +1204,15 @@ export default function VoyagesShow({
                         </select>
                     </div>
                     <div className="mt-4">
-                        <label className="text-sm font-medium text-[#1C1B1A]">Komentar *</label>
+                        <label className="text-sm font-medium text-[#111827]">Komentar *</label>
                         <textarea
                             value={approveForm.data.comments}
                             onChange={(e) => approveForm.setData('comments', e.target.value)}
                             rows={3}
-                            className="mt-1 block w-full rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20"
+                            className="mt-1 block w-full rounded-md border border-[#E3E8F0] bg-white p-2 text-sm shadow-sm focus:border-[#BA0C2F] focus:outline-none focus:ring-2 focus:ring-[#BA0C2F]/20"
                         />
                         {approveForm.errors.comments && (
-                            <p className="mt-1 text-xs text-[#C1121F]">{approveForm.errors.comments}</p>
+                            <p className="mt-1 text-xs text-[#BA0C2F]">{approveForm.errors.comments}</p>
                         )}
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
@@ -1226,26 +1228,26 @@ export default function VoyagesShow({
 
             <Modal show={modal === 'external'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitExternal} className="p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Catat Persetujuan Eksternal</h2>
-                    <p className="mt-1 text-sm text-[#8A8580]">
+                    <h2 className="text-lg font-semibold text-[#111827]">Catat Persetujuan Eksternal</h2>
+                    <p className="mt-1 text-sm text-[#5B6474]">
                         Wajib melampirkan bukti sah (berkas dari otoritas/agen/penerima).
                     </p>
                     <div className="mt-4">
-                        <label className="text-sm font-medium text-[#1C1B1A]">Lampiran Bukti *</label>
+                        <label className="text-sm font-medium text-[#111827]">Lampiran Bukti *</label>
                         <input
                             type="file"
                             accept=".pdf,.jpg,.jpeg,.png"
                             onChange={(e) => externalForm.setData('evidence', e.target.files?.[0] ?? null)}
-                            className="mt-1 block w-full text-sm text-[#8A8580] file:mr-3 file:rounded-lg file:border-0 file:bg-[#FAF7F2] file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-[#1C1B1A] hover:file:bg-[#E7E1D9]"
+                            className="mt-1 block w-full text-sm text-[#5B6474] file:mr-3 file:rounded-lg file:border-0 file:bg-[#F5F7FA] file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-[#111827] hover:file:bg-[#E3E8F0]"
                         />
                     </div>
                     <div className="mt-4">
-                        <label className="text-sm font-medium text-[#1C1B1A]">Sumber / Keterangan *</label>
+                        <label className="text-sm font-medium text-[#111827]">Sumber / Keterangan *</label>
                         <input
                             value={externalForm.data.source_note}
                             onChange={(e) => externalForm.setData('source_note', e.target.value)}
                             placeholder="mis. Surat Persetujuan KSOP Samarinda No. ..."
-                            className="mt-1 block w-full rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20"
+                            className="mt-1 block w-full rounded-md border border-[#E3E8F0] bg-white p-2 text-sm shadow-sm focus:border-[#BA0C2F] focus:outline-none focus:ring-2 focus:ring-[#BA0C2F]/20"
                         />
                     </div>
                     <div className="mt-5 flex justify-end gap-3">
@@ -1261,26 +1263,26 @@ export default function VoyagesShow({
 
             <Modal show={modal === 'status'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitStatus} className="p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Ubah Status Perjalanan</h2>
-                    <p className="mt-1 text-sm text-[#8A8580]">
+                    <h2 className="text-lg font-semibold text-[#111827]">Ubah Status Perjalanan</h2>
+                    <p className="mt-1 text-sm text-[#5B6474]">
                         Status saat ini: <strong>{VOYAGE_STATUS_LABELS[voyage.voyage_status] ?? voyage.voyage_status}</strong>.
                     </p>
 
                     {isBackwardTransition(voyage.voyage_status, statusForm.data.to) && (
-                        <div className="mt-3 rounded-md bg-[#D99A2B]/15 p-3 text-xs text-[#D99A2B]">
+                        <div className="mt-3 rounded-md bg-[#B45309]/15 p-3 text-xs text-[#B45309]">
                             <strong>Perhatian:</strong> Anda sedang memundurkan status. Deskripsi alasan perubahan wajib diisi dan tidak boleh kosong atau hanya berisi spasi.
                         </div>
                     )}
 
                     <div className="mt-4">
-                        <label className="text-sm font-medium text-[#1C1B1A]">Pindah ke</label>
+                        <label className="text-sm font-medium text-[#111827]">Pindah ke</label>
                         <select
                             value={statusForm.data.to}
                             onChange={(e) => {
                                 setNextStatus(e.target.value);
                                 statusForm.setData('to', e.target.value);
                             }}
-                            className="mt-1 block w-full rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20"
+                            className="mt-1 block w-full rounded-md border border-[#E3E8F0] bg-white p-2 text-sm shadow-sm focus:border-[#BA0C2F] focus:outline-none focus:ring-2 focus:ring-[#BA0C2F]/20"
                         >
                             {voyage.allowed_transitions.map((s: string) => {
                                 const isBwd = isBackwardTransition(voyage.voyage_status, s);
@@ -1293,7 +1295,7 @@ export default function VoyagesShow({
                         </select>
                     </div>
                     <div className="mt-4">
-                        <label className="text-sm font-medium text-[#1C1B1A]">
+                        <label className="text-sm font-medium text-[#111827]">
                             {isBackwardTransition(voyage.voyage_status, statusForm.data.to)
                                 ? 'Alasan Perubahan Status (Wajib)'
                                 : statusForm.data.to === 'ready_for_departure'
@@ -1311,7 +1313,7 @@ export default function VoyagesShow({
                                       : 'Catatan opsional...'
                             }
                             required={isBackwardTransition(voyage.voyage_status, statusForm.data.to)}
-                            className="mt-1 block w-full rounded-md border border-[#E7E1D9] bg-white p-2 text-sm shadow-sm focus:border-[#C1121F] focus:outline-none focus:ring-2 focus:ring-[#C1121F]/20"
+                            className="mt-1 block w-full rounded-md border border-[#E3E8F0] bg-white p-2 text-sm shadow-sm focus:border-[#BA0C2F] focus:outline-none focus:ring-2 focus:ring-[#BA0C2F]/20"
                         />
                     </div>
                     <div className="mt-5 flex justify-end gap-3">

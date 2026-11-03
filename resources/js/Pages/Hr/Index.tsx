@@ -314,10 +314,10 @@ export default function HrIndex({
     };
 
     const employeeColumns = [
-        { title: 'Nama', dataIndex: 'name', key: 'name', render: (v: string) => <span className="font-medium text-[#1C1B1A]">{v}</span> },
-        { title: 'Jabatan', dataIndex: 'position', key: 'position', render: (v: string) => <span className="text-[#8A8580]">{v}</span> },
-        { title: 'Departemen', dataIndex: 'department', key: 'department', render: (v: string) => <span className="text-[#8A8580]">{v}</span> },
-        { title: 'Masuk', dataIndex: 'join_date', key: 'join_date', render: (v: string) => <span className="text-[#8A8580]">{formatDate(v)}</span> },
+        { title: 'Nama', dataIndex: 'name', key: 'name', render: (v: string) => <span className="font-medium text-[#111827]">{v}</span> },
+        { title: 'Jabatan', dataIndex: 'position', key: 'position', render: (v: string) => <span className="text-[#5B6474]">{v}</span> },
+        { title: 'Departemen', dataIndex: 'department', key: 'department', render: (v: string) => <span className="text-[#5B6474]">{v}</span> },
+        { title: 'Masuk', dataIndex: 'join_date', key: 'join_date', render: (v: string) => <span className="text-[#5B6474]">{formatDate(v)}</span> },
         { title: 'Pokok', dataIndex: 'base_salary', key: 'base_salary', render: (v: any) => <span className="tabular-nums">{formatRupiah(v)}</span> },
         { title: 'Tunjangan', dataIndex: 'allowances', key: 'allowances', render: (v: any) => <span className="tabular-nums">{formatRupiah(v)}</span> },
         {
@@ -341,14 +341,14 @@ export default function HrIndex({
                             });
                             setModal('editEmployee');
                         }}
-                        className="text-[#C1121F] hover:underline"
+                        className="text-[#BA0C2F] hover:underline"
                     >
                         Edit
                     </button>
                     <button
                         type="button"
                         onClick={() => setConfirmDel({ url: `/sdm/karyawan/${r.id}`, label: `karyawan ${r.name}` })}
-                        className="text-[#C1121F] hover:underline"
+                        className="text-[#BA0C2F] hover:underline"
                     >
                         Hapus
                     </button>
@@ -384,13 +384,13 @@ export default function HrIndex({
             title: 'Aksi', key: 'aksi',
             render: (_: any, r: Record<string, any>) => (
                 <div className="flex gap-2">
-                    <button type="button" onClick={() => openHorEdit(r)} className="text-[#C1121F] hover:underline" title="Ubah">
+                    <button type="button" onClick={() => openHorEdit(r)} className="text-[#BA0C2F] hover:underline" title="Ubah">
                         <ShieldCheck size={14} />
                     </button>
                     <button
                         type="button"
                         onClick={() => setConfirmDel({ url: `/sdm/hor/${r.id}`, label: `Jam istirahat ${r.log_date}` })}
-                        className="text-[#C1121F] hover:underline"
+                        className="text-[#BA0C2F] hover:underline"
                         title="Hapus"
                     >
                         <Trash2 size={14} />
@@ -407,6 +407,12 @@ export default function HrIndex({
             <PageHeader
                 title="SDM & Karyawan"
                 description="Roster ABK (penempatan per kapal + sertifikat ber-masa berlaku → ikut Reminder) dan karyawan kantor. Payroll di menu Keuangan."
+                metrics={[
+                    { label: 'ABK Aktif', value: (crews ?? []).filter((c) => (c.status ?? 'aktif') === 'aktif').length, tone: 'primary', sub: 'roster pelaut' },
+                    { label: 'Karyawan Kantor', value: (employees ?? []).filter((e) => (e.status ?? 'aktif') === 'aktif').length, sub: 'staff aktif' },
+                    { label: 'Catatan HoR', value: (horLogs ?? []).length, tone: 'navy', sub: `periode ${horMonth ?? 'bulan ini'}` },
+                    { label: 'HoR Tidak Patuh', value: (horLogs ?? []).filter((l) => l.is_compliant === false || l.compliant === false).length, tone: 'warning', sub: 'perlu tindak lanjut' },
+                ]}
                 actions={
                     <div className="flex flex-wrap items-center gap-2">
                         {tab === 'abk' && (
@@ -455,7 +461,7 @@ export default function HrIndex({
                     >
                         <div className="flex flex-wrap items-end gap-3">
                             <div>
-                                <label className="text-xs font-medium text-[#8A8580]">Awak</label>
+                                <label className="text-xs font-medium text-[#5B6474]">Awak</label>
                                 <AntSelect
                                     value={horFilter.crew_id || undefined}
                                     onChange={(v) => setHorFilter((f) => ({ ...f, crew_id: v ?? '' }))}
@@ -466,7 +472,7 @@ export default function HrIndex({
                                 />
                             </div>
                             <div>
-                                <label className="text-xs font-medium text-[#8A8580]">Bulan</label>
+                                <label className="text-xs font-medium text-[#5B6474]">Bulan</label>
                                 <Input
                                     type="month"
                                     value={horFilter.month}
@@ -487,14 +493,14 @@ export default function HrIndex({
 
                         <Row gutter={12} className="mt-4">
                             {[
-                                { label: 'Hari tercatat', value: String(horStats.recorded), color: '#1C1B1A' },
-                                { label: 'Patuh WLR', value: String(horStats.compliant), color: '#2F8F68' },
-                                { label: 'Langgar', value: String(horStats.violations), color: horStats.violations > 0 ? '#C1121F' : '#8A8580' },
-                                { label: 'Rata² istirahat', value: `${horStats.avgRest} jam`, color: '#1C1B1A' },
+                                { label: 'Hari tercatat', value: String(horStats.recorded), color: '#111827' },
+                                { label: 'Patuh WLR', value: String(horStats.compliant), color: '#15803D' },
+                                { label: 'Langgar', value: String(horStats.violations), color: horStats.violations > 0 ? '#BA0C2F' : '#5B6474' },
+                                { label: 'Rata² istirahat', value: `${horStats.avgRest} jam`, color: '#111827' },
                             ].map((s) => (
                                 <Col key={s.label} xs={12} lg={6}>
-                                    <div className="rounded-lg px-3 py-2" style={{ background: '#FAF7F2' }}>
-                                        <div className="text-xs text-[#8A8580]">{s.label}</div>
+                                    <div className="rounded-lg px-3 py-2" style={{ background: '#F5F7FA' }}>
+                                        <div className="text-xs text-[#5B6474]">{s.label}</div>
                                         <div className="text-lg font-semibold" style={{ color: s.color }}>{s.value}</div>
                                     </div>
                                 </Col>
@@ -507,16 +513,16 @@ export default function HrIndex({
                             <Row gutter={[8, 8]}>
                                 {horWeeks.map((w) => (
                                     <Col key={w.label} xs={24} sm={12} lg={6}>
-                                        <div className="rounded-lg border border-[#E7E1D9] px-3 py-2">
+                                        <div className="rounded-lg border border-[#E3E8F0] px-3 py-2">
                                             <div className="flex items-center justify-between">
-                                                <span className="text-sm font-medium text-[#1C1B1A]">{w.label}</span>
+                                                <span className="text-sm font-medium text-[#111827]">{w.label}</span>
                                                 {w.ok ? (
                                                     <Badge tone="success"><CheckCircle2 size={11} /> Patuh</Badge>
                                                 ) : (
                                                     <Badge tone="danger"><AlertTriangle size={11} /> {w.complete ? 'Langgar' : 'Belum lengkap'}</Badge>
                                                 )}
                                             </div>
-                                            <div className="mt-1 text-xs text-[#8A8580]">{w.range} · {w.restH} jam {w.complete ? '' : `(${w.restH}/77)`}</div>
+                                            <div className="mt-1 text-xs text-[#5B6474]">{w.range} · {w.restH} jam {w.complete ? '' : `(${w.restH}/77)`}</div>
                                         </div>
                                     </Col>
                                 ))}
@@ -544,10 +550,10 @@ export default function HrIndex({
                                 pagination={false}
                                 size="small"
                                 scroll={{ x: 700 }}
-                                rowClassName={() => 'hover:bg-[#FAF7F2]'}
+                                rowClassName={() => 'hover:bg-[#F5F7FA]'}
                             />
                         )}
-                        <p className="mt-3 text-xs text-[#8A8580]">
+                        <p className="mt-3 text-xs text-[#5B6474]">
                             Hari tanpa catatan berarti belum dilaporkan awak. Cetak register bulanan lewat tombol di atas untuk berkas inspeksi PSC.
                         </p>
                     </Card>
@@ -601,23 +607,23 @@ export default function HrIndex({
                                     <Row gutter={20}>
                                         <Col xs={24} lg={12}>
                                             <div className="mb-1.5 flex items-center justify-between">
-                                                <p className="text-xs font-semibold uppercase tracking-wide text-[#8A8580]">Penempatan</p>
+                                                <p className="text-xs font-semibold uppercase tracking-wide text-[#5B6474]">Penempatan</p>
                                                 <button
                                                     type="button"
                                                     onClick={() => { setAddAssignmentCrewId(c.id); assignmentForm.setData('crew_id', String(c.id)); assignmentForm.setData('role', c.rank); setModal('addAssignment'); }}
-                                                    className="text-xs font-medium text-[#C1121F] hover:underline"
+                                                    className="text-xs font-medium text-[#BA0C2F] hover:underline"
                                                 >
                                                     + Tambah
                                                 </button>
                                             </div>
                                             {c.assignments.length === 0 ? (
-                                                <p className="text-sm text-[#8A8580]">Belum ditempatkan.</p>
+                                                <p className="text-sm text-[#5B6474]">Belum ditempatkan.</p>
                                             ) : (
                                                 <div className="space-y-1">
                                                     {c.assignments.map((a: any, i: number) => (
-                                                        <div key={i} className="flex items-center justify-between rounded-lg border border-[#E7E1D9] px-3 py-1.5">
-                                                            <span className="text-[#1C1B1A]">{a.vessel_name}</span>
-                                                            <span className="text-xs text-[#8A8580]">
+                                                        <div key={i} className="flex items-center justify-between rounded-lg border border-[#E3E8F0] px-3 py-1.5">
+                                                            <span className="text-[#111827]">{a.vessel_name}</span>
+                                                            <span className="text-xs text-[#5B6474]">
                                                                 {a.role} · {formatDate(a.start_date)} → {formatDate(a.end_date)}
                                                             </span>
                                                             <Badge tone={a.status === 'aktif' ? 'success' : 'neutral'}>{a.status}</Badge>
@@ -635,14 +641,14 @@ export default function HrIndex({
                                                                         });
                                                                         setModal('editAssignment');
                                                                     }}
-                                                                    className="text-[#C1121F] hover:underline"
+                                                                    className="text-[#BA0C2F] hover:underline"
                                                                 >
                                                                     Edit
                                                                 </button>
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => setConfirmDel({ url: `/sdm/penempatan/${a.id}`, label: `penempatan ${a.vessel_name} — ${c.name}` })}
-                                                                    className="text-[#C1121F] hover:underline"
+                                                                    className="text-[#BA0C2F] hover:underline"
                                                                 >
                                                                     Lepas
                                                                 </button>
@@ -651,14 +657,14 @@ export default function HrIndex({
                                                     ))}
                                                 </div>
                                             )}
-                                            <p className="mt-3 text-xs text-[#8A8580]">
+                                            <p className="mt-3 text-xs text-[#5B6474]">
                                                 NIK: {c.nik ?? '—'} · {c.birth_place ?? '—'}, {formatDate(c.birth_date)} · HP: {c.phone ?? '—'}
                                             </p>
                                         </Col>
                                         <Col xs={24} lg={12}>
-                                            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[#8A8580]">Sertifikat & Kesehatan</p>
+                                            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[#5B6474]">Sertifikat & Kesehatan</p>
                                             {c.certificates.length === 0 ? (
-                                                <p className="text-sm text-[#8A8580]">Belum ada sertifikat.</p>
+                                                <p className="text-sm text-[#5B6474]">Belum ada sertifikat.</p>
                                             ) : (
                                                 <div className="space-y-1.5">
                                                     {c.certificates.map((cert: any) => {
@@ -670,10 +676,10 @@ export default function HrIndex({
                                                                 ? 'warning'
                                                                 : 'success';
                                                         return (
-                                                            <div key={cert.id} id={`record-cert-${cert.id}`} className="flex items-center justify-between rounded-lg border border-[#E7E1D9] px-3 py-1.5 text-sm">
-                                                                <span className="text-[#1C1B1A]">
+                                                            <div key={cert.id} id={`record-cert-${cert.id}`} className="flex items-center justify-between rounded-lg border border-[#E3E8F0] px-3 py-1.5 text-sm">
+                                                                <span className="text-[#111827]">
                                                                     {CERT_TYPES.find((t) => t[0] === cert.cert_type)?.[1] ?? cert.cert_type}
-                                                                    <span className="ms-1.5 text-xs text-[#8A8580]">{cert.number}</span>
+                                                                    <span className="ms-1.5 text-xs text-[#5B6474]">{cert.number}</span>
                                                                 </span>
                                                                 <Badge tone={tone}>
                                                                     {cert.days_left === null
@@ -696,14 +702,14 @@ export default function HrIndex({
                                                                             });
                                                                             setModal('editCert');
                                                                         }}
-                                                                        className="text-[#C1121F] hover:underline"
+                                                                        className="text-[#BA0C2F] hover:underline"
                                                                     >
                                                                         Edit
                                                                     </button>
                                                                     <button
                                                                         type="button"
                                                                         onClick={() => setConfirmDel({ url: `/sdm/abk/${c.id}/sertifikat/${cert.id}`, label: `sertifikat ${cert.cert_type} milik ${c.name}` })}
-                                                                        className="text-[#C1121F] hover:underline"
+                                                                        className="text-[#BA0C2F] hover:underline"
                                                                     >
                                                                         Hapus
                                                                     </button>
@@ -731,36 +737,36 @@ export default function HrIndex({
                     pagination={false}
                     size="small"
                     scroll={{ x: 900 }}
-                    rowClassName={() => 'hover:bg-[#FAF7F2]'}
+                    rowClassName={() => 'hover:bg-[#F5F7FA]'}
                 />
             )}
 
             <Modal show={modal === 'crew'} onClose={() => setModal(null)} maxWidth="lg">
                 <form onSubmit={submitCrew} className="p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Daftar ABK Baru</h2>
+                    <h2 className="text-lg font-semibold text-[#111827]">Daftar ABK Baru</h2>
                     <Row gutter={12} className="mt-4">
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Nama *</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Nama *</span>}>
                                 <Input value={crewForm.data.name} onChange={(e) => crewForm.setData('name', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">NIK</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">NIK</span>}>
                                 <Input value={crewForm.data.nik} onChange={(e) => crewForm.setData('nik', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Tempat Lahir</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Tempat Lahir</span>}>
                                 <Input value={crewForm.data.birth_place} onChange={(e) => crewForm.setData('birth_place', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Tanggal Lahir</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Tanggal Lahir</span>}>
                                 <Input type="date" value={crewForm.data.birth_date} onChange={(e) => crewForm.setData('birth_date', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Gender</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Gender</span>}>
                                 <AntSelect
                                     value={crewForm.data.gender}
                                     onChange={(v) => crewForm.setData('gender', v)}
@@ -770,42 +776,42 @@ export default function HrIndex({
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">HP</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">HP</span>}>
                                 <Input value={crewForm.data.phone} onChange={(e) => crewForm.setData('phone', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">NPWP</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">NPWP</span>}>
                                 <Input value={crewForm.data.npwp} onChange={(e) => crewForm.setData('npwp', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kode NIK Internal</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Kode NIK Internal</span>}>
                                 <Input value={crewForm.data.kode_nik} onChange={(e) => crewForm.setData('kode_nik', e.target.value)} placeholder="020107" />
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kode Pelaut</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Kode Pelaut</span>}>
                                 <Input value={crewForm.data.seafarer_code} onChange={(e) => crewForm.setData('seafarer_code', e.target.value)} placeholder="6201297511" />
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">SCCW / Sert. Utama</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">SCCW / Sert. Utama</span>}>
                                 <Input value={crewForm.data.sccw} onChange={(e) => crewForm.setData('sccw', e.target.value)} placeholder="ANT IV M / RATINGS" />
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">No PKL</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">No PKL</span>}>
                                 <Input value={crewForm.data.no_pkl} onChange={(e) => crewForm.setData('no_pkl', e.target.value)} placeholder="0107/BT-MI/S.ya/IV/2024" />
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Tanggal Masuk</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Tanggal Masuk</span>}>
                                 <Input type="date" value={crewForm.data.joined_on} onChange={(e) => crewForm.setData('joined_on', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Jabatan Pelayaran *</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Jabatan Pelayaran *</span>}>
                                 <AntSelect
                                     value={crewForm.data.rank}
                                     onChange={(v) => crewForm.setData('rank', v)}
@@ -815,12 +821,12 @@ export default function HrIndex({
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Gaji Pokok *</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Gaji Pokok *</span>}>
                                 <PriceInput value={crewForm.data.base_salary} onChange={(e) => crewForm.setData('base_salary', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Penempatan Awal</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Penempatan Awal</span>}>
                                 <AntSelect
                                     value={crewForm.data.vessel_id || undefined}
                                     onChange={(v) => crewForm.setData('vessel_id', v ?? '')}
@@ -832,7 +838,7 @@ export default function HrIndex({
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Status</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Status</span>}>
                                 <AntSelect
                                     value={crewForm.data.status}
                                     onChange={(v) => crewForm.setData('status', v)}
@@ -855,9 +861,9 @@ export default function HrIndex({
 
             <Modal show={modal === 'cert'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitCert} className="p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Tambah Sertifikat ABK</h2>
+                    <h2 className="text-lg font-semibold text-[#111827]">Tambah Sertifikat ABK</h2>
                     <div className="mt-4 space-y-3">
-                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Jenis *</span>}>
+                        <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Jenis *</span>}>
                             <AntSelect
                                 value={certForm.data.cert_type}
                                 onChange={(v) => certForm.setData('cert_type', v)}
@@ -865,17 +871,17 @@ export default function HrIndex({
                                 options={CERT_TYPES.map(([k, v]) => ({ value: k, label: v }))}
                             />
                         </Form.Item>
-                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Nomor</span>}>
+                        <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Nomor</span>}>
                             <Input value={certForm.data.number} onChange={(e) => certForm.setData('number', e.target.value)} />
                         </Form.Item>
-                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Tanggal Terbit</span>}>
+                        <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Tanggal Terbit</span>}>
                             <Input type="date" value={certForm.data.issued_at} onChange={(e) => certForm.setData('issued_at', e.target.value)} />
                         </Form.Item>
                         <Checkbox checked={certForm.data.has_expiry} onChange={(e) => certForm.setData('has_expiry', e.target.checked)}>
                             Punya masa berlaku (ikut reminder)
                         </Checkbox>
                         {certForm.data.has_expiry && (
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Berlaku s/d *</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Berlaku s/d *</span>}>
                                 <Input type="date" value={certForm.data.expiry_date} onChange={(e) => certForm.setData('expiry_date', e.target.value)} />
                             </Form.Item>
                         )}
@@ -889,35 +895,35 @@ export default function HrIndex({
 
             <Modal show={modal === 'employee'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitEmployee} className="p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Karyawan Kantor Baru</h2>
+                    <h2 className="text-lg font-semibold text-[#111827]">Karyawan Kantor Baru</h2>
                     <Row gutter={12} className="mt-4">
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Nama *</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Nama *</span>}>
                                 <Input value={employeeForm.data.name} onChange={(e) => employeeForm.setData('name', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Jabatan *</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Jabatan *</span>}>
                                 <Input value={employeeForm.data.position} onChange={(e) => employeeForm.setData('position', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Departemen</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Departemen</span>}>
                                 <Input value={employeeForm.data.department} onChange={(e) => employeeForm.setData('department', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Tanggal Masuk</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Tanggal Masuk</span>}>
                                 <Input type="date" value={employeeForm.data.join_date} onChange={(e) => employeeForm.setData('join_date', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Gaji Pokok *</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Gaji Pokok *</span>}>
                                 <PriceInput value={employeeForm.data.base_salary} onChange={(e) => employeeForm.setData('base_salary', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Tunjangan</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Tunjangan</span>}>
                                 <PriceInput value={employeeForm.data.allowances} onChange={(e) => employeeForm.setData('allowances', e.target.value)} />
                             </Form.Item>
                         </Col>
@@ -931,30 +937,30 @@ export default function HrIndex({
 
             <Modal show={modal === 'editCrew'} onClose={() => setModal(null)} maxWidth="lg">
                 <form onSubmit={submitEditCrew} className="p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit ABK — {editCrew?.name}</h2>
+                    <h2 className="text-lg font-semibold text-[#111827]">Edit ABK — {editCrew?.name}</h2>
                     <Row gutter={12} className="mt-4">
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Nama *</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Nama *</span>}>
                                 <Input value={editCrewForm.data.name} onChange={(e) => editCrewForm.setData('name', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">NIK</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">NIK</span>}>
                                 <Input value={editCrewForm.data.nik} onChange={(e) => editCrewForm.setData('nik', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Tempat Lahir</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Tempat Lahir</span>}>
                                 <Input value={editCrewForm.data.birth_place} onChange={(e) => editCrewForm.setData('birth_place', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Tanggal Lahir</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Tanggal Lahir</span>}>
                                 <Input type="date" value={editCrewForm.data.birth_date} onChange={(e) => editCrewForm.setData('birth_date', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Gender</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Gender</span>}>
                                 <AntSelect
                                     value={editCrewForm.data.gender}
                                     onChange={(v) => editCrewForm.setData('gender', v)}
@@ -964,42 +970,42 @@ export default function HrIndex({
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">HP</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">HP</span>}>
                                 <Input value={editCrewForm.data.phone} onChange={(e) => editCrewForm.setData('phone', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">NPWP</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">NPWP</span>}>
                                 <Input value={editCrewForm.data.npwp} onChange={(e) => editCrewForm.setData('npwp', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kode NIK Internal</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Kode NIK Internal</span>}>
                                 <Input value={editCrewForm.data.kode_nik} onChange={(e) => editCrewForm.setData('kode_nik', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kode Pelaut</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Kode Pelaut</span>}>
                                 <Input value={editCrewForm.data.seafarer_code} onChange={(e) => editCrewForm.setData('seafarer_code', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">SCCW / Sert. Utama</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">SCCW / Sert. Utama</span>}>
                                 <Input value={editCrewForm.data.sccw} onChange={(e) => editCrewForm.setData('sccw', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">No PKL</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">No PKL</span>}>
                                 <Input value={editCrewForm.data.no_pkl} onChange={(e) => editCrewForm.setData('no_pkl', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Tanggal Masuk</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Tanggal Masuk</span>}>
                                 <Input type="date" value={editCrewForm.data.joined_on} onChange={(e) => editCrewForm.setData('joined_on', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Jabatan *</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Jabatan *</span>}>
                                 <AntSelect
                                     value={editCrewForm.data.rank}
                                     onChange={(v) => editCrewForm.setData('rank', v)}
@@ -1009,12 +1015,12 @@ export default function HrIndex({
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Gaji Pokok *</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Gaji Pokok *</span>}>
                                 <PriceInput value={editCrewForm.data.base_salary} onChange={(e) => editCrewForm.setData('base_salary', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col xs={12} md={8}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Status</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Status</span>}>
                                 <AntSelect
                                     value={editCrewForm.data.status}
                                     onChange={(v) => editCrewForm.setData('status', v)}
@@ -1037,9 +1043,9 @@ export default function HrIndex({
 
             <Modal show={modal === 'editCert'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitEditCert} className="p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit Sertifikat ABK</h2>
+                    <h2 className="text-lg font-semibold text-[#111827]">Edit Sertifikat ABK</h2>
                     <div className="mt-4 space-y-3">
-                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Jenis *</span>}>
+                        <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Jenis *</span>}>
                             <AntSelect
                                 value={editCertForm.data.cert_type}
                                 onChange={(v) => editCertForm.setData('cert_type', v)}
@@ -1047,17 +1053,17 @@ export default function HrIndex({
                                 options={CERT_TYPES.map(([k, v]) => ({ value: k, label: v }))}
                             />
                         </Form.Item>
-                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Nomor</span>}>
+                        <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Nomor</span>}>
                             <Input value={editCertForm.data.number} onChange={(e) => editCertForm.setData('number', e.target.value)} />
                         </Form.Item>
-                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Tanggal Terbit</span>}>
+                        <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Tanggal Terbit</span>}>
                             <Input type="date" value={editCertForm.data.issued_at} onChange={(e) => editCertForm.setData('issued_at', e.target.value)} />
                         </Form.Item>
                         <Checkbox checked={editCertForm.data.has_expiry} onChange={(e) => editCertForm.setData('has_expiry', e.target.checked)}>
                             Punya masa berlaku (ikut reminder)
                         </Checkbox>
                         {editCertForm.data.has_expiry && (
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Berlaku s/d *</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Berlaku s/d *</span>}>
                                 <Input type="date" value={editCertForm.data.expiry_date} onChange={(e) => editCertForm.setData('expiry_date', e.target.value)} />
                             </Form.Item>
                         )}
@@ -1071,10 +1077,10 @@ export default function HrIndex({
 
             <Modal show={modal === 'addAssignment'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitAssignment} className="p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Tambah Penempatan ABK</h2>
-                    <p className="text-xs text-[#8A8580]">Penempatan aktif sebelumnya (di kapal mana pun) akan otomatis ditutup.</p>
+                    <h2 className="text-lg font-semibold text-[#111827]">Tambah Penempatan ABK</h2>
+                    <p className="text-xs text-[#5B6474]">Penempatan aktif sebelumnya (di kapal mana pun) akan otomatis ditutup.</p>
                     <div className="mt-4 space-y-3">
-                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kapal *</span>}>
+                        <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Kapal *</span>}>
                             <AntSelect
                                 value={assignmentForm.data.vessel_id || undefined}
                                 onChange={(v) => assignmentForm.setData('vessel_id', v ?? '')}
@@ -1083,13 +1089,13 @@ export default function HrIndex({
                                 options={(vessels ?? []).map((v: any) => ({ value: String(v.id), label: v.vessel_name }))}
                             />
                         </Form.Item>
-                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Jabatan di Kapal *</span>}>
+                        <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Jabatan di Kapal *</span>}>
                             <Input value={assignmentForm.data.role} onChange={(e) => assignmentForm.setData('role', e.target.value)} />
                         </Form.Item>
-                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Mulai *</span>}>
+                        <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Mulai *</span>}>
                             <Input type="date" value={assignmentForm.data.start_date} onChange={(e) => assignmentForm.setData('start_date', e.target.value)} />
                         </Form.Item>
-                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Selesai</span>}>
+                        <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Selesai</span>}>
                             <Input type="date" value={assignmentForm.data.end_date} onChange={(e) => assignmentForm.setData('end_date', e.target.value)} />
                         </Form.Item>
                     </div>
@@ -1102,9 +1108,9 @@ export default function HrIndex({
 
             <Modal show={modal === 'editAssignment'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitEditAssignment} className="p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit Penempatan</h2>
+                    <h2 className="text-lg font-semibold text-[#111827]">Edit Penempatan</h2>
                     <div className="mt-4 space-y-3">
-                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Kapal *</span>}>
+                        <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Kapal *</span>}>
                             <AntSelect
                                 value={editAssignmentForm.data.vessel_id || undefined}
                                 onChange={(v) => editAssignmentForm.setData('vessel_id', v ?? '')}
@@ -1112,22 +1118,22 @@ export default function HrIndex({
                                 options={(vessels ?? []).map((v: any) => ({ value: String(v.id), label: v.vessel_name }))}
                             />
                         </Form.Item>
-                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Jabatan *</span>}>
+                        <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Jabatan *</span>}>
                             <Input value={editAssignmentForm.data.role} onChange={(e) => editAssignmentForm.setData('role', e.target.value)} />
                         </Form.Item>
                         <Row gutter={12}>
                             <Col span={8}>
-                                <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Mulai *</span>}>
+                                <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Mulai *</span>}>
                                     <Input type="date" value={editAssignmentForm.data.start_date} onChange={(e) => editAssignmentForm.setData('start_date', e.target.value)} />
                                 </Form.Item>
                             </Col>
                             <Col span={8}>
-                                <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Selesai</span>}>
+                                <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Selesai</span>}>
                                     <Input type="date" value={editAssignmentForm.data.end_date} onChange={(e) => editAssignmentForm.setData('end_date', e.target.value)} />
                                 </Form.Item>
                             </Col>
                             <Col span={8}>
-                                <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Status</span>}>
+                                <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Status</span>}>
                                     <AntSelect
                                         value={editAssignmentForm.data.status}
                                         onChange={(v) => editAssignmentForm.setData('status', v)}
@@ -1151,40 +1157,40 @@ export default function HrIndex({
 
             <Modal show={modal === 'editEmployee'} onClose={() => setModal(null)} maxWidth="md">
                 <form onSubmit={submitEditEmployee} className="p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1B1A]">Edit Karyawan — {editEmployee?.name}</h2>
+                    <h2 className="text-lg font-semibold text-[#111827]">Edit Karyawan — {editEmployee?.name}</h2>
                     <Row gutter={12} className="mt-4">
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Nama *</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Nama *</span>}>
                                 <Input value={editEmployeeForm.data.name} onChange={(e) => editEmployeeForm.setData('name', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Jabatan *</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Jabatan *</span>}>
                                 <Input value={editEmployeeForm.data.position} onChange={(e) => editEmployeeForm.setData('position', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Departemen</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Departemen</span>}>
                                 <Input value={editEmployeeForm.data.department} onChange={(e) => editEmployeeForm.setData('department', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Masuk</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Masuk</span>}>
                                 <Input type="date" value={editEmployeeForm.data.join_date} onChange={(e) => editEmployeeForm.setData('join_date', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Gaji Pokok *</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Gaji Pokok *</span>}>
                                 <PriceInput value={editEmployeeForm.data.base_salary} onChange={(e) => editEmployeeForm.setData('base_salary', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Tunjangan</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Tunjangan</span>}>
                                 <PriceInput value={editEmployeeForm.data.allowances} onChange={(e) => editEmployeeForm.setData('allowances', e.target.value)} />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Status</span>}>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Status</span>}>
                                 <AntSelect
                                     value={editEmployeeForm.data.status}
                                     onChange={(v) => editEmployeeForm.setData('status', v)}
@@ -1206,17 +1212,17 @@ export default function HrIndex({
 
             <Modal show={modal === 'hor'} onClose={() => { setModal(null); setEditHor(null); }} maxWidth="lg">
                 <form onSubmit={submitHor} className="p-6">
-                    <h2 className="text-lg font-semibold text-[#1C1B1A]">
+                    <h2 className="text-lg font-semibold text-[#111827]">
                         {editHor ? `Ubah Jam Istirahat — ${editHor.log_date}` : 'Catat Jam Istirahat Awak'}
                     </h2>
-                    <p className="mt-1 text-xs text-[#8A8580]">
+                    <p className="mt-1 text-xs text-[#5B6474]">
                         Aturan MLC 2006: istirahat ≥10 jam per 24 jam (satu blok ≥6 jam), kerja maksimal 14 jam per 24 jam.
                         Jam memakai waktu kapal (WITA).
                     </p>
 
                     <Row gutter={12} className="mt-4">
                         <Col xs={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Awak *</span>} required>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Awak *</span>} required>
                                 <AntSelect
                                     value={horForm.data.crew_id || undefined}
                                     onChange={(v) => horForm.setData('crew_id', v ?? '')}
@@ -1227,7 +1233,7 @@ export default function HrIndex({
                             </Form.Item>
                         </Col>
                         <Col xs={12}>
-                            <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Tanggal *</span>} required>
+                            <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Tanggal *</span>} required>
                                 <Input type="date" value={horForm.data.log_date} onChange={(e) => horForm.setData('log_date', e.target.value)} />
                             </Form.Item>
                         </Col>
@@ -1235,11 +1241,11 @@ export default function HrIndex({
 
                     <div className="mt-4">
                         <div className="flex items-center justify-between">
-                            <label className="text-xs font-medium text-[#8A8580]">Blok Istirahat (WITA) *</label>
+                            <label className="text-xs font-medium text-[#5B6474]">Blok Istirahat (WITA) *</label>
                             <button
                                 type="button"
                                 onClick={() => horForm.setData('rest_entries', [...horForm.data.rest_entries, { start: '', end: '' }])}
-                                className="text-xs font-medium text-[#C1121F] hover:underline"
+                                className="text-xs font-medium text-[#BA0C2F] hover:underline"
                             >
                                 + Tambah blok
                             </button>
@@ -1253,7 +1259,7 @@ export default function HrIndex({
                                         onChange={(e) => setHorEntry(idx, 'start', e.target.value)}
                                         style={{ width: 128 }}
                                     />
-                                    <span className="text-[#8A8580]">s/d</span>
+                                    <span className="text-[#5B6474]">s/d</span>
                                     <Input
                                         type="time"
                                         value={entry.end}
@@ -1264,7 +1270,7 @@ export default function HrIndex({
                                         <button
                                             type="button"
                                             onClick={() => horForm.setData('rest_entries', horForm.data.rest_entries.filter((_, i) => i !== idx))}
-                                            className="text-[#C1121F] hover:underline"
+                                            className="text-[#BA0C2F] hover:underline"
                                             title="Hapus blok"
                                         >
                                             <Trash2 size={14} />
@@ -1278,8 +1284,8 @@ export default function HrIndex({
                     <div
                         className="mt-4 rounded-lg px-3 py-2 text-sm"
                         style={horPreview.violations.length === 0
-                            ? { background: '#2F8F681A', color: '#2F8F68' }
-                            : { background: '#C1121F1A', color: '#C1121F' }
+                            ? { background: '#15803D1A', color: '#15803D' }
+                            : { background: '#BA0C2F1A', color: '#BA0C2F' }
                         }
                     >
                         {horPreview.violations.length === 0 ? (
@@ -1298,7 +1304,7 @@ export default function HrIndex({
                     </div>
 
                     <div className="mt-3">
-                        <Form.Item label={<span className="text-xs font-medium text-[#8A8580]">Catatan (opsional)</span>}>
+                        <Form.Item label={<span className="text-xs font-medium text-[#5B6474]">Catatan (opsional)</span>}>
                             <Input
                                 value={horForm.data.notes}
                                 onChange={(e) => horForm.setData('notes', e.target.value)}

@@ -10,12 +10,12 @@ export type BadgeTone =
     | 'primary';
 
 const TONES: Record<BadgeTone, { color: string; border: string; text: string; dot: string }> = {
-    success: { color: '#2F8F681A', border: '#2F8F684D', text: '#2F8F68', dot: '#2F8F68' },
-    warning: { color: '#D99A2B1A', border: '#D99A2B4D', text: '#D99A2B', dot: '#D99A2B' },
-    danger: { color: '#C1121F1A', border: '#C1121F4D', text: '#C1121F', dot: '#C1121F' },
-    info: { color: '#1E46681A', border: '#1E46684D', text: '#1E4668', dot: '#1E4668' },
-    neutral: { color: '#FAF7F2', border: '#E7E1D9', text: '#8A8580', dot: '#8A8580' },
-    primary: { color: '#C1121F', border: '#C1121F', text: '#FFFFFF', dot: '#FFFFFF' },
+    success: { color: '#15803D1A', border: '#15803D4D', text: '#15803D', dot: '#15803D' },
+    warning: { color: '#B453091A', border: '#B453094D', text: '#B45309', dot: '#B45309' },
+    danger: { color: '#BA0C2F1A', border: '#BA0C2F4D', text: '#BA0C2F', dot: '#BA0C2F' },
+    info: { color: '#00205B1A', border: '#00205B4D', text: '#00205B', dot: '#00205B' },
+    neutral: { color: '#F5F7FA', border: '#E3E8F0', text: '#5B6474', dot: '#5B6474' },
+    primary: { color: '#BA0C2F', border: '#BA0C2F', text: '#FFFFFF', dot: '#FFFFFF' },
 };
 
 export default function Badge({

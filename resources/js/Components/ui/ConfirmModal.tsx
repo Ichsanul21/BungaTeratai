@@ -28,15 +28,15 @@ export default function ConfirmModal({
                     <span
                         className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
                         style={{
-                            background: tone === 'danger' ? '#C1121F1A' : '#D99A2B1A',
-                            color: tone === 'danger' ? '#C1121F' : '#D99A2B',
+                            background: tone === 'danger' ? '#BA0C2F1A' : '#B453091A',
+                            color: tone === 'danger' ? '#BA0C2F' : '#B45309',
                         }}
                     >
                         <AlertTriangle size={18} />
                     </span>
                     <div>
-                        <h2 className="text-lg font-semibold text-[#1C1B1A]">{title}</h2>
-                        <p className="mt-1 text-sm text-[#8A8580]">{message}</p>
+                        <h2 className="text-lg font-semibold text-[#111827]">{title}</h2>
+                        <p className="mt-1 text-sm text-[#5B6474]">{message}</p>
                     </div>
                 </div>
                 <div className="mt-6 flex justify-end gap-3">
@@ -48,7 +48,7 @@ export default function ConfirmModal({
                         danger={tone === 'danger'}
                         onClick={onConfirm}
                         loading={processing}
-                        style={tone === 'warning' ? { background: '#D99A2B', borderColor: '#D99A2B' } : undefined}
+                        style={tone === 'warning' ? { background: '#B45309', borderColor: '#B45309' } : undefined}
                     >
                         {confirmLabel}
                     </Button>

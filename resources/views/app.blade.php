@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="theme-color" content="#C41212">
+        <meta name="theme-color" content="#BA0C2F">
 
         {{-- PWA: file dibuat Vite saat `npm run build` (di dev tanpa build = 404, tak berdampak).
              Registrasi SW ada di resources/js/app.tsx (mode PROD saja).

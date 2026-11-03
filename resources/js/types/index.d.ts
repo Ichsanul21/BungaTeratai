@@ -13,6 +13,12 @@ export type PageProps<
         user: User;
     };
     unreadNotifications?: number;
+    notifCounts?: {
+        total: number;
+        unread: number;
+        reminder: number;
+        workflow: number;
+    };
     flash?: {
         success?: string | null;
         error?: string | null;

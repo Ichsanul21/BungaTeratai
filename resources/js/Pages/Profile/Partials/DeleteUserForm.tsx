@@ -5,7 +5,7 @@ import { FormEventHandler, useRef, useState } from 'react';
 import { Button, Input } from 'antd';
 
 const FormError = ({ message }: { message?: string }) =>
-    message ? <div className="mt-1 text-xs text-[#C1121F]">{message}</div> : null;
+    message ? <div className="mt-1 text-xs text-[#BA0C2F]">{message}</div> : null;
 
 export default function DeleteUserForm({
     className = '',
@@ -52,11 +52,11 @@ export default function DeleteUserForm({
     return (
         <section className={`space-y-6 ${className}`}>
             <header>
-                <h2 className="text-lg font-medium text-[#1C1B1A]">
+                <h2 className="text-lg font-medium text-[#111827]">
                     Delete Account
                 </h2>
 
-                <p className="mt-1 text-sm text-[#8A8580]">
+                <p className="mt-1 text-sm text-[#5B6474]">
                     Once your account is deleted, all of its resources and data
                     will be permanently deleted. Before deleting your account,
                     please download any data or information that you wish to
@@ -70,11 +70,11 @@ export default function DeleteUserForm({
 
             <Modal show={confirmingUserDeletion} onClose={closeModal}>
                 <form onSubmit={deleteUser} className="p-6">
-                    <h2 className="text-lg font-medium text-[#1C1B1A]">
+                    <h2 className="text-lg font-medium text-[#111827]">
                         Are you sure you want to delete your account?
                     </h2>
 
-                    <p className="mt-1 text-sm text-[#8A8580]">
+                    <p className="mt-1 text-sm text-[#5B6474]">
                         Once your account is deleted, all of its resources and
                         data will be permanently deleted. Please enter your
                         password to confirm you would like to permanently delete

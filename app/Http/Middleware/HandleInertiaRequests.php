@@ -47,11 +47,42 @@ class HandleInertiaRequests extends Middleware
                     ->where('read_status', false)
                     ->count()
                 : 0,
+            'notifCounts' => $this->notificationCounts($user),
             'flash' => [
                 'success' => session('success'),
                 'error' => session('error'),
             ],
             'demoLabel' => 'DEMO DATA',
+        ];
+    }
+
+    /**
+     * Ringkasan notifikasi untuk blok sidebar bawah.
+     *
+     * @return array{total:int,unread:int,reminder:int,workflow:int}
+     */
+    private function notificationCounts(?\App\Models\User $user): array
+    {
+        if (! $user) {
+            return ['total' => 0, 'unread' => 0, 'reminder' => 0, 'workflow' => 0];
+        }
+
+        $reminderTypes = [
+            'dokumen_mendekati_kedaluwarsa',
+            'dokumen_kedaluwarsa',
+            'endorsement_jatuh_tempo',
+            'endorsement_kedaluwarsa',
+            'invoice_jatuh_tempo',
+            'bill_jatuh_tempo',
+        ];
+
+        $base = Notification::where('recipient_id', $user->id);
+
+        return [
+            'total' => (clone $base)->count(),
+            'unread' => (clone $base)->where('read_status', false)->count(),
+            'reminder' => (clone $base)->whereIn('notification_type', $reminderTypes)->count(),
+            'workflow' => (clone $base)->whereNotIn('notification_type', $reminderTypes)->count(),
         ];
     }
 }

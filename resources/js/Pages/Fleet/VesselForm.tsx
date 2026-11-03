@@ -178,7 +178,7 @@ export default function VesselForm({ vessel, isEdit = false }: { vessel?: Record
     return (
         <form onSubmit={submit} className="grid grid-cols-1 items-start gap-5 xl:grid-cols-3">
             <div className="min-w-0 space-y-5 xl:col-span-2">
-                <Card title={<><span className="inline-flex h-9 w-9 items-center justify-center rounded-lg font-mono text-xs font-semibold" style={{ background: '#FAF7F2', color: '#C1121F' }}>01</span> Identitas Kapal</>} className="rounded-2xl border border-[#E7E1D9] shadow-sm">
+                <Card title={<><span className="inline-flex h-9 w-9 items-center justify-center rounded-lg font-mono text-xs font-semibold" style={{ background: '#F5F7FA', color: '#BA0C2F' }}>01</span> Identitas Kapal</>} className="rounded-2xl border border-[#E3E8F0] shadow-sm">
                     <Form form={form} layout="vertical" className="space-y-5">
                         <Form.Item label="Nama Kapal" name="vessel_name" required rules={[{ required: true, message: 'Nama kapal wajib diisi' }]}>
                             <Input
@@ -204,28 +204,28 @@ export default function VesselForm({ vessel, isEdit = false }: { vessel?: Record
                                                 }}
                                                 className={`w-full rounded-xl border-2 p-4 text-left transition-all ${
                                                     isSelected
-                                                        ? 'border-[#C1121F] bg-[#C1121F]/5 shadow-sm'
-                                                        : 'border-[#E7E1D9] bg-white hover:border-[#C1121F]/40 hover:shadow-sm'
+                                                        ? 'border-[#BA0C2F] bg-[#BA0C2F]/5 shadow-sm'
+                                                        : 'border-[#E3E8F0] bg-white hover:border-[#BA0C2F]/40 hover:shadow-sm'
                                                 }`}
                                             >
                                                 <div className="flex items-start gap-3">
                                                     <div
                                                         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
-                                                            isSelected ? 'bg-[#C1121F] text-white' : 'bg-[#FAF7F2] text-[#8A8580]'
+                                                            isSelected ? 'bg-[#BA0C2F] text-white' : 'bg-[#F5F7FA] text-[#5B6474]'
                                                         }`}
                                                     >
                                                         <Icon size={20} />
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <div className={`text-sm font-semibold ${isSelected ? 'text-[#C1121F]' : 'text-[#1C1B1A]'}`}>
+                                                        <div className={`text-sm font-semibold ${isSelected ? 'text-[#BA0C2F]' : 'text-[#111827]'}`}>
                                                             {t.label}
                                                         </div>
-                                                        <div className="mt-0.5 text-xs text-[#8A8580] leading-relaxed">
+                                                        <div className="mt-0.5 text-xs text-[#5B6474] leading-relaxed">
                                                             {t.desc}
                                                         </div>
                                                     </div>
                                                     {isSelected && (
-                                                        <CheckCircle2 size={18} className="shrink-0 text-[#C1121F]" />
+                                                        <CheckCircle2 size={18} className="shrink-0 text-[#BA0C2F]" />
                                                     )}
                                                 </div>
                                             </button>
@@ -259,23 +259,23 @@ export default function VesselForm({ vessel, isEdit = false }: { vessel?: Record
                                                 onClick={() => setData('navigation_type', n.value)}
                                                 className={`w-full rounded-xl border-2 p-3 text-left transition-all ${
                                                     isSelected
-                                                        ? 'border-[#C1121F] bg-[#C1121F]/5 shadow-sm'
-                                                        : 'border-[#E7E1D9] bg-white hover:border-[#C1121F]/40 hover:shadow-sm'
+                                                        ? 'border-[#BA0C2F] bg-[#BA0C2F]/5 shadow-sm'
+                                                        : 'border-[#E3E8F0] bg-white hover:border-[#BA0C2F]/40 hover:shadow-sm'
                                                 }`}
                                             >
                                                 <div className="flex items-center gap-3">
                                                     <div
                                                         className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-                                                            isSelected ? 'bg-[#C1121F] text-white' : 'bg-[#FAF7F2] text-[#8A8580]'
+                                                            isSelected ? 'bg-[#BA0C2F] text-white' : 'bg-[#F5F7FA] text-[#5B6474]'
                                                         }`}
                                                     >
                                                         <Icon size={18} />
                                                     </div>
-                                                    <span className={`text-sm font-semibold ${isSelected ? 'text-[#C1121F]' : 'text-[#1C1B1A]'}`}>
+                                                    <span className={`text-sm font-semibold ${isSelected ? 'text-[#BA0C2F]' : 'text-[#111827]'}`}>
                                                         {n.label}
                                                     </span>
                                                     {isSelected && (
-                                                        <CheckCircle2 size={16} className="ms-auto shrink-0 text-[#C1121F]" />
+                                                        <CheckCircle2 size={16} className="ms-auto shrink-0 text-[#BA0C2F]" />
                                                     )}
                                                 </div>
                                             </button>
@@ -283,7 +283,7 @@ export default function VesselForm({ vessel, isEdit = false }: { vessel?: Record
                                     );
                                 })}
                             </Row>
-                            <div className="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-[#8A8580]">
+                            <div className="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-[#5B6474]">
                                 <Info size={12} aria-hidden="true" className="mt-0.5 shrink-0" />
                                 Menentukan otoritas wilayah dan template dokumen wajib kapal.
                             </div>
@@ -297,7 +297,7 @@ export default function VesselForm({ vessel, isEdit = false }: { vessel?: Record
                                         onChange={(e) => setData('registration_number', e.target.value)}
                                     />
                                 </Form.Item>
-                                <div className="flex items-start gap-1.5 text-[11px] leading-relaxed -mt-3 mb-4" style={{ color: '#8A8580' }}>
+                                <div className="flex items-start gap-1.5 text-[11px] leading-relaxed -mt-3 mb-4" style={{ color: '#5B6474' }}>
                                     <Info size={12} aria-hidden="true" className="mt-0.5 shrink-0" />
                                     Nomor pada surat registrasi kapal bila sudah terbit.
                                 </div>
@@ -322,7 +322,7 @@ export default function VesselForm({ vessel, isEdit = false }: { vessel?: Record
                                         inputMode="numeric"
                                     />
                                 </Form.Item>
-                                <div className="flex items-start gap-1.5 text-[11px] leading-relaxed -mt-3 mb-4" style={{ color: '#8A8580' }}>
+                                <div className="flex items-start gap-1.5 text-[11px] leading-relaxed -mt-3 mb-4" style={{ color: '#5B6474' }}>
                                     <Info size={12} aria-hidden="true" className="mt-0.5 shrink-0" />
                                     7 digit, untuk kapal yang berlayar internasional.
                                 </div>
@@ -336,7 +336,7 @@ export default function VesselForm({ vessel, isEdit = false }: { vessel?: Record
                                         inputMode="numeric"
                                     />
                                 </Form.Item>
-                                <div className="flex items-start gap-1.5 text-[11px] leading-relaxed -mt-3 mb-4" style={{ color: '#8A8580' }}>
+                                <div className="flex items-start gap-1.5 text-[11px] leading-relaxed -mt-3 mb-4" style={{ color: '#5B6474' }}>
                                     <Info size={12} aria-hidden="true" className="mt-0.5 shrink-0" />
                                     9 digit identitas panggilan digital radio maritim.
                                 </div>
@@ -349,7 +349,7 @@ export default function VesselForm({ vessel, isEdit = false }: { vessel?: Record
                                         placeholder="mis. YB2AB"
                                     />
                                 </Form.Item>
-                                <div className="flex items-start gap-1.5 text-[11px] leading-relaxed -mt-3 mb-4" style={{ color: '#8A8580' }}>
+                                <div className="flex items-start gap-1.5 text-[11px] leading-relaxed -mt-3 mb-4" style={{ color: '#5B6474' }}>
                                     <Info size={12} aria-hidden="true" className="mt-0.5 shrink-0" />
                                     Nama panggilan radio untuk komunikasi pelayaran.
                                 </div>
@@ -368,7 +368,7 @@ export default function VesselForm({ vessel, isEdit = false }: { vessel?: Record
                     </Form>
                 </Card>
 
-                <Card title={<><span className="inline-flex h-9 w-9 items-center justify-center rounded-lg font-mono text-xs font-semibold" style={{ background: '#FAF7F2', color: '#C1121F' }}>02</span> Spesifikasi & Kapasitas</>} className="rounded-2xl border border-[#E7E1D9] shadow-sm">
+                <Card title={<><span className="inline-flex h-9 w-9 items-center justify-center rounded-lg font-mono text-xs font-semibold" style={{ background: '#F5F7FA', color: '#BA0C2F' }}>02</span> Spesifikasi & Kapasitas</>} className="rounded-2xl border border-[#E3E8F0] shadow-sm">
                     <Form form={form} layout="vertical">
                         <Row gutter={[16, 16]}>
                             <Col xs={24} md={12} xl={6}>
@@ -381,7 +381,7 @@ export default function VesselForm({ vessel, isEdit = false }: { vessel?: Record
                                             placeholder="mis. 32.5"
                                             className="pe-9"
                                         />
-                                        <span aria-hidden="true" className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-[11px] font-medium" style={{ color: '#8A8580' }}>m</span>
+                                        <span aria-hidden="true" className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-[11px] font-medium" style={{ color: '#5B6474' }}>m</span>
                                     </div>
                                 </Form.Item>
                             </Col>
@@ -395,7 +395,7 @@ export default function VesselForm({ vessel, isEdit = false }: { vessel?: Record
                                             placeholder="mis. 9.8"
                                             className="pe-9"
                                         />
-                                        <span aria-hidden="true" className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-[11px] font-medium" style={{ color: '#8A8580' }}>m</span>
+                                        <span aria-hidden="true" className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-[11px] font-medium" style={{ color: '#5B6474' }}>m</span>
                                     </div>
                                 </Form.Item>
                             </Col>
@@ -419,7 +419,7 @@ export default function VesselForm({ vessel, isEdit = false }: { vessel?: Record
                                             placeholder="mis. 220"
                                             className="pe-11"
                                         />
-                                        <span aria-hidden="true" className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-[11px] font-medium" style={{ color: '#8A8580' }}>ton</span>
+                                        <span aria-hidden="true" className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-[11px] font-medium" style={{ color: '#5B6474' }}>ton</span>
                                     </div>
                                 </Form.Item>
                             </Col>
@@ -477,10 +477,10 @@ export default function VesselForm({ vessel, isEdit = false }: { vessel?: Record
                                             placeholder="mis. 85"
                                             className="pe-14"
                                         />
-                                        <span aria-hidden="true" className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-[11px] font-medium" style={{ color: '#8A8580' }}>L/jam</span>
+                                        <span aria-hidden="true" className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-[11px] font-medium" style={{ color: '#5B6474' }}>L/jam</span>
                                     </div>
                                 </Form.Item>
-                                <div className="flex items-start gap-1.5 text-[11px] leading-relaxed -mt-3" style={{ color: '#8A8580' }}>
+                                <div className="flex items-start gap-1.5 text-[11px] leading-relaxed -mt-3" style={{ color: '#5B6474' }}>
                                     <Info size={12} aria-hidden="true" className="mt-0.5 shrink-0" />
                                     Acuan analisis konsumsi BBM normal atau tidak pada setiap perjalanan.
                                 </div>
@@ -489,7 +489,7 @@ export default function VesselForm({ vessel, isEdit = false }: { vessel?: Record
                     </Form>
                 </Card>
 
-                <Card title={<><span className="inline-flex h-9 w-9 items-center justify-center rounded-lg font-mono text-xs font-semibold" style={{ background: '#FAF7F2', color: '#C1121F' }}>03</span> Kepemilikan & Pangkalan</>} className="rounded-2xl border border-[#E7E1D9] shadow-sm">
+                <Card title={<><span className="inline-flex h-9 w-9 items-center justify-center rounded-lg font-mono text-xs font-semibold" style={{ background: '#F5F7FA', color: '#BA0C2F' }}>03</span> Kepemilikan & Pangkalan</>} className="rounded-2xl border border-[#E3E8F0] shadow-sm">
                     <Form form={form} layout="vertical">
                         <Row gutter={[16, 16]}>
                             <Col xs={24} md={12}>
@@ -525,7 +525,7 @@ export default function VesselForm({ vessel, isEdit = false }: { vessel?: Record
                     </Form>
                 </Card>
 
-                <div className="flex flex-col gap-4 rounded-2xl border bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: '#E7E1D9' }}>
+                <div className="flex flex-col gap-4 rounded-2xl border bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: '#E3E8F0' }}>
                     <div className="min-w-0">
                         {jumlahGalat > 0 ? (
                             <Alert
@@ -536,13 +536,13 @@ export default function VesselForm({ vessel, isEdit = false }: { vessel?: Record
                                 className="text-xs"
                             />
                         ) : !namaSiap ? (
-                            <div className="flex items-center gap-2 text-xs" style={{ color: '#8A8580' }}>
+                            <div className="flex items-center gap-2 text-xs" style={{ color: '#5B6474' }}>
                                 <Info size={14} aria-hidden="true" className="shrink-0" />
                                 Isi nama kapal pada seksi identitas untuk mengaktifkan tombol simpan.
                             </div>
                         ) : (
-                            <div className="flex items-center gap-2 text-xs" style={{ color: '#8A8580' }}>
-                                <CheckCircle2 size={14} aria-hidden="true" className="shrink-0" style={{ color: '#2F8F68' }} />
+                            <div className="flex items-center gap-2 text-xs" style={{ color: '#5B6474' }}>
+                                <CheckCircle2 size={14} aria-hidden="true" className="shrink-0" style={{ color: '#15803D' }} />
                                 <span className="truncate">Siap disimpan sebagai {data.vessel_name}.</span>
                             </div>
                         )}
@@ -558,25 +558,25 @@ export default function VesselForm({ vessel, isEdit = false }: { vessel?: Record
                 </div>
             </div>
 
-            <div className="min-w-0 space-y-5 xl:sticky xl:top-24">
-                <Card title="Pratinjau Kartu Kapal" extra={<span className="font-mono text-[10px] uppercase tracking-[0.14em]" style={{ color: '#8A8580' }}>Langsung</span>} className="rounded-2xl border border-[#E7E1D9] shadow-sm">
-                    <div className="rounded-xl border p-4" style={{ borderColor: '#E7E1D9', background: '#FAF7F2' }}>
+            <div className="min-w-0 space-y-5 xl:sticky xl:top-6">
+                <Card title="Pratinjau Kartu Kapal" extra={<span className="font-mono text-[10px] uppercase tracking-[0.14em]" style={{ color: '#5B6474' }}>Langsung</span>} className="rounded-2xl border border-[#E3E8F0] shadow-sm">
+                    <div className="rounded-xl border p-4" style={{ borderColor: '#E3E8F0', background: '#F5F7FA' }}>
                         <div className="flex items-start gap-3">
-                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg shadow-[0_10px_22px_-12px_rgba(193,18,31,0.55)]" style={{ background: '#C1121F', color: '#fff' }}>
+                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg shadow-[0_10px_22px_-12px_rgba(186,12,47,0.55)]" style={{ background: '#BA0C2F', color: '#fff' }}>
                                 <IkonJenis size={18} aria-hidden="true" />
                             </span>
                             <div className="min-w-0 flex-1">
-                                <p className="break-words text-sm font-semibold" style={{ color: '#1C1B1A' }}>
-                                    {data.vessel_name.trim() || <span style={{ color: '#8A8580' }}>Nama kapal menyusul</span>}
+                                <p className="break-words text-sm font-semibold" style={{ color: '#111827' }}>
+                                    {data.vessel_name.trim() || <span style={{ color: '#5B6474' }}>Nama kapal menyusul</span>}
                                 </p>
-                                <p className="mt-1 font-mono text-[10px] font-medium uppercase tracking-[0.14em]" style={{ color: '#8A8580' }}>
+                                <p className="mt-1 font-mono text-[10px] font-medium uppercase tracking-[0.14em]" style={{ color: '#5B6474' }}>
                                     {labelJenis + ' · ' + (NAV_LABELS[data.navigation_type] ?? data.navigation_type)}
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3.5 space-y-2.5 border-t pt-3.5" style={{ borderColor: '#E7E1D9' }}>
+                        <div className="mt-3.5 space-y-2.5 border-t pt-3.5" style={{ borderColor: '#E3E8F0' }}>
                             <div className="flex items-center justify-between gap-3">
-                                <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide" style={{ color: '#8A8580' }}>
+                                <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide" style={{ color: '#5B6474' }}>
                                     <Anchor size={12} aria-hidden="true" /> Status
                                 </span>
                                 <Badge tone={STATUS_TONES[data.operational_status] ?? 'neutral'}>
@@ -584,57 +584,57 @@ export default function VesselForm({ vessel, isEdit = false }: { vessel?: Record
                                 </Badge>
                             </div>
                             <div className="flex items-center justify-between gap-3">
-                                <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide" style={{ color: '#8A8580' }}>
+                                <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide" style={{ color: '#5B6474' }}>
                                     <Ruler size={12} aria-hidden="true" /> Dimensi
                                 </span>
-                                <span className="min-w-0 truncate text-xs font-medium" style={{ color: '#1C1B1A' }}>
+                                <span className="min-w-0 truncate text-xs font-medium" style={{ color: '#111827' }}>
                                     {terisi(teksDimensi) ? `${teksDimensi} m` : 'Belum diisi'}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between gap-3">
-                                <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide" style={{ color: '#8A8580' }}>
+                                <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide" style={{ color: '#5B6474' }}>
                                     <Hash size={12} aria-hidden="true" /> GT / DWT
                                 </span>
-                                <span className="min-w-0 truncate text-xs font-medium" style={{ color: '#1C1B1A' }}>
+                                <span className="min-w-0 truncate text-xs font-medium" style={{ color: '#111827' }}>
                                     {teksTonase || 'Belum diisi'}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between gap-3">
-                                <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide" style={{ color: '#8A8580' }}>
+                                <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide" style={{ color: '#5B6474' }}>
                                     <Boxes size={12} aria-hidden="true" /> Kapasitas
                                 </span>
-                                <span className="min-w-0 truncate text-xs font-medium" style={{ color: '#1C1B1A' }}>
+                                <span className="min-w-0 truncate text-xs font-medium" style={{ color: '#111827' }}>
                                     {teksKapasitas || 'Belum diisi'}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between gap-3">
-                                <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide" style={{ color: '#8A8580' }}>
+                                <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide" style={{ color: '#5B6474' }}>
                                     <MapPin size={12} aria-hidden="true" /> Pangkalan
                                 </span>
-                                <span className="min-w-0 truncate text-xs font-medium" style={{ color: '#1C1B1A' }}>
+                                <span className="min-w-0 truncate text-xs font-medium" style={{ color: '#111827' }}>
                                     {data.base_location.trim() || 'Belum diatur'}
                                 </span>
                             </div>
                         </div>
                     </div>
-                    <p className="mt-3 text-[11px] leading-relaxed" style={{ color: '#8A8580' }}>
+                    <p className="mt-3 text-[11px] leading-relaxed" style={{ color: '#5B6474' }}>
                         Kartu ini mengikuti isian secara langsung. Kelengkapan dokumen baru terhitung setelah kapal tersimpan dan sertifikasinya diunggah.
                     </p>
                 </Card>
 
-                <Card title="Kelengkapan Data" extra={<span className="font-mono text-[10px] uppercase tracking-[0.14em]" style={{ color: '#8A8580' }}>{jumlahSiap} dari {kelompok.length}</span>} className="rounded-2xl border border-[#E7E1D9] shadow-sm">
-                    <Progress percent={pctSiap} showInfo={false} strokeColor={{ from: '#C1121F', to: '#D4A96A' }} trailColor="#E7E1D9" />
+                <Card title="Kelengkapan Data" extra={<span className="font-mono text-[10px] uppercase tracking-[0.14em]" style={{ color: '#5B6474' }}>{jumlahSiap} dari {kelompok.length}</span>} className="rounded-2xl border border-[#E3E8F0] shadow-sm">
+                    <Progress percent={pctSiap} showInfo={false} strokeColor={{ from: '#BA0C2F', to: '#00205B' }} trailColor="#E3E8F0" />
                     <ul className="mt-4 space-y-2.5">
                         {kelompok.map((k) => (
                             <li key={k.label} className="flex items-center gap-2.5">
                                 {k.siap ? (
-                                    <CheckCircle2 size={15} aria-hidden="true" className="shrink-0" style={{ color: '#2F8F68' }} />
+                                    <CheckCircle2 size={15} aria-hidden="true" className="shrink-0" style={{ color: '#15803D' }} />
                                 ) : (
-                                    <Circle size={15} aria-hidden="true" className="shrink-0" style={{ color: 'rgba(138,133,128,0.5)' }} />
+                                    <Circle size={15} aria-hidden="true" className="shrink-0" style={{ color: 'rgba(91,100,116,0.5)' }} />
                                 )}
-                                <span className={`text-sm ${k.siap ? '' : ''}`} style={{ color: k.siap ? '#1C1B1A' : '#8A8580' }}>
+                                <span className={`text-sm ${k.siap ? '' : ''}`} style={{ color: k.siap ? '#111827' : '#5B6474' }}>
                                     {k.label}
-                                    {k.wajib && <span className="ms-0.5" style={{ color: '#C1121F' }}>*</span>}
+                                    {k.wajib && <span className="ms-0.5" style={{ color: '#BA0C2F' }}>*</span>}
                                 </span>
                             </li>
                         ))}

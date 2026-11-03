@@ -258,21 +258,21 @@ export default function DocumentsCreate({
             <Head title="Unggah Dokumen" />
 
             <div
-                className="mb-6 overflow-hidden rounded-2xl border border-[#E7E1D9] bg-white shadow-[0_1px_3px_rgba(28,27,26,0.04),0_8px_24px_-8px_rgba(28,27,26,0.06)]"
+                className="mb-6 overflow-hidden rounded-2xl border border-[#E3E8F0] bg-white shadow-[0_1px_3px_rgba(17,24,39,0.04),0_8px_24px_-8px_rgba(17,24,39,0.06)]"
             >
                 <div className="grid gap-6 p-6 lg:p-7 xl:grid-cols-[minmax(0,1fr)_370px] xl:items-center">
                     <div className="min-w-0">
                         <Link
                             href="/dokumen"
-                            className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium uppercase tracking-[0.2em] text-[#8A8580] transition-colors hover:text-[#C1121F]"
+                            className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium uppercase tracking-[0.2em] text-[#5B6474] transition-colors hover:text-[#BA0C2F]"
                         >
                             <Route size={13} />
                             Register Dokumen
                         </Link>
-                        <h1 className="mt-4 text-2xl font-semibold tracking-tight text-[#1C1B1A] sm:text-3xl">
+                        <h1 className="mt-4 text-2xl font-semibold tracking-tight text-[#111827] sm:text-3xl">
                             Unggah Dokumen.
                         </h1>
-                        <p className="mt-2 max-w-xl text-sm leading-relaxed text-[#8A8580]">
+                        <p className="mt-2 max-w-xl text-sm leading-relaxed text-[#5B6474]">
                             Lampirkan berkas dan lengkapi metadatanya. Dokumen langsung masuk ke
                             register dengan pengingat masa berlaku otomatis.
                         </p>
@@ -284,9 +284,9 @@ export default function DocumentsCreate({
                             ].map(({ icon: Icon, label }) => (
                                 <span
                                     key={label}
-                                    className="inline-flex items-center gap-1.5 rounded-full border border-[#E7E1D9] bg-[#FAF7F2] px-3 py-1 text-[11px] font-medium text-[#8A8580]"
+                                    className="inline-flex items-center gap-1.5 rounded-full border border-[#E3E8F0] bg-[#F5F7FA] px-3 py-1 text-[11px] font-medium text-[#5B6474]"
                                 >
-                                    <Icon size={12} style={{ color: '#D4A96A' }} />
+                                    <Icon size={12} style={{ color: '#00205B' }} />
                                     {label}
                                 </span>
                             ))}
@@ -295,17 +295,17 @@ export default function DocumentsCreate({
 
                     <div className="min-w-0">
                         {!data.file ? (
-                            <label className="group flex cursor-pointer flex-col items-center rounded-xl border border-dashed border-[#E7E1D9] bg-[#FAF7F2] px-6 py-7 text-center transition-colors hover:border-[#C1121F]/40">
+                            <label className="group flex cursor-pointer flex-col items-center rounded-xl border border-dashed border-[#E3E8F0] bg-[#F5F7FA] px-6 py-7 text-center transition-colors hover:border-[#BA0C2F]/40">
                                 <span className="pointer-events-none flex flex-col items-center gap-2.5">
                                     <span
-                                        className="flex h-12 w-12 items-center justify-center rounded-xl border border-[#E7E1D9] bg-white text-[#D4A96A]"
+                                        className="flex h-12 w-12 items-center justify-center rounded-xl border border-[#E3E8F0] bg-white text-[#00205B]"
                                     >
                                         <FileUp size={20} />
                                     </span>
-                                    <span className="text-sm font-semibold text-[#1C1B1A]">
+                                    <span className="text-sm font-semibold text-[#111827]">
                                         Seret berkas ke sini
                                     </span>
-                                    <span className="text-xs text-[#8A8580]">
+                                    <span className="text-xs text-[#5B6474]">
                                         atau klik untuk memilih dari komputer
                                     </span>
                                 </span>
@@ -319,26 +319,26 @@ export default function DocumentsCreate({
                             </label>
                         ) : (
                             <div
-                                className="rounded-xl border border-[#E7E1D9] bg-[#FAF7F2] p-4"
+                                className="rounded-xl border border-[#E3E8F0] bg-[#F5F7FA] p-4"
                             >
                                 <div className="flex items-center gap-3.5">
                                     <span
-                                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#D4A96A]/10 text-[#D4A96A]"
+                                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#00205B]/10 text-[#00205B]"
                                     >
                                         <IkonJenis size={20} />
                                     </span>
                                     <div className="min-w-0 flex-1">
-                                        <p className="truncate text-sm font-semibold text-[#1C1B1A]" title={fileName}>
+                                        <p className="truncate text-sm font-semibold text-[#111827]" title={fileName}>
                                             {fileName}
                                         </p>
-                                        <p className="mt-0.5 font-mono text-[11px] tabular-nums text-[#8A8580]">
+                                        <p className="mt-0.5 font-mono text-[11px] tabular-nums text-[#5B6474]">
                                             {labelJenis} · {formatUkuran(data.file.size)}
                                         </p>
                                     </div>
-                                    <CheckCircle2 size={18} className="shrink-0 text-[#2F8F68]" />
+                                    <CheckCircle2 size={18} className="shrink-0 text-[#15803D]" />
                                 </div>
                                 <div
-                                    className="mt-3.5 flex items-center gap-2 border-t border-[#E7E1D9] pt-3.5"
+                                    className="mt-3.5 flex items-center gap-2 border-t border-[#E3E8F0] pt-3.5"
                                 >
                                     <Button
                                         size="small"
@@ -356,7 +356,7 @@ export default function DocumentsCreate({
                                         type="text"
                                         onClick={buangBerkas}
                                         icon={<X size={13} />}
-                                        className="text-[#8A8580]"
+                                        className="text-[#5B6474]"
                                     >
                                         Buang
                                     </Button>
@@ -367,7 +367,7 @@ export default function DocumentsCreate({
                         {peringatanBerkas && (
                             <div
                                 role="alert"
-                                className="mt-3 flex items-start gap-2 rounded-lg border border-[#D99A2B]/40 bg-[#D99A2B]/10 px-3 py-2 text-xs font-medium leading-relaxed text-[#D99A2B]"
+                                className="mt-3 flex items-start gap-2 rounded-lg border border-[#B45309]/40 bg-[#B45309]/10 px-3 py-2 text-xs font-medium leading-relaxed text-[#B45309]"
                             >
                                 <AlertTriangle size={13} className="mt-0.5 shrink-0" />
                                 {peringatanBerkas}
@@ -376,7 +376,7 @@ export default function DocumentsCreate({
                         {errors.file && (
                             <div
                                 role="alert"
-                                className="mt-3 flex items-start gap-2 rounded-lg border border-[#C1121F]/30 bg-[#C1121F]/5 px-3 py-2 text-xs leading-relaxed text-[#C1121F]"
+                                className="mt-3 flex items-start gap-2 rounded-lg border border-[#BA0C2F]/30 bg-[#BA0C2F]/5 px-3 py-2 text-xs leading-relaxed text-[#BA0C2F]"
                             >
                                 <AlertTriangle size={13} className="mt-0.5 shrink-0" />
                                 {errors.file}
@@ -391,8 +391,8 @@ export default function DocumentsCreate({
                     <Card title="Kepemilikan & Tautan" description="Siapa pemilik dokumen dan perjalanan yang memakainya.">
                         <div className="space-y-5">
                             <div>
-                                <label className="block text-xs font-medium text-[#8A8580]">
-                                    Dokumen Milik <span className="text-[#C1121F]">*</span>
+                                <label className="block text-xs font-medium text-[#5B6474]">
+                                    Dokumen Milik <span className="text-[#BA0C2F]">*</span>
                                 </label>
                                 <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
                                     {[
@@ -425,43 +425,43 @@ export default function DocumentsCreate({
                                                 }
                                                 className="flex items-center gap-3 rounded-xl border p-3.5 text-left transition-colors"
                                                 style={{
-                                                    borderColor: aktif ? 'rgba(193,18,31,0.6)' : '#E7E1D9',
-                                                    background: aktif ? 'rgba(193,18,31,0.06)' : '#fff',
+                                                    borderColor: aktif ? 'rgba(186,12,47,0.6)' : '#E3E8F0',
+                                                    background: aktif ? 'rgba(186,12,47,0.06)' : '#fff',
                                                 }}
                                             >
                                                 <span
                                                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors"
                                                     style={{
-                                                        background: aktif ? '#C1121F' : '#FAF7F2',
-                                                        color: aktif ? '#fff' : '#8A8580',
+                                                        background: aktif ? '#BA0C2F' : '#F5F7FA',
+                                                        color: aktif ? '#fff' : '#5B6474',
                                                     }}
                                                 >
                                                     <Ikon size={18} />
                                                 </span>
                                                 <span className="min-w-0 flex-1">
-                                                    <span className="block text-sm font-semibold text-[#1C1B1A]">
+                                                    <span className="block text-sm font-semibold text-[#111827]">
                                                         {label}
                                                     </span>
-                                                    <span className="mt-0.5 block text-[11px] leading-snug text-[#8A8580]">
+                                                    <span className="mt-0.5 block text-[11px] leading-snug text-[#5B6474]">
                                                         {desc}
                                                     </span>
                                                 </span>
                                                 {aktif && (
-                                                    <CheckCircle2 size={16} className="shrink-0" style={{ color: '#C1121F' }} />
+                                                    <CheckCircle2 size={16} className="shrink-0" style={{ color: '#BA0C2F' }} />
                                                 )}
                                             </button>
                                         );
                                     })}
                                 </div>
                                 {errors.owner_type && (
-                                    <p className="mt-1.5 text-xs font-medium text-[#C1121F]">{errors.owner_type}</p>
+                                    <p className="mt-1.5 text-xs font-medium text-[#BA0C2F]">{errors.owner_type}</p>
                                 )}
                             </div>
 
                             {data.owner_type === 'vessel' ? (
                                 <div className="max-w-xl">
-                                    <label className="block text-xs font-medium text-[#8A8580]">
-                                        Vessel <span className="text-[#C1121F]">*</span>
+                                    <label className="block text-xs font-medium text-[#5B6474]">
+                                        Vessel <span className="text-[#BA0C2F]">*</span>
                                     </label>
                                     <Select
                                         value={data.owner_id ? String(data.owner_id) : ''}
@@ -483,18 +483,18 @@ export default function DocumentsCreate({
                                         ]}
                                     />
                                     {errors.owner_id && (
-                                        <p className="mt-1.5 text-xs font-medium text-[#C1121F]">{errors.owner_id}</p>
+                                        <p className="mt-1.5 text-xs font-medium text-[#BA0C2F]">{errors.owner_id}</p>
                                     )}
                                     {selectedVessel && (
                                         <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                                            <Tag style={{ borderColor: '#E7E1D9', background: '#FAF7F2', color: '#8A8580', fontSize: 11 }}>
+                                            <Tag style={{ borderColor: '#E3E8F0', background: '#F5F7FA', color: '#5B6474', fontSize: 11 }}>
                                                 {selectedVessel.vessel_type}
                                             </Tag>
-                                            <Tag style={{ borderColor: '#E7E1D9', background: '#FAF7F2', color: '#8A8580', fontSize: 11 }}>
+                                            <Tag style={{ borderColor: '#E3E8F0', background: '#F5F7FA', color: '#5B6474', fontSize: 11 }}>
                                                 {selectedVessel.navigation_type}
                                             </Tag>
-                                            <span className="inline-flex items-center gap-1.5 text-xs text-[#8A8580]">
-                                                <ShieldCheck size={13} style={{ color: '#2F8F68' }} />
+                                            <span className="inline-flex items-center gap-1.5 text-xs text-[#5B6474]">
+                                                <ShieldCheck size={13} style={{ color: '#15803D' }} />
                                                 {requirementChoices.length} requirement cocok untuk kapal ini
                                             </span>
                                         </div>
@@ -503,10 +503,10 @@ export default function DocumentsCreate({
                             ) : (
                                 <div
                                     className="flex max-w-xl items-start gap-2.5 rounded-xl border p-3.5"
-                                    style={{ borderColor: '#E7E1D9', background: '#FAF7F2' }}
+                                    style={{ borderColor: '#E3E8F0', background: '#F5F7FA' }}
                                 >
-                                    <Info size={15} className="mt-0.5 shrink-0" style={{ color: '#1E4668' }} />
-                                    <p className="text-xs leading-relaxed text-[#8A8580]">
+                                    <Info size={15} className="mt-0.5 shrink-0" style={{ color: '#00205B' }} />
+                                    <p className="text-xs leading-relaxed text-[#5B6474]">
                                         Dokumen perusahaan memakai requirement dan kategori kelompok A:
                                         akta, izin usaha, dan dokumen legalitas lainnya.
                                     </p>
@@ -515,7 +515,7 @@ export default function DocumentsCreate({
 
                             <Row gutter={16}>
                                 <Col span={12}>
-                                    <label className="block text-xs font-medium text-[#8A8580]">
+                                    <label className="block text-xs font-medium text-[#5B6474]">
                                         Tertaut Perjalanan (opsional)
                                     </label>
                                     <Select
@@ -531,7 +531,7 @@ export default function DocumentsCreate({
                                             })),
                                         ]}
                                     />
-                                    <p className="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-[#8A8580]">
+                                    <p className="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-[#5B6474]">
                                         <Info size={12} className="mt-0.5 shrink-0" />
                                         Saat perjalanan dipilih, pemilik kapal ditetapkan otomatis dari perjalanan tersebut.
                                     </p>
@@ -539,14 +539,14 @@ export default function DocumentsCreate({
                                 <Col span={12}>
                                     <div
                                         className="rounded-xl border p-3.5"
-                                        style={{ borderColor: '#E7E1D9', background: '#FAF7F2' }}
+                                        style={{ borderColor: '#E3E8F0', background: '#F5F7FA' }}
                                     >
                                         <div className="flex w-full items-center gap-3.5">
                                             <span className="min-w-0 flex-1">
-                                                <span className="block text-sm font-medium text-[#1C1B1A]">
+                                                <span className="block text-sm font-medium text-[#111827]">
                                                     Nomor arsip otomatis
                                                 </span>
-                                                <span className="mt-0.5 block text-xs leading-relaxed text-[#8A8580]">
+                                                <span className="mt-0.5 block text-xs leading-relaxed text-[#5B6474]">
                                                     Format ARS/…/tahun/urut, diterbitkan sistem saat dokumen disimpan.
                                                 </span>
                                             </span>
@@ -564,8 +564,8 @@ export default function DocumentsCreate({
                     <Card title="Identitas & Keterangan" description="Metadata yang membuat dokumen mudah ditemukan kembali di register.">
                         <Row gutter={[20, 16]}>
                             <Col span={24}>
-                                <label className="block text-xs font-medium text-[#8A8580]">
-                                    Nama Dokumen <span className="text-[#C1121F]">*</span>
+                                <label className="block text-xs font-medium text-[#5B6474]">
+                                    Nama Dokumen <span className="text-[#BA0C2F]">*</span>
                                 </label>
                                 <Input
                                     value={data.document_name}
@@ -574,11 +574,11 @@ export default function DocumentsCreate({
                                     className="mt-1"
                                 />
                                 {errors.document_name && (
-                                    <p className="mt-1.5 text-xs font-medium text-[#C1121F]">{errors.document_name}</p>
+                                    <p className="mt-1.5 text-xs font-medium text-[#BA0C2F]">{errors.document_name}</p>
                                 )}
                             </Col>
                             <Col span={12}>
-                                <label className="block text-xs font-medium text-[#8A8580]">
+                                <label className="block text-xs font-medium text-[#5B6474]">
                                     Dipenuhi Requirement (indikator kelengkapan)
                                 </label>
                                 <Select
@@ -596,8 +596,8 @@ export default function DocumentsCreate({
                                 />
                             </Col>
                             <Col span={12}>
-                                <label className="block text-xs font-medium text-[#8A8580]">
-                                    Kategori <span className="text-[#C1121F]">*</span>
+                                <label className="block text-xs font-medium text-[#5B6474]">
+                                    Kategori <span className="text-[#BA0C2F]">*</span>
                                 </label>
                                 <Select
                                     value={data.category_id ? String(data.category_id) : ''}
@@ -613,17 +613,17 @@ export default function DocumentsCreate({
                                     ]}
                                 />
                                 {errors.category_id && (
-                                    <p className="mt-1.5 text-xs font-medium text-[#C1121F]">{errors.category_id}</p>
+                                    <p className="mt-1.5 text-xs font-medium text-[#BA0C2F]">{errors.category_id}</p>
                                 )}
                                 {kategoriOtomatis && (
-                                    <p className="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-[#8A8580]">
-                                        <Sparkles size={12} style={{ color: '#D4A96A' }} />
+                                    <p className="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-[#5B6474]">
+                                        <Sparkles size={12} style={{ color: '#00205B' }} />
                                         Terisi otomatis dari requirement terpilih
                                     </p>
                                 )}
                             </Col>
                             <Col span={12}>
-                                <label className="block text-xs font-medium text-[#8A8580]">Nomor Dokumen</label>
+                                <label className="block text-xs font-medium text-[#5B6474]">Nomor Dokumen</label>
                                 <Input
                                     value={data.document_number}
                                     onChange={(e) => setData('document_number', e.target.value)}
@@ -631,7 +631,7 @@ export default function DocumentsCreate({
                                 />
                             </Col>
                             <Col span={12}>
-                                <label className="block text-xs font-medium text-[#8A8580]">Tanggal Terbit</label>
+                                <label className="block text-xs font-medium text-[#5B6474]">Tanggal Terbit</label>
                                 <Input
                                     type="date"
                                     value={data.issue_date}
@@ -640,7 +640,7 @@ export default function DocumentsCreate({
                                 />
                             </Col>
                             <Col span={12}>
-                                <label className="block text-xs font-medium text-[#8A8580]">Penanggung Jawab</label>
+                                <label className="block text-xs font-medium text-[#5B6474]">Penanggung Jawab</label>
                                 <Input
                                     value={data.responsible_person}
                                     onChange={(e) => setData('responsible_person', e.target.value)}
@@ -648,7 +648,7 @@ export default function DocumentsCreate({
                                 />
                             </Col>
                             <Col span={12}>
-                                <label className="block text-xs font-medium text-[#8A8580]">Lokasi Arsip</label>
+                                <label className="block text-xs font-medium text-[#5B6474]">Lokasi Arsip</label>
                                 <Input
                                     value={data.archive_location}
                                     onChange={(e) => setData('archive_location', e.target.value)}
@@ -657,7 +657,7 @@ export default function DocumentsCreate({
                                 />
                             </Col>
                             <Col span={24}>
-                                <label className="block text-xs font-medium text-[#8A8580]">Catatan</label>
+                                <label className="block text-xs font-medium text-[#5B6474]">Catatan</label>
                                 <Input.TextArea
                                     rows={3}
                                     value={data.notes}
@@ -671,13 +671,13 @@ export default function DocumentsCreate({
 
                     <Card title="Masa Berlaku & Endorsement" description="Atur pengingat kedaluwarsa dan siklus perpanjangan endorsement.">
                         <div className="space-y-4">
-                            <div className="rounded-xl border p-4" style={{ borderColor: '#E7E1D9', background: '#FAF7F2' }}>
+                            <div className="rounded-xl border p-4" style={{ borderColor: '#E3E8F0', background: '#F5F7FA' }}>
                                 <div className="flex w-full items-center gap-3.5">
                                     <span className="min-w-0 flex-1">
-                                        <span className="block text-sm font-medium text-[#1C1B1A]">
+                                        <span className="block text-sm font-medium text-[#111827]">
                                             Dokumen ini punya masa berlaku
                                         </span>
-                                        <span className="mt-0.5 block text-xs leading-relaxed text-[#8A8580]">
+                                        <span className="mt-0.5 block text-xs leading-relaxed text-[#5B6474]">
                                             Tanpa masa berlaku, sistem tidak membuat pengingat kedaluwarsa.
                                         </span>
                                     </span>
@@ -694,8 +694,8 @@ export default function DocumentsCreate({
                                 </div>
                                 {data.has_expiry && (
                                     <div className="mt-4 max-w-xs">
-                                        <label className="block text-xs font-medium text-[#8A8580]">
-                                            Berlaku s/d <span className="text-[#C1121F]">*</span>
+                                        <label className="block text-xs font-medium text-[#5B6474]">
+                                            Berlaku s/d <span className="text-[#BA0C2F]">*</span>
                                         </label>
                                         <Input
                                             type="date"
@@ -704,13 +704,13 @@ export default function DocumentsCreate({
                                             className="mt-1"
                                         />
                                         {errors.expiry_date && (
-                                            <p className="mt-1.5 text-xs font-medium text-[#C1121F]">{errors.expiry_date}</p>
+                                            <p className="mt-1.5 text-xs font-medium text-[#BA0C2F]">{errors.expiry_date}</p>
                                         )}
                                         {sisaHari != null && (
                                             <p
                                                 className="mt-2 flex items-center gap-1.5 text-xs font-medium"
                                                 style={{
-                                                    color: sisaHari < 0 ? '#C1121F' : sisaHari <= 30 ? '#D99A2B' : '#2F8F68',
+                                                    color: sisaHari < 0 ? '#BA0C2F' : sisaHari <= 30 ? '#B45309' : '#15803D',
                                                 }}
                                             >
                                                 <CalendarClock size={13} />
@@ -725,13 +725,13 @@ export default function DocumentsCreate({
                                 )}
                             </div>
 
-                            <div className="rounded-xl border p-4" style={{ borderColor: 'rgba(217,154,43,0.3)', background: 'rgba(217,154,43,0.05)' }}>
+                            <div className="rounded-xl border p-4" style={{ borderColor: 'rgba(180,83,9,0.3)', background: 'rgba(180,83,9,0.05)' }}>
                                 <div className="flex w-full items-center gap-3.5">
                                     <span className="min-w-0 flex-1">
-                                        <span className="block text-sm font-medium text-[#1C1B1A]">
+                                        <span className="block text-sm font-medium text-[#111827]">
                                             Punya siklus endorsement
                                         </span>
-                                        <span className="mt-0.5 block text-xs leading-relaxed text-[#8A8580]">
+                                        <span className="mt-0.5 block text-xs leading-relaxed text-[#5B6474]">
                                             Untuk Surat Laut dan Sertifikat Klasifikasi yang diperpanjang berkala.
                                         </span>
                                     </span>
@@ -743,7 +743,7 @@ export default function DocumentsCreate({
                                 {data.has_endorsement && (
                                     <Row gutter={16} className="mt-4 max-w-xl">
                                         <Col span={12}>
-                                            <label className="block text-xs font-medium text-[#8A8580]">Endorsement Terakhir</label>
+                                            <label className="block text-xs font-medium text-[#5B6474]">Endorsement Terakhir</label>
                                             <Input
                                                 type="date"
                                                 value={data.endorsement_last_date}
@@ -752,8 +752,8 @@ export default function DocumentsCreate({
                                             />
                                         </Col>
                                         <Col span={12}>
-                                            <label className="block text-xs font-medium text-[#8A8580]">
-                                                Endorsement Berikutnya <span className="text-[#C1121F]">*</span>
+                                            <label className="block text-xs font-medium text-[#5B6474]">
+                                                Endorsement Berikutnya <span className="text-[#BA0C2F]">*</span>
                                             </label>
                                             <Input
                                                 type="date"
@@ -768,23 +768,23 @@ export default function DocumentsCreate({
                         </div>
                     </Card>
 
-                    <div className="flex flex-col gap-4 rounded-2xl border border-[#E7E1D9] bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-col gap-4 rounded-2xl border border-[#E3E8F0] bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
                         <div className="min-w-0">
                             {data.file ? (
-                                <p className="flex items-center gap-2 text-xs text-[#8A8580]">
-                                    <CheckCircle2 size={14} className="shrink-0" style={{ color: '#2F8F68' }} />
+                                <p className="flex items-center gap-2 text-xs text-[#5B6474]">
+                                    <CheckCircle2 size={14} className="shrink-0" style={{ color: '#15803D' }} />
                                     <span className="truncate">
                                         Berkas terlampir · {fileName} · {formatUkuran(data.file.size)}
                                     </span>
                                 </p>
                             ) : (
-                                <p className="flex items-center gap-2 text-xs text-[#8A8580]">
+                                <p className="flex items-center gap-2 text-xs text-[#5B6474]">
                                     <Info size={14} className="shrink-0" />
                                     Lampirkan berkas pada panel merah di atas untuk mengaktifkan tombol unggah.
                                 </p>
                             )}
                             {berkasKelewatBesar && (
-                                <p className="mt-1 flex items-center gap-1.5 text-xs font-medium text-[#D99A2B]">
+                                <p className="mt-1 flex items-center gap-1.5 text-xs font-medium text-[#B45309]">
                                     <AlertTriangle size={12} />
                                     Ukuran melebihi 10 MB; tombol unggah terkunci sampai berkas diganti.
                                 </p>
@@ -807,30 +807,30 @@ export default function DocumentsCreate({
                     </div>
                 </div>
 
-                <div className="min-w-0 space-y-5 xl:sticky xl:top-24">
-                    <Card title="Pratinjau Register" actions={<span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#8A8580]">Langsung</span>}>
-                        <div className="rounded-xl border border-[#E7E1D9] bg-[#FAF7F2] p-4">
+                <div className="min-w-0 space-y-5 xl:sticky xl:top-6">
+                    <Card title="Pratinjau Register" actions={<span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#5B6474]">Langsung</span>}>
+                        <div className="rounded-xl border border-[#E3E8F0] bg-[#F5F7FA] p-4">
                             <div className="flex items-start gap-3">
                                 <span
                                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white"
-                                    style={{ background: '#C1121F', boxShadow: '0 10px 22px -12px rgba(193,18,31,0.55)' }}
+                                    style={{ background: '#BA0C2F', boxShadow: '0 10px 22px -12px rgba(186,12,47,0.55)' }}
                                 >
                                     <IkonJenis size={18} />
                                 </span>
                                 <div className="min-w-0 flex-1">
-                                    <p className="break-words text-sm font-semibold text-[#1C1B1A]">
+                                    <p className="break-words text-sm font-semibold text-[#111827]">
                                         {data.document_name.trim() || (
-                                            <span className="text-[#8A8580]">Nama dokumen menyusul</span>
+                                            <span className="text-[#5B6474]">Nama dokumen menyusul</span>
                                         )}
                                     </p>
-                                    <p className="mt-1 font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[#8A8580]">
+                                    <p className="mt-1 font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[#5B6474]">
                                         {kategoriTerpilih
                                             ? `${kategoriTerpilih.code} · ${kategoriTerpilih.name}`
                                             : 'Tanpa kategori'}
                                     </p>
                                 </div>
                             </div>
-                            <div className="mt-3.5 space-y-2.5 border-t border-[#E7E1D9] pt-3.5">
+                            <div className="mt-3.5 space-y-2.5 border-t border-[#E3E8F0] pt-3.5">
                                 {[
                                     {
                                         icon: data.owner_type === 'company' ? Building2 : Ship,
@@ -854,22 +854,22 @@ export default function DocumentsCreate({
                                     },
                                 ].map(({ icon: Icon, label, value }) => (
                                     <div key={label} className="flex items-center justify-between gap-3">
-                                        <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-[#8A8580]">
+                                        <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-[#5B6474]">
                                             <Icon size={12} />
                                             {label}
                                         </span>
-                                        <span className="min-w-0 truncate text-xs font-medium text-[#1C1B1A]">{value}</span>
+                                        <span className="min-w-0 truncate text-xs font-medium text-[#111827]">{value}</span>
                                     </div>
                                 ))}
                                 <div className="flex items-center justify-between gap-3">
-                                    <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-[#8A8580]">
+                                    <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-[#5B6474]">
                                         <CalendarClock size={12} />
                                         Masa Berlaku
                                     </span>
                                     <span className="flex min-w-0 flex-col items-end gap-1">
                                         <Badge tone={badgeBerlaku.tone}>{badgeBerlaku.isi}</Badge>
                                         {data.has_expiry && data.expiry_date && (
-                                            <span className="font-mono text-[10px] tabular-nums text-[#8A8580]">
+                                            <span className="font-mono text-[10px] tabular-nums text-[#5B6474]">
                                                 {tglPendek(data.expiry_date)}
                                             </span>
                                         )}
@@ -877,11 +877,11 @@ export default function DocumentsCreate({
                                 </div>
                                 {data.has_endorsement && (
                                     <div className="flex items-center justify-between gap-3">
-                                        <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-[#8A8580]">
+                                        <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-[#5B6474]">
                                             <Stamp size={12} />
                                             Endorsement
                                         </span>
-                                        <span className="min-w-0 truncate text-xs font-medium text-[#1C1B1A]">
+                                        <span className="min-w-0 truncate text-xs font-medium text-[#111827]">
                                             {data.endorsement_next_date
                                                 ? `Berikutnya ${tglPendek(data.endorsement_next_date)}`
                                                 : 'Belum dijadwalkan'}
@@ -889,11 +889,11 @@ export default function DocumentsCreate({
                                     </div>
                                 )}
                                 <div className="flex items-center justify-between gap-3">
-                                    <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-[#8A8580]">
+                                    <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-[#5B6474]">
                                         <Paperclip size={12} />
                                         Berkas
                                     </span>
-                                    <span className="min-w-0 truncate text-xs font-medium text-[#1C1B1A]">
+                                    <span className="min-w-0 truncate text-xs font-medium text-[#111827]">
                                         {data.file
                                             ? `${fileName} · ${formatUkuran(data.file.size)}`
                                             : 'Belum ada'}
@@ -901,7 +901,7 @@ export default function DocumentsCreate({
                                 </div>
                             </div>
                         </div>
-                        <p className="mt-3 text-[11px] leading-relaxed text-[#8A8580]">
+                        <p className="mt-3 text-[11px] leading-relaxed text-[#5B6474]">
                             Kartu ini mengikuti isian secara langsung. Status verifikasi baru ditetapkan setelah dokumen diunggah.
                         </p>
                     </Card>
@@ -909,7 +909,7 @@ export default function DocumentsCreate({
                     <Card
                         title="Kelengkapan Isian"
                         actions={
-                            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#8A8580]">
+                            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#5B6474]">
                                 {jumlahSiap} dari {kebutuhan.length}
                             </span>
                         }
@@ -917,18 +917,18 @@ export default function DocumentsCreate({
                         <Progress
                             percent={pctSiap}
                             showInfo={false}
-                            strokeColor={{ from: '#C1121F', to: '#D4A96A' }}
-                            trailColor="#E7E1D9"
+                            strokeColor={{ from: '#BA0C2F', to: '#00205B' }}
+                            trailColor="#E3E8F0"
                         />
                         <ul className="mt-4 space-y-2.5">
                             {kebutuhan.map((k) => (
                                 <li key={k.label} className="flex items-center gap-2.5">
                                     {k.siap ? (
-                                        <CheckCircle2 size={15} className="shrink-0" style={{ color: '#2F8F68' }} />
+                                        <CheckCircle2 size={15} className="shrink-0" style={{ color: '#15803D' }} />
                                     ) : (
-                                        <Circle size={15} className="shrink-0" style={{ color: 'rgba(138,133,128,0.5)' }} />
+                                        <Circle size={15} className="shrink-0" style={{ color: 'rgba(91,100,116,0.5)' }} />
                                     )}
-                                    <span className={`text-sm ${k.siap ? 'text-[#1C1B1A]' : 'text-[#8A8580]'}`}>
+                                    <span className={`text-sm ${k.siap ? 'text-[#111827]' : 'text-[#5B6474]'}`}>
                                         {k.label}
                                     </span>
                                 </li>
@@ -936,18 +936,18 @@ export default function DocumentsCreate({
                         </ul>
                         {berkasKelewatBesar ? (
                             <p
-                                className="mt-4 flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold text-[#1C1B1A]"
-                                style={{ borderColor: 'rgba(217,154,43,0.4)', background: 'rgba(217,154,43,0.08)' }}
+                                className="mt-4 flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold text-[#111827]"
+                                style={{ borderColor: 'rgba(180,83,9,0.4)', background: 'rgba(180,83,9,0.08)' }}
                             >
-                                <AlertTriangle size={14} style={{ color: '#D99A2B' }} />
+                                <AlertTriangle size={14} style={{ color: '#B45309' }} />
                                 Berkas melebihi 10 MB, ganti sebelum mengirim.
                             </p>
                         ) : siapSemua ? (
                             <p
-                                className="mt-4 flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold text-[#1C1B1A]"
-                                style={{ borderColor: 'rgba(212,169,106,0.4)', background: 'rgba(212,169,106,0.08)' }}
+                                className="mt-4 flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold text-[#111827]"
+                                style={{ borderColor: 'rgba(0,32,91,0.4)', background: 'rgba(0,32,91,0.08)' }}
                             >
-                                <CheckCircle2 size={14} style={{ color: '#D99A2B' }} />
+                                <CheckCircle2 size={14} style={{ color: '#B45309' }} />
                                 Semua isian pokok lengkap, siap diunggah.
                             </p>
                         ) : null}

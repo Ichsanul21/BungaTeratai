@@ -4,11 +4,11 @@ import { FormEventHandler } from 'react';
 import { Alert, Input } from 'antd';
 
 const FormLabel = ({ children }: { children: React.ReactNode }) => (
-    <label className="mb-1 block text-sm font-medium text-[#1C1B1A]">{children}</label>
+    <label className="mb-1 block text-sm font-medium text-[#111827]">{children}</label>
 );
 
 const FormError = ({ message }: { message?: string }) =>
-    message ? <div className="mt-1 text-xs text-[#C1121F]">{message}</div> : null;
+    message ? <div className="mt-1 text-xs text-[#BA0C2F]">{message}</div> : null;
 
 export default function UpdateProfileInformation({
     mustVerifyEmail,
@@ -36,11 +36,11 @@ export default function UpdateProfileInformation({
     return (
         <section className={className}>
             <header>
-                <h2 className="text-lg font-medium text-[#1C1B1A]">
+                <h2 className="text-lg font-medium text-[#111827]">
                     Profile Information
                 </h2>
 
-                <p className="mt-1 text-sm text-[#8A8580]">
+                <p className="mt-1 text-sm text-[#5B6474]">
                     Update your account's profile information and email address.
                 </p>
             </header>
@@ -76,13 +76,13 @@ export default function UpdateProfileInformation({
                             type="warning"
                             showIcon
                             message={
-                                <span className="text-sm text-[#1C1B1A]">
+                                <span className="text-sm text-[#111827]">
                                     Your email address is unverified.{' '}
                                     <Link
                                         href={route('verification.send')}
                                         method="post"
                                         as="button"
-                                        className="text-sm text-[#C1121F] underline hover:text-[#780000]"
+                                        className="text-sm text-[#BA0C2F] underline hover:text-[#8E0924]"
                                     >
                                         Click here to re-send the verification email.
                                     </Link>
@@ -105,7 +105,7 @@ export default function UpdateProfileInformation({
                     <PrimaryButton disabled={processing}>Save</PrimaryButton>
 
                     {recentlySuccessful && (
-                        <p className="text-sm text-[#8A8580]">Saved.</p>
+                        <p className="text-sm text-[#5B6474]">Saved.</p>
                     )}
                 </div>
             </form>

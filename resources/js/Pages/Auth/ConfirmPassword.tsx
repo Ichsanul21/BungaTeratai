@@ -20,7 +20,7 @@ export default function ConfirmPassword() {
         <GuestLayout>
             <Head title="Konfirmasi Kata Sandi" />
 
-            <div className="mb-6 text-sm text-[#1C1B1A]/70">
+            <div className="mb-6 text-sm text-[#111827]/70">
                 Ini adalah area aman aplikasi. Harap konfirmasi kata sandi Anda sebelum melanjutkan.
             </div>
 
@@ -31,7 +31,7 @@ export default function ConfirmPassword() {
                     help={errors.password}
                 >
                     <Input.Password
-                        prefix={<Lock size={16} className="text-[#8A8580]" />}
+                        prefix={<Lock size={16} className="text-[#5B6474]" />}
                         name="password"
                         value={data.password}
                         autoComplete="current-password"

@@ -18,7 +18,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
         <GuestLayout>
             <Head title="Lupa Kata Sandi" />
 
-            <div className="mb-6 text-sm text-[#1C1B1A]/70">
+            <div className="mb-6 text-sm text-[#111827]/70">
                 Lupa kata sandi? Tidak masalah. Masukkan email Anda dan kami akan mengirimkan
                 tautan reset kata sandi.
             </div>
@@ -37,7 +37,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
                     validateStatus={errors.email ? 'error' : undefined}
                 >
                     <Input
-                        prefix={<Mail size={16} className="text-[#8A8580]" />}
+                        prefix={<Mail size={16} className="text-[#5B6474]" />}
                         type="email"
                         name="email"
                         value={data.email}

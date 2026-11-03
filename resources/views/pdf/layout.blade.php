@@ -7,12 +7,12 @@
         @page { margin: 16mm 14mm 14mm 14mm; }
         * { box-sizing: border-box; }
         body { font-family: "DejaVu Sans", Arial, sans-serif; font-size: 10.5pt; color: #111; margin: 0; padding: 0; line-height: 1.4; word-wrap: break-word; }
-        .kop { border-bottom: 2px solid #C41212; padding-bottom: 8px; margin-bottom: 14px; }
+        .kop { border-bottom: 2px solid #BA0C2F; padding-bottom: 8px; margin-bottom: 14px; }
         .kop table { width: 100%; border: 0; table-layout: fixed; }
         .kop td { border: 0; vertical-align: middle; padding: 0; word-wrap: break-word; }
-        .kop .logo { width: 60px; height: 60px; background: #C41212; color: #fff; text-align: center;
+        .kop .logo { width: 60px; height: 60px; background: #BA0C2F; color: #fff; text-align: center;
             font-size: 20pt; font-weight: bold; line-height: 60px; border-radius: 6px; letter-spacing: 1px; }
-        .kop h1 { font-size: 15pt; margin: 0 0 3px 0; letter-spacing: 1.5px; color: #172B3A; font-weight: bold; }
+        .kop h1 { font-size: 15pt; margin: 0 0 3px 0; letter-spacing: 1.5px; color: #00205B; font-weight: bold; }
         .kop .sub { font-size: 8.5pt; color: #333; line-height: 1.4; }
         h2.doc-title { text-align: center; font-size: 13pt; text-transform: uppercase; letter-spacing: 2px;
             text-decoration: underline; margin: 12px 0 6px; }
@@ -23,7 +23,7 @@
         tfoot { display: table-footer-group; }
         table.data { width: 100%; border-collapse: collapse; margin: 8px 0; table-layout: fixed; word-wrap: break-word; }
         table.data th, table.data td { border: 1px solid #444; padding: 5px 7px; font-size: 9.5pt; vertical-align: top; word-wrap: break-word; overflow-wrap: break-word; }
-        table.data th { background: #f0f0f0; }
+        table.data th { background: #E3E8F0; }
         .clause { margin-bottom: 7px; font-size: 10pt; line-height: 1.45; text-align: justify; word-wrap: break-word; }
         .clause b { display: inline-block; min-width: 26px; }
         .field { display: table; width: 100%; margin-bottom: 6px; font-size: 10pt; table-layout: fixed; word-wrap: break-word; }

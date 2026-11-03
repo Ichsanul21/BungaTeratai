@@ -2,28 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Tab menempel ke konten (tanpa gap bawaan AntD). */
+.bt-tabs .ant-tabs-nav {
+    margin-bottom: 0 !important;
+}
+.bt-tabs .ant-tabs-content-holder {
+    padding-top: 0 !important;
+}
+.bt-tabs .ant-tabs-nav::before {
+    border-bottom-color: #E3E8F0 !important;
+}
+
 
 @theme {
-    /* Primary — merah brand (CTA, waterline, fokus) */
-    --color-primary: #C1121F;
-    --color-primary-hover: #780000;
-    --color-primary-tint: #FDECEA;
-    --color-primary-tintborder: #F2D4D0;
+    /* Palet resmi: putih, navy, merah, ink, kanvas */
+    --color-primary: #BA0C2F;
+    --color-primary-hover: #8E0924;
+    --color-primary-tint: #FBEAEE;
+    --color-primary-tintborder: #F3D2D9;
 
-    /* Netral — kertas hangat */
-    --color-ink: #1C1B1A;
-    --color-muted: #8A8580;
-    --color-appbg: #FAF7F2;
-    --color-hairline: #E7E1D9;
+    --color-ink: #111827;
+    --color-muted: #5B6474;
+    --color-appbg: #F5F7FA;
+    --color-hairline: #E3E8F0;
 
-    /* Sekunder — dipertahankan tanpa diubah */
-    --color-maritime: #1E4668;
-    --color-oceanteal: #168C8C;
-    --color-warn: #D99A2B;
-    --color-ok: #2F8F68;
-    --color-danger: #C94C4C;
-    --color-sidebar: #172B3A;
-    --color-sidebarhover: #1F3A4F;
+    --color-navy: #00205B;
+    --color-maritime: #00205B;
+    --color-oceanteal: #0B4A8F;
+    --color-warn: #B45309;
+    --color-ok: #15803D;
+    --color-danger: #BA0C2F;
+    --color-sidebar: #FFFFFF;
+    --color-sidebarhover: #F5F7FA;
 
     /* Tipografi */
     --font-sans: 'Archivo', ui-sans-serif, system-ui, sans-serif;

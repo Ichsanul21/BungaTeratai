@@ -18,11 +18,11 @@ export default function StatCard({
     onClick?: () => void;
 }) {
     const tones: Record<string, { color: string; bg: string }> = {
-        neutral: { color: '#1C1B1A', bg: '#FAF7F2' },
-        success: { color: '#2F8F68', bg: '#2F8F681A' },
-        warning: { color: '#D99A2B', bg: '#D99A2B1A' },
-        danger: { color: '#C1121F', bg: '#C1121F1A' },
-        info: { color: '#1E4668', bg: '#1E46681A' },
+        neutral: { color: '#111827', bg: '#F5F7FA' },
+        success: { color: '#15803D', bg: '#15803D1A' },
+        warning: { color: '#B45309', bg: '#B453091A' },
+        danger: { color: '#BA0C2F', bg: '#BA0C2F1A' },
+        info: { color: '#00205B', bg: '#00205B1A' },
     };
 
     const t = tones[tone];
@@ -30,7 +30,7 @@ export default function StatCard({
     return (
         <Card
             onClick={onClick}
-            className={onClick ? 'cursor-pointer transition hover:border-[#C1121F]/40 hover:shadow-md' : ''}
+            className={onClick ? 'cursor-pointer transition hover:border-[#BA0C2F]/40 hover:shadow-md' : ''}
             styles={{
                 body: { padding: '16px' },
             }}
@@ -39,7 +39,7 @@ export default function StatCard({
                 <div className="min-w-0 flex-1">
                     <Statistic
                         title={
-                            <span className="truncate text-xs font-medium uppercase tracking-wide text-[#8A8580]">
+                            <span className="truncate text-xs font-medium uppercase tracking-wide text-[#5B6474]">
                                 {label}
                             </span>
                         }
@@ -48,12 +48,12 @@ export default function StatCard({
                         valueStyle={{
                             fontSize: 24,
                             fontWeight: 600,
-                            color: '#1C1B1A',
+                            color: '#111827',
                             marginTop: 4,
                         }}
                     />
                     {sub && (
-                        <p className="mt-1 text-xs text-[#8A8580]">{sub}</p>
+                        <p className="mt-1 text-xs text-[#5B6474]">{sub}</p>
                     )}
                 </div>
                 {Icon && (

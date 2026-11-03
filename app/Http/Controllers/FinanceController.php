@@ -75,6 +75,16 @@ class FinanceController extends Controller
             'serviceCatalog' => \App\Models\ServiceCatalog::get(['id', 'name', 'kind', 'default_price']),
             'accounts' => Account::orderBy('code')->get(['id', 'code', 'name', 'type', 'normal_balance']),
             'assets' => Asset::orderBy('name')->get(['id', 'name', 'category', 'acquisition_cost', 'acquisition_date', 'useful_life_months', 'accumulated_depreciation', 'salvage_value', 'status']),
+            'receivables' => (float) Invoice::whereIn('status', ['unpaid', 'partial'])
+                ->selectRaw('COALESCE(SUM(total - paid_amount), 0) as s')->value('s'),
+            'payables' => (float) Bill::whereIn('status', ['unpaid', 'partial'])
+                ->selectRaw('COALESCE(SUM(total - paid_amount), 0) as s')->value('s'),
+            'receivableCount' => Invoice::whereIn('status', ['unpaid', 'partial'])->count(),
+            'payableCount' => Bill::whereIn('status', ['unpaid', 'partial'])->count(),
+            'monthRevenue' => (float) Invoice::whereMonth('issue_date', now()->month)
+                ->whereYear('issue_date', now()->year)->sum('total'),
+            'monthCost' => (float) Bill::whereMonth('issue_date', now()->month)
+                ->whereYear('issue_date', now()->year)->sum('total'),
             ...$props,
         ]);
     }
