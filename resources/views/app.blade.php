@@ -27,13 +27,14 @@
              bridge berada di luar konteks Inertia. null = realtime dimatikan.
              @json HARUS satu baris: directive-nya tak menangani argumen multi-baris. --}}
         @php
+            $reverb = config('broadcasting.connections.reverb', []);
             $btRealtime = [
                 'broadcast' => config('broadcasting.default') === 'reverb'
                     ? [
-                        'key' => config('reverb.app.key'),
-                        'host' => config('reverb.app.host'),
-                        'port' => config('reverb.app.port'),
-                        'scheme' => config('reverb.app.scheme'),
+                        'key' => $reverb['key'] ?? null,
+                        'host' => $reverb['options']['host'] ?? null,
+                        'port' => $reverb['options']['port'] ?? null,
+                        'scheme' => $reverb['options']['scheme'] ?? null,
                     ]
                     : null,
                 'user_id' => auth()->id(),
