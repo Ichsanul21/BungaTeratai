@@ -994,6 +994,60 @@ function CounterRow({ template }: { template: TemplateRow }) {
 /* Watermark                                                          */
 /* ------------------------------------------------------------------ */
 
+function RangeField({
+    label,
+    value,
+    min,
+    max,
+    step,
+    suffix,
+    onChange,
+}: {
+    label: string;
+    value: number;
+    min: number;
+    max: number;
+    step: number;
+    suffix?: string;
+    onChange: (value: number) => void;
+}) {
+    return (
+        <div>
+            <div className="mb-1 flex items-center justify-between gap-2">
+                <span className="text-[10.5px] font-medium text-[#5B6474]">{label}</span>
+                <span className="flex items-center gap-1">
+                    <input
+                        type="number"
+                        value={value}
+                        min={min}
+                        max={max}
+                        step={step}
+                        onChange={(event) => {
+                            const next = Number(event.target.value);
+                            if (Number.isFinite(next)) {
+                                onChange(Math.max(min, Math.min(max, next)));
+                            }
+                        }}
+                        className="w-[76px] rounded-md border border-[#E3E8F0] bg-white px-2 py-1 text-right font-mono text-[11.5px] tabular-nums text-[#111827] outline-none focus:border-[#BA0C2F]/60"
+                    />
+                    {suffix && (
+                        <span className="font-mono text-[10.5px] text-[#5B6474]">{suffix}</span>
+                    )}
+                </span>
+            </div>
+            <input
+                type="range"
+                min={min}
+                max={max}
+                step={step}
+                value={value}
+                onChange={(event) => onChange(Number(event.target.value))}
+                className="w-full accent-[#BA0C2F]"
+            />
+        </div>
+    );
+}
+
 function WatermarkTab({ config }: { config: WatermarkConfig }) {
     const { data, setData, put, post, processing, errors } = useForm<WatermarkConfig>(config);
 
@@ -1072,78 +1126,101 @@ function WatermarkTab({ config }: { config: WatermarkConfig }) {
                         </span>
                     </label>
 
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                        <label className="block">
-                            <span className="mb-1 block text-[10.5px] text-[#5B6474]">
-                                Opacity: <strong className="font-mono">{data.opacity}</strong>
+                    <div className="rounded-xl border border-[#E3E8F0] bg-[#F9FAFC] p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-[#5B6474]">
+                                Preset tampilan
                             </span>
-                            <input
-                                type="range"
-                                min={0.01}
-                                max={0.35}
-                                step={0.01}
-                                value={data.opacity}
-                                onChange={(event) => setData('opacity', Number(event.target.value))}
-                                className="w-full accent-[#BA0C2F]"
-                            />
-                        </label>
+                            <div className="flex flex-wrap gap-1.5">
+                                {[
+                                    { label: 'Halus', opacity: 0.04, speed: 70, font_size: 10 },
+                                    { label: 'Standar', opacity: 0.07, speed: 40, font_size: 11 },
+                                    { label: 'Tegas', opacity: 0.12, speed: 24, font_size: 12 },
+                                ].map((preset) => (
+                                    <button
+                                        key={preset.label}
+                                        type="button"
+                                        onClick={() =>
+                                            setData({
+                                                ...data,
+                                                opacity: preset.opacity,
+                                                speed: preset.speed,
+                                                font_size: preset.font_size,
+                                            })
+                                        }
+                                        className="rounded-lg border border-[#E3E8F0] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#111827] transition hover:border-[#BA0C2F]/50 hover:text-[#BA0C2F]"
+                                    >
+                                        {preset.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <p className="mt-1 text-[11px] text-[#5B6474]">
+                            Preset mengubah opacity, kecepatan, dan ukuran font sekaligus.
+                        </p>
+                    </div>
 
-                        <label className="block">
-                            <span className="mb-1 block text-[10.5px] text-[#5B6474]">
-                                Kecepatan: <strong className="font-mono">{data.speed}s</strong>
-                            </span>
-                            <input
-                                type="range"
-                                min={10}
-                                max={240}
-                                step={5}
-                                value={data.speed}
-                                onChange={(event) => setData('speed', Number(event.target.value))}
-                                className="w-full accent-[#BA0C2F]"
-                            />
-                        </label>
-
-                        <label className="block">
-                            <span className="mb-1 block text-[10.5px] text-[#5B6474]">
-                                Sudut: <strong className="font-mono">{data.angle}°</strong>
-                            </span>
-                            <input
-                                type="range"
-                                min={-60}
-                                max={60}
-                                step={1}
-                                value={data.angle}
-                                onChange={(event) => setData('angle', Number(event.target.value))}
-                                className="w-full accent-[#BA0C2F]"
-                            />
-                        </label>
-
-                        <label className="block">
-                            <span className="mb-1 block text-[10.5px] text-[#5B6474]">
-                                Font: <strong className="font-mono">{data.font_size}px</strong>
-                            </span>
-                            <input
-                                type="range"
-                                min={8}
-                                max={24}
-                                step={1}
-                                value={data.font_size}
-                                onChange={(event) => setData('font_size', Number(event.target.value))}
-                                className="w-full accent-[#BA0C2F]"
-                            />
-                        </label>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        <RangeField
+                            label="Opacity"
+                            value={Math.round(data.opacity * 100)}
+                            min={1}
+                            max={35}
+                            step={1}
+                            suffix="%"
+                            onChange={(value) => setData('opacity', value / 100)}
+                        />
+                        <RangeField
+                            label="Kecepatan"
+                            value={data.speed}
+                            min={10}
+                            max={240}
+                            step={5}
+                            suffix="detik"
+                            onChange={(value) => setData('speed', value)}
+                        />
+                        <RangeField
+                            label="Sudut"
+                            value={data.angle}
+                            min={-60}
+                            max={60}
+                            step={1}
+                            suffix="°"
+                            onChange={(value) => setData('angle', value)}
+                        />
+                        <RangeField
+                            label="Ukuran font"
+                            value={data.font_size}
+                            min={8}
+                            max={24}
+                            step={1}
+                            suffix="px"
+                            onChange={(value) => setData('font_size', value)}
+                        />
                     </div>
 
                     <div className="flex flex-wrap items-end gap-3">
-                        <label className="block">
-                            <span className="mb-1 block text-[10.5px] text-[#5B6474]">Warna</span>
-                            <input
-                                type="color"
-                                value={data.color}
-                                onChange={(event) => setData('color', event.target.value)}
-                                className="h-9 w-16 cursor-pointer rounded-lg border border-[#E3E8F0] bg-white p-1"
-                            />
-                        </label>
+                        <div>
+                            <span className="mb-1 block text-[10.5px] font-medium text-[#5B6474]">
+                                Warna watermark
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="color"
+                                    value={data.color}
+                                    onChange={(event) => setData('color', event.target.value.toUpperCase())}
+                                    className="h-9 w-12 cursor-pointer rounded-lg border border-[#E3E8F0] bg-white p-1"
+                                    aria-label="Pilih warna watermark"
+                                />
+                                <input
+                                    value={data.color}
+                                    maxLength={7}
+                                    onChange={(event) => setData('color', event.target.value)}
+                                    className="w-[100px] rounded-lg border border-[#E3E8F0] bg-white px-2 py-2 font-mono text-[11.5px] uppercase text-[#111827] outline-none focus:border-[#BA0C2F]/60"
+                                    aria-label="Kode warna hex"
+                                />
+                            </div>
+                        </div>
 
                         <label className="flex items-center gap-2 rounded-xl border border-[#E3E8F0] px-3 py-2">
                             <input
@@ -1158,34 +1235,57 @@ function WatermarkTab({ config }: { config: WatermarkConfig }) {
                         </label>
                     </div>
 
-                    <div
-                        className="relative overflow-hidden rounded-xl border border-[#E3E8F0] bg-[#F5F7FA] p-4"
-                        style={{ minHeight: 150 }}
-                    >
-                        <div
-                            className="pointer-events-none absolute inset-0 flex flex-col justify-center gap-5 overflow-hidden"
-                            style={{ opacity: data.opacity, color: data.color }}
-                        >
-                            {[0, 1, 2].map((row) => (
+                    <div className="relative overflow-hidden rounded-xl border border-[#E3E8F0] bg-[#F5F7FA]">
+                        <style>{`
+                            @keyframes bt-wm-preview-slide {
+                                from { transform: translateX(0); }
+                                to { transform: translateX(-50%); }
+                            }
+                            .bt-wm-preview-track {
+                                display: flex; width: max-content;
+                                animation-name: bt-wm-preview-slide;
+                                animation-timing-function: linear;
+                                animation-iteration-count: infinite;
+                            }
+                            .bt-wm-preview-half { display: flex; flex: none; }
+                            .bt-wm-preview-item {
+                                display: inline-flex; flex-direction: column; gap: 1px;
+                                margin-right: 44px; white-space: nowrap;
+                            }
+                        `}</style>
+
+                        <div className="relative h-[168px] overflow-hidden">
+                            <div className="absolute inset-0 flex items-center justify-center">
                                 <div
-                                    key={row}
-                                    className="whitespace-nowrap font-mono"
+                                    className="bt-wm-preview-track"
                                     style={{
+                                        color: data.color,
+                                        opacity: data.opacity,
                                         fontSize: `${data.font_size}px`,
+                                        animationDuration: `${data.speed}s`,
                                         transform: `rotate(${data.angle}deg)`,
-                                        marginLeft: `${row * 24}px`,
                                     }}
                                 >
-                                    <span className="font-semibold uppercase tracking-wider">
-                                        {preview(data.line1)}
-                                    </span>
-                                    <span className="mx-3">·</span>
-                                    <span>{preview(data.line2)}</span>
+                                    {[0, 1].map((half) => (
+                                        <div key={half} className="bt-wm-preview-half">
+                                            {[0, 1, 2, 3].map((tile) => (
+                                                <span key={tile} className="bt-wm-preview-item">
+                                                    <span className="font-semibold uppercase tracking-wider">
+                                                        {preview(data.line1)}
+                                                    </span>
+                                                    <span className="font-mono text-[0.88em]">
+                                                        {preview(data.line2)}
+                                                    </span>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
+                            </div>
                         </div>
-                        <span className="relative rounded bg-white/80 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-[#5B6474]">
-                            Pratinjau
+
+                        <span className="absolute left-3 top-3 rounded bg-white/85 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-[#5B6474]">
+                            Pratinjau · opacity {Math.round(data.opacity * 100)}% · {data.speed}s
                         </span>
                     </div>
 

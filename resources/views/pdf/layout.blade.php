@@ -42,7 +42,7 @@
 
         /* Watermark keamanan (statis, diulang tiap halaman oleh dompdf) */
         .wm-layer { position: fixed; top: -25mm; left: -25mm; width: 240mm; height: 340mm; opacity: 0.45; }
-        .wm-row { position: absolute; white-space: nowrap; font-size: 7.5pt; color: #C9D2E0; letter-spacing: 0.6px; }
+        .wm-row { position: absolute; white-space: nowrap; font-size: 7.5pt; letter-spacing: 0.6px; }
         .wm-item { margin-right: 12mm; }
     </style>
 </head>
@@ -68,7 +68,7 @@
     @if ($wm)
         <div class="wm-layer">
             @for ($r = 0; $r < 15; $r++)
-                <div class="wm-row" style="top: {{ $r * 22 }}mm; left: {{ $r * 13 }}mm;">
+                <div class="wm-row" style="top: {{ $r * 22 }}mm; left: {{ $r * 13 }}mm; color: {{ $wm['color'] }};">
                     @for ($c = 0; $c < 3; $c++)
                         <span class="wm-item">{{ $wm['line1'] }} &nbsp;&middot;&nbsp; {{ $wm['line2'] }}</span>
                     @endfor

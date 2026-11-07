@@ -83,12 +83,21 @@ class WatermarkTest extends TestCase
         $payload['line1'] = 'Khusus Alenkosa';
         $payload['line2'] = '{user} - {ip} - {timestamp}';
         $payload['opacity'] = 0.12;
+        $payload['speed'] = 25;
+        $payload['color'] = '#BA0C2F';
 
         $this->actingAs($dev)->put('/developer/watermark', $payload)->assertRedirect();
 
         $this->assertSame('Khusus Alenkosa', WatermarkService::get()['line1']);
         $this->assertSame(0.12, WatermarkService::get()['opacity']);
+        $this->assertSame(25, WatermarkService::get()['speed']);
+        $this->assertSame('#BA0C2F', WatermarkService::get()['color']);
         $this->assertDatabaseHas('dev_activity_logs', ['action' => 'watermark_updated']);
+
+        $client = WatermarkService::clientPayload(request());
+        $this->assertSame(0.12, $client['opacity']);
+        $this->assertSame(25, $client['speed']);
+        $this->assertSame('#BA0C2F', $client['color']);
 
         $this->actingAs($dev)->post('/developer/watermark/reset')->assertRedirect();
 
@@ -129,6 +138,7 @@ class WatermarkTest extends TestCase
         $this->assertSame('Copyright of Alenkosa - Your IT Solutions', $pdf['line1']);
         $this->assertStringContainsString('Developer Alenkosa', $pdf['line2']);
         $this->assertStringContainsString('WITA', $pdf['line2']);
+        $this->assertMatchesRegularExpression('/^#[0-9A-F]{6}$/', $pdf['color']);
     }
 
     public function test_pdf_watermark_can_be_disabled_separately(): void

@@ -106,7 +106,7 @@ class WatermarkService
     /**
      * Teks watermark untuk PDF (statis, waktu cetak). null = tidak dipakai.
      *
-     * @return array{line1: string, line2: string}|null
+     * @return array{line1: string, line2: string, color: string}|null
      */
     public static function pdf(): ?array
     {
@@ -128,7 +128,23 @@ class WatermarkService
         return [
             'line1' => self::replace($config['line1'], $map),
             'line2' => self::replace($config['line2'], $map),
+            // Warna pilihan dicampur putih agar tetap samar di atas teks PDF.
+            'color' => self::tint($config['color']),
         ];
+    }
+
+    private static function tint(string $hex): string
+    {
+        $value = ltrim($hex, '#');
+
+        if (! preg_match('/^[0-9A-Fa-f]{6}$/', $value)) {
+            $value = '00205B';
+        }
+
+        $channels = array_map('hexdec', str_split($value, 2));
+        $mix = static fn (int $channel): int => (int) round($channel + (255 - $channel) * 0.86);
+
+        return sprintf('#%02X%02X%02X', $mix((int) $channels[0]), $mix((int) $channels[1]), $mix((int) $channels[2]));
     }
 
     /** @return array<string, string> */
