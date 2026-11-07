@@ -52,7 +52,8 @@ class AuditTrailController extends Controller
                 'timestamp' => $a->timestamp,
             ]),
             'filters' => $request->only(['user_id', 'action', 'entity', 'from', 'to', 'search']),
-            'users' => User::orderBy('name')->get(['id', 'name']),
+            'users' => User::whereDoesntHave('roles', fn ($q) => $q->where('slug', 'developer'))
+                ->orderBy('name')->get(['id', 'name']),
             'actions' => AuditLog::selectRaw('DISTINCT action')->orderBy('action')->pluck('action'),
             'entities' => AuditLog::selectRaw('DISTINCT entity_type')->orderBy('entity_type')->pluck('entity_type'),
         ]);

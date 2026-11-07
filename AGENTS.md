@@ -2,7 +2,7 @@
 
 ## Apa ini
 
-**Bunga Teratai System** — prototype ERP manajemen dokumen & operasi pelayaran (PT Bunga Teratai, Samarinda). Status: **Fase 0–G SELESAI** (aplikasi penuh, CRUD lengkap, generator PDF/Excel BahanBT, seed data klien **39 kapal + SPAL 104 + modul Crewing lengkap**, **68 test / 374 assertions hijau**).
+**Bunga Teratai System** — prototype ERP manajemen dokumen & operasi pelayaran (PT Bunga Teratai, Samarinda). Status: **Fase 0–G SELESAI** (aplikasi penuh, CRUD lengkap, generator PDF/Excel BahanBT, seed data klien **39 kapal + SPAL 104 + modul Crewing lengkap**, **121 test / 627 assertions hijau**).
 
 Stack: **Laravel 13 + Inertia (React 19 + TypeScript) + SQLite + Tailwind + Recharts + Leaflet + lucide-react**. Desktop-first, UI **Bahasa Indonesia**, timezone **Asia/Makassar (WITA)**, primer `#C41212`, sidebar `#172B3A`.
 
@@ -35,7 +35,7 @@ Aturan spek yang gampang dilanggar (hafalkan):
 php artisan serve                    # server dev (port 8000)
 npm run dev                          # Vite dev
 npm run build                        # VERIFIKASI wajib sebelum selesai task (sekalian compile SW PWA)
-php artisan test                     # 102 test / 537 assertions — wajib lulus semua
+php artisan test                     # 121 test / 627 assertions - wajib lulus semua
 php artisan migrate:fresh --seed     # reset + seed data klien (±45 detik, wajib sukses)
 ```
 
@@ -92,9 +92,29 @@ Arsitektur ala sistem pelayaran komersial: **kapal = store-and-forward, kantor =
   1. `.env`: `BROADCAST_CONNECTION=reverb` + `REVERB_APP_ID/KEY/SECRET` (generate ulang), `REVERB_HOST=<domain>, REVERB_PORT=443, REVERB_SCHEME=https`, `REVERB_SERVER_HOST=0.0.0.0`, `REVERB_SERVER_PORT=8080`.
   2. pm2: `pm2 start deploy/reverb.pm2.json` (proses `php artisan reverb:start`).
   3. **nginx wajib 2 hal**: (a) `location /app/` → proxy WebSocket ke `127.0.0.1:8080` (`proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade";`), (b) lokasi `/build/sw.js` ditambah header **`Service-Worker-Allowed: /`** (tanpa ini registrasi SW ditolak browser karena scope default hanya `/build/`).
-- **Test**: `RbacConfigurableTest` (8), `SyncEngineTest` (13), `HoursOfRestModuleTest` (7), `RealtimeBroadcastTest` (6) → total **102 test / 537 assertions**.
+- **Test**: `RbacConfigurableTest` (8), `SyncEngineTest` (13), `HoursOfRestModuleTest` (7), `RealtimeBroadcastTest` (6) → total **102 test / 537 assertions** (sebelum Fase I).
+
+## Fase I — Developer Mode + Watermark Keamanan (SELESAI)
+
+Akun internal **Alenkosa**: akses penuh, jejaknya **tidak masuk Jejak Audit klien**.
+
+- **Akun**: dibuat lewat `php artisan dev:account --email=... --password=...` (`--rotate` ganti sandi). Tidak ada di seeder, sandi tidak pernah masuk repo. Role `developer` disembunyikan dari daftar pengguna & matriks RBAC di Pengaturan (dan tidak bisa diberikan dari UI).
+- **Gerbang**: `config('dev.enabled')` (`DEV_MODE`) + middleware `dev` (`EnsureDeveloper`). Salah satu tidak terpenuhi → **404**, bukan 403. Sesi developer maksimal `DEV_SESSION_HOURS` (default 8 jam). Super Admin klien tetap TIDAK bisa membuka `/developer`.
+- **Audit terpisah**: `AuditService::log()` mengalihkan aktor developer ke `dev_activity_logs` (+ `storage/logs/dev-activity.log`), jadi `audit_logs` tetap bersih. Saat impersonasi, `user_id` = developer asal dan `impersonated_user_id` = pengguna yang dilihat.
+- **Panel** `/developer` (10 tab): Ringkasan sistem, Masuk Sebagai (impersonation + banner kembali), Maintenance (allowlist artisan), Data (seed demo/resync reminder), Sinkronisasi (devices + konflik), Log (tail `laravel.log` + jejak developer), Fitur (feature flag), SQL (SELECT/WITH read-only, LIMIT 200), Nomor (counter template), Watermark.
+- **Feature flag** (`FeatureFlagService`, tersimpan di settings group `feature`): `ais_mock`, `realtime`, `sql_console`, `demo_banner`.
+- **Watermark** (`WatermarkService`, settings key `watermark`): pita diagonal bergerak di **semua halaman termasuk login**, dua baris — default `Copyright of Alenkosa - Your IT Solutions` + `{ip} - {device} - {timestamp} - {user}`. Timestamp live per detik (WITA), IP/user/device per pengunjung, `pointer-events-none`, z-index 9998, `prefers-reduced-motion` hanya memperlambat (tetap bergerak). Diedit dari tab Watermark (on/off, baris, opacity, kecepatan, sudut, font, warna, tampil di login, PDF).
+- **PDF**: `resources/views/pdf/layout.blade.php` menambahkan lapisan `position: fixed` (dompdf mengulang tiap halaman) — ikut flag `pdf_enabled`. Token `{doc_no}` tersedia tetapi kosong kecuali view mengisinya.
+- **Test**: `DeveloperModeTest` (12) + `WatermarkTest` (7).
 
 ## Jebakan yang sudah ditemukan (JANGAN diulangi)
+
+- **Prop `watermark` jangan dipakai untuk config mentah** di controller mana pun — prop itu milik `HandleInertiaRequests` (payload klien dengan `values`). Di panel Developer namanya `watermarkConfig`; kalau tertimpa, `SecurityWatermark` crash (`values` undefined) dan halaman jadi blank.
+- `WatermarkService::values()` mengembalikan key **polos** (`ip`, `device`, `user`, `timestamp`, `doc_no`, `company`), bukan token `{ip}`. Token dibentuk saat substitusi; jangan mengubah key jadi `{...}` (frontend membaca `values.ip`).
+- Halaman **Login TIDAK memakai `GuestLayout`** — watermark harus dipasang di tiga tempat: `AuthenticatedLayout`, `GuestLayout`, dan `Pages/Auth/Login.tsx`.
+- `WatermarkService`/`FeatureFlagService` wajib tahan kondisi **tabel `settings` belum ada** (mis. `ExampleTest` tanpa migrasi). Keduanya dibungkus `Schema::hasTable` + try/catch.
+- `devices` memakai kolom **`device_name`**, bukan `name` (panel Developer).
+- **`AuditService::log()` sekarang union** (`AuditLog|DevActivityLog`) — jangan menambahkan type hint `AuditLog` pada pemanggil.
 
 - **`Relation::morphMap`** ('voyage','document') wajib di AppServiceProvider — kolom `approvable_type` string pendek; morphMany error tanpa peta
 - Tabel irregular: `service_catalog` & `voyage_cargo` → set `protected $table` di model

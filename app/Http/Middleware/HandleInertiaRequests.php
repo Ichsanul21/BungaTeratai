@@ -40,8 +40,17 @@ class HandleInertiaRequests extends Middleware
                     'name' => $user->name,
                     'email' => $user->email,
                     'roles' => $user->roles()->pluck('slug')->values(),
+                    'is_developer' => $user->isDeveloper(),
                 ] : null,
             ],
+            'impersonating' => $request->session()->has('dev_impersonator_id')
+                ? [
+                    'name' => $request->session()->get('dev_impersonator_name') ?? 'Developer',
+                    'current' => $user?->name,
+                ]
+                : null,
+            'watermark' => \App\Services\WatermarkService::clientPayload($request),
+            'features' => \App\Services\Dev\FeatureFlagService::all(),
             'unreadNotifications' => $user
                 ? Notification::where('recipient_id', $user->id)
                     ->where('read_status', false)
@@ -52,7 +61,7 @@ class HandleInertiaRequests extends Middleware
                 'success' => session('success'),
                 'error' => session('error'),
             ],
-            'demoLabel' => 'DEMO DATA',
+            'demoLabel' => \App\Services\Dev\FeatureFlagService::enabled('demo_banner') ? 'DEMO DATA' : null,
         ];
     }
 

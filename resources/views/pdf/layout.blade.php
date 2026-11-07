@@ -39,6 +39,11 @@
         .footer-note { font-size: 8pt; color: #555; margin-top: 14px; page-break-inside: avoid; }
         .watermark { text-align: center; font-size: 8pt; color: #999; letter-spacing: 2px; margin-top: 8px; page-break-inside: avoid; }
         .amount-big { font-size: 12pt; font-weight: bold; }
+
+        /* Watermark keamanan (statis, diulang tiap halaman oleh dompdf) */
+        .wm-layer { position: fixed; top: -25mm; left: -25mm; width: 240mm; height: 340mm; opacity: 0.45; }
+        .wm-row { position: absolute; white-space: nowrap; font-size: 7.5pt; color: #C9D2E0; letter-spacing: 0.6px; }
+        .wm-item { margin-right: 12mm; }
     </style>
 </head>
 <body>
@@ -58,6 +63,19 @@
     </div>
 
     @yield('content')
+
+    @php($wm = \App\Services\WatermarkService::pdf())
+    @if ($wm)
+        <div class="wm-layer">
+            @for ($r = 0; $r < 15; $r++)
+                <div class="wm-row" style="top: {{ $r * 22 }}mm; left: {{ $r * 13 }}mm;">
+                    @for ($c = 0; $c < 3; $c++)
+                        <span class="wm-item">{{ $wm['line1'] }} &nbsp;&middot;&nbsp; {{ $wm['line2'] }}</span>
+                    @endfor
+                </div>
+            @endfor
+        </div>
+    @endif
 
     <div class="watermark">BUNGA TERATAI SYSTEM - DOKUMEN SISTEM</div>
 </body>

@@ -1,4 +1,5 @@
 ﻿import { DEMO_ACCOUNTS } from '@/Constants/navigation';
+import SecurityWatermark from '@/Components/watermark/SecurityWatermark';
 import { Head, Link, useForm } from '@inertiajs/react';
 import {
     FormEventHandler,
@@ -449,6 +450,8 @@ export default function Login({
                     </div>
                 </section>
             </div>
+
+            <SecurityWatermark />
         </div>
     );
 }

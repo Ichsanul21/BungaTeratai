@@ -13,6 +13,11 @@ class AisService
      */
     public function getVesselsInRadius(float $lat, float $lng, float $radiusNm): Collection
     {
+        // Feature flag: matikan simulasi AIS tanpa deploy (panel Developer).
+        if (! \App\Services\Dev\FeatureFlagService::enabled('ais_mock')) {
+            return collect();
+        }
+
         $cacheKey = "ais_mock_{$lat}_{$lng}_{$radiusNm}";
         
         return Cache::remember($cacheKey, 60, function() use ($lat, $lng, $radiusNm) {

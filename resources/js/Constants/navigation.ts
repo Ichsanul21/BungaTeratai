@@ -10,6 +10,7 @@ import {
     LayoutDashboard,
     ScrollText,
     Ship,
+    Terminal,
     Users,
     type LucideIcon,
 } from 'lucide-react';
@@ -20,6 +21,8 @@ export interface NavItem {
     icon: LucideIcon;
     roles: string[]; // kosong = semua role
     badge?: 'notifications';
+    /** Hanya tampil untuk role developer (tidak pernah untuk super_admin klien). */
+    dev?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -65,6 +68,13 @@ export const NAV_ITEMS: NavItem[] = [
         icon: Cog,
         roles: ['super_admin', 'doc_controller'],
     },
+    {
+        href: '/developer',
+        label: 'Developer',
+        icon: Terminal,
+        roles: ['developer'],
+        dev: true,
+    },
 ];
 
 export const ROLE_LABELS: Record<string, string> = {
@@ -75,13 +85,22 @@ export const ROLE_LABELS: Record<string, string> = {
     supervisor: 'Supervisor',
     finance: 'Finance',
     auditor: 'Auditor',
+    developer: 'Developer',
 };
 
 export function visibleNavItems(userRoles: string[]): NavItem[] {
-    if (userRoles.includes('super_admin')) {
-        return NAV_ITEMS;
+    // Menu developer tidak pernah ikut lewat jalan pintas super_admin.
+    const items = NAV_ITEMS.filter((item) => !item.dev || userRoles.includes('developer'));
+
+    if (userRoles.includes('developer')) {
+        return items;
     }
-    return NAV_ITEMS.filter(
+
+    if (userRoles.includes('super_admin')) {
+        return items;
+    }
+
+    return items.filter(
         (item) => item.roles.length === 0 || item.roles.some((r) => userRoles.includes(r)),
     );
 }

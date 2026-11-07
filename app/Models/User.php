@@ -58,6 +58,21 @@ class User extends Authenticatable
         return $this->hasRole(RoleSlug::SuperAdmin->value);
     }
 
+    /**
+     * Akun internal Alenkosa. Hanya berlaku bila DEV_MODE=true
+     * (lihat Gate::before dan middleware EnsureDeveloper).
+     */
+    public function isDeveloper(): bool
+    {
+        return $this->hasRole(RoleSlug::Developer->value);
+    }
+
+    /** Developer yang boleh memakai panel pada lingkungan ini. */
+    public function isActiveDeveloper(): bool
+    {
+        return (bool) config('dev.enabled') && $this->isDeveloper();
+    }
+
     public function isReadOnly(): bool
     {
         return $this->hasRole(RoleSlug::Auditor->value)

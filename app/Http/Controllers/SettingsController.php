@@ -52,14 +52,16 @@ class SettingsController extends Controller
             ],
             'rbac' => $this->rbacData(),
             default => [
-                'usersList' => User::with('roles')->orderBy('name')->get()->map(fn ($u) => [
-                    'id' => $u->id,
-                    'name' => $u->name,
-                    'email' => $u->email,
-                    'roles' => $u->roles->pluck('slug'),
-                    'created_at' => $u->created_at?->toDateString(),
-                ]),
-                'roles' => Role::orderBy('id')->get(['id', 'slug', 'name']),
+                'usersList' => User::with('roles')
+                    ->whereDoesntHave('roles', fn ($q) => $q->where('slug', 'developer'))
+                    ->orderBy('name')->get()->map(fn ($u) => [
+                        'id' => $u->id,
+                        'name' => $u->name,
+                        'email' => $u->email,
+                        'roles' => $u->roles->pluck('slug'),
+                        'created_at' => $u->created_at?->toDateString(),
+                    ]),
+                'roles' => Role::where('slug', '!=', 'developer')->orderBy('id')->get(['id', 'slug', 'name']),
                 'workflow' => [
                     'internal_approval_required' => (bool) Setting::where('key', 'internal_approval_required')->value('value'),
                     'external_approval_requires_evidence' => (bool) Setting::where('key', 'external_approval_requires_evidence')->value('value'),
@@ -78,7 +80,7 @@ class SettingsController extends Controller
     /** Matriks hak akses: izin (katalog DB) × role. */
     private function rbacData(): array
     {
-        $roles = Role::orderBy('id')->get(['id', 'slug', 'name']);
+        $roles = Role::where('slug', '!=', 'developer')->orderBy('id')->get(['id', 'slug', 'name']);
         $permissions = \App\Models\Permission::orderBy('module')->orderBy('sort')->get([
             'id', 'code', 'label', 'module', 'action', 'description',
         ]);
@@ -104,6 +106,8 @@ class SettingsController extends Controller
         if ($role->slug === 'super_admin') {
             return back()->with('success', 'Role Super Admin selalu memiliki semua hak akses.');
         }
+
+        abort_if($role->slug === 'developer', 403, 'Hak akses developer dikelola sistem, bukan dari halaman Pengaturan.');
 
         $data = $request->validate([
             'permissions' => ['required', 'array'],
@@ -137,6 +141,9 @@ class SettingsController extends Controller
             'password' => ['required', 'string', 'min:8'],
             'role' => ['required', 'exists:roles,slug'],
         ]);
+
+        // Role developer hanya lewat artisan dev:account.
+        abort_if($data['role'] === 'developer', 403, 'Role developer tidak dapat diberikan dari halaman Pengaturan.');
 
         $user = User::create([
             'name' => $data['name'],
@@ -252,6 +259,9 @@ class SettingsController extends Controller
             'password' => ['nullable', 'string', 'min:8'],
         ]);
 
+        abort_if($data['role'] === 'developer', 403, 'Role developer tidak dapat diberikan dari halaman Pengaturan.');
+        abort_if($user->isDeveloper(), 403, 'Akun developer tidak dapat diubah dari halaman Pengaturan.');
+
         $before = ['name' => $user->name, 'email' => $user->email, 'roles' => $user->roles()->pluck('slug')->all()];
 
         $user->update([
@@ -271,6 +281,8 @@ class SettingsController extends Controller
     public function deleteUser(User $user)
     {
         abort_unless(auth()->user()?->isSuperAdmin(), 403);
+
+        abort_if($user->isDeveloper(), 403, 'Akun developer tidak dapat dihapus dari halaman Pengaturan.');
 
         if ($user->id === auth()->id()) {
             return back()->with('error', 'Tidak dapat menghapus akun sendiri.');

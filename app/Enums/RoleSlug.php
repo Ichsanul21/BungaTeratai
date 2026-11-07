@@ -11,4 +11,5 @@ enum RoleSlug: string
     case Supervisor = 'supervisor';
     case Finance = 'finance';
     case Auditor = 'auditor';
+    case Developer = 'developer';
 }

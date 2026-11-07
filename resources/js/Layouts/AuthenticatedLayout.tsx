@@ -1,5 +1,7 @@
 import OfflineBanner from '@/Components/sync/OfflineBanner';
 import SyncDrawer from '@/Components/sync/SyncDrawer';
+import ImpersonationBanner from '@/Components/dev/ImpersonationBanner';
+import SecurityWatermark from '@/Components/watermark/SecurityWatermark';
 import Sidebar from '@/Components/layout/Sidebar';
 import Topbar from '@/Components/layout/Topbar';
 import { type PageProps } from '@/types';
@@ -134,6 +136,8 @@ export default function AuthenticatedLayout({
                 >
                     <Topbar onOpenSidebar={() => setSidebarOpen(true)} />
 
+                    <ImpersonationBanner />
+
                     <div className="shrink-0">
                         <OfflineBanner />
                     </div>
@@ -162,6 +166,8 @@ export default function AuthenticatedLayout({
             </div>
 
             <SyncDrawer />
+
+            <SecurityWatermark />
         </div>
     );
 }

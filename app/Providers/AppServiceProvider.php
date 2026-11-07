@@ -36,6 +36,11 @@ class AppServiceProvider extends ServiceProvider
         // tidak ada di katalog (mis. ability policy: create/update) jatuh ke
         // Gate/policy lama seperti biasa.
         Gate::before(function ($user, $ability) {
+            // Developer (Alenkosa) memegang seluruh izin, hanya saat DEV_MODE aktif.
+            if (config('dev.enabled') && $user->isDeveloper()) {
+                return true;
+            }
+
             if ($user->isSuperAdmin()) {
                 return true;
             }

@@ -30,6 +30,7 @@
             $reverb = config('broadcasting.connections.reverb', []);
             $btRealtime = [
                 'broadcast' => config('broadcasting.default') === 'reverb'
+                    && \App\Services\Dev\FeatureFlagService::enabled('realtime')
                     ? [
                         'key' => $reverb['key'] ?? null,
                         'host' => $reverb['options']['host'] ?? null,

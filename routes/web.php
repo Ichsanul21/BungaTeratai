@@ -245,4 +245,28 @@ Route::get('/api/ais/radius', [\App\Http\Controllers\Api\AisController::class, '
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
+// ============ Developer Mode (Alenkosa) ============
+// Akses penuh, jejak terpisah (dev_activity_logs). DEV_MODE=false -> 404.
+Route::middleware(['auth'])->group(function () {
+    // Kembali dari impersonasi: user aktif BUKAN developer, jadi tidak pakai middleware "dev".
+    Route::post('/kembali-ke-developer', [\App\Http\Controllers\Dev\ImpersonationController::class, 'stop'])
+        ->name('dev.impersonate.stop');
+
+    Route::middleware(['dev'])
+        ->prefix('developer')
+        ->name('dev.')
+        ->group(function () {
+            Route::get('/', [\App\Http\Controllers\Dev\DeveloperController::class, 'index'])->name('index');
+            Route::post('/masuk-sebagai/{user}', [\App\Http\Controllers\Dev\ImpersonationController::class, 'start'])->name('impersonate.start');
+            Route::post('/maintenance', [\App\Http\Controllers\Dev\DeveloperController::class, 'maintenance'])->name('maintenance');
+            Route::post('/data', [\App\Http\Controllers\Dev\DeveloperController::class, 'dataAction'])->name('data');
+            Route::post('/konflik/{conflict}', [\App\Http\Controllers\Dev\DeveloperController::class, 'resolveConflict'])->name('conflicts.resolve');
+            Route::post('/fitur', [\App\Http\Controllers\Dev\DeveloperController::class, 'updateFlags'])->name('flags.update');
+            Route::post('/nomor/{template}', [\App\Http\Controllers\Dev\DeveloperController::class, 'resetCounter'])->name('numbering.reset');
+            Route::post('/sql', [\App\Http\Controllers\Dev\DeveloperController::class, 'runSql'])->name('sql.run');
+            Route::put('/watermark', [\App\Http\Controllers\Dev\WatermarkController::class, 'update'])->name('watermark.update');
+            Route::post('/watermark/reset', [\App\Http\Controllers\Dev\WatermarkController::class, 'reset'])->name('watermark.reset');
+        });
+});
+
 require __DIR__.'/auth.php';
